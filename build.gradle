@@ -1,0 +1,78 @@
+plugins {
+	id 'java-library'
+	id 'jacoco'
+	id 'checkstyle'
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	compileOnly 'net.sf.saxon:Saxon-HE:10.0'
+	// Run with -Dsaxon=false to run tests without Saxon-HE
+	if (Boolean.valueOf(System.getProperty("saxon", true.toString()))) {
+		testRuntimeOnly 'net.sf.saxon:Saxon-HE:10.0'
+	}
+	testImplementation 'junit:junit:4.13'
+}
+
+java {
+	withSourcesJar()
+	withJavadocJar()
+}
+
+compileJava {
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+// Run with -Dsnapshot=true to enable SNAPSHOT builds
+version += (Boolean.valueOf(System.getProperty("snapshot")) ? "-SNAPSHOT" : "")
+
+test {
+	finalizedBy jacocoTestReport
+	maxHeapSize = '2048m'
+	maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+	systemProperty 'XS_PARSER_VERBOSE', true
+}
+
+javadoc {
+	options.encoding = 'UTF-8'
+	options.memberLevel = JavadocMemberLevel.PUBLIC
+}
+
+jar {
+	manifest {
+		attributes 'Implementation-Title': project.name,
+				'Implementation-Version': project.version,
+				'Sealed': true
+	}
+}
+
+jacocoTestReport {
+	dependsOn test
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+task printCoverage {
+	dependsOn jacocoTestReport
+	doLast {
+		def slurper = new XmlSlurper()
+		slurper.setFeature('http://apache.org/xml/features/disallow-doctype-decl', false)
+		slurper.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', false)
+		File jacocoTestReport = new File("${project.buildDir}/reports/jacoco/test/jacocoTestReport.xml")
+		if (!jacocoTestReport.exists()) {
+			logger.error('Jacoco test report is missing.')
+			throw new GradleException('Jacoco test report is missing.')
+		}
+		def report = slurper.parse(jacocoTestReport)
+		double missed = report.counter.find { it.'@type' == coverageType }.@missed.toDouble()
+		double covered = report.counter.find { it.'@type' == coverageType }.@covered.toDouble()
+		def coverage = (100 / (missed + covered) * covered).round(2)
+		println "Coverage: ${coverage}%"
+	}
+}

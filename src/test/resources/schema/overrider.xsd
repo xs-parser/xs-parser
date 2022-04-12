@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:test="https://my.test" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="https://my.test" elementFormDefault="qualified" attributeFormDefault="unqualified" version="2">
+	<xs:override schemaLocation="includer.xsd">
+		<xs:simpleType name="mySimpleType">
+			<xs:restriction base="xs:int"></xs:restriction>
+		</xs:simpleType>
+	</xs:override>
+	<xs:element name="myElement" type="xs:int"></xs:element>
+	<xs:complexType name="myComplexType">
+		<xs:sequence>
+			<xs:element name="_123" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="mySimpleType0">
+		<xs:restriction base="xs:double"/>
+	</xs:simpleType>
+</xs:schema>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:test="https://my.test.2" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="https://my.test.2" elementFormDefault="qualified" attributeFormDefault="unqualified" version="2">
+	<xs:import namespace="https://my.test" schemaLocation="overrider.xsd"/>
+	<xs:element name="myElement" type="xs:int"></xs:element>
+	<xs:complexType name="myComplexType">
+		<xs:sequence>
+			<xs:element name="_1_2_3" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:test="https://my.test" targetNamespace="https://my.test" elementFormDefault="qualified" attributeFormDefault="unqualified" version="3">
+	<xs:redefine schemaLocation="base.xsd">
+		<xs:simpleType name="mySimpleType2">
+			<xs:restriction base="test:mySimpleType2">
+				<xs:maxLength value="222"/>
+			</xs:restriction>
+		</xs:simpleType>
+		<xs:complexType name="c1">
+			<xs:sequence>
+				<xs:element name="e2" type="test:c1"/>
+			</xs:sequence>
+		</xs:complexType>
+		<xs:complexType name="c2">
+			<xs:complexContent>
+				<xs:extension base="test:c2">
+					<xs:sequence>
+						<xs:element name="newElement" type="xs:QName"/>
+					</xs:sequence>
+				</xs:extension>
+			</xs:complexContent>
+		</xs:complexType>
+		<xs:group name="g1">
+			<xs:sequence>
+				<xs:element name="e2" type="test:c2"/>
+			</xs:sequence>
+		</xs:group>
+		<xs:attributeGroup name="a1">
+			<xs:attribute ref="test:attr1"/>
+		</xs:attributeGroup>
+	</xs:redefine>
+	<xs:attribute name="attr1"/>
+</xs:schema>

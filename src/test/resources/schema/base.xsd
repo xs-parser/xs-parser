@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified" version="2">
+	<xs:simpleType name="mySimpleType2">
+		<xs:restriction base="xs:string">
+			<xs:pattern value="123"/>
+			<xs:maxLength value="223"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="anotherSimpleType">
+		<xs:restriction base="xs:int"/>
+	</xs:simpleType>
+	<xs:simpleType name="simpleEnum">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="A"/>
+			<xs:enumeration value="B"/>
+			<xs:enumeration value="C"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="aSimpleList">
+		<xs:restriction>
+			<xs:simpleType>
+				<xs:restriction>
+					<xs:simpleType>
+						<xs:list itemType="xs:string"/>
+					</xs:simpleType>
+					<xs:maxLength value="10"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:minLength value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="c1">
+		<xs:sequence>
+			<xs:element name="e1" type="mySimpleType2"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="c2">
+		<xs:sequence>
+			<xs:element name="e2" type="xs:int"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="empty"/>
+	<xs:group name="g1">
+		<xs:choice>
+			<xs:any/>
+		</xs:choice>
+	</xs:group>
+	<xs:group name="g2">
+		<xs:choice>
+			<xs:element name="e2" type="c2"/>
+		</xs:choice>
+	</xs:group>
+	<xs:attributeGroup name="a1">
+		<xs:anyAttribute/>
+	</xs:attributeGroup>
+</xs:schema>
