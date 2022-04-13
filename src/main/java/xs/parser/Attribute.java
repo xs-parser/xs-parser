@@ -122,7 +122,7 @@ public class Attribute implements AnnotatedComponent {
 			return variety;
 		}
 
-		/** @return If the lt;attribute&gt; element information item has lt;complexType&gt; as an ancestor, the Complex Type Definition corresponding to that item, otherwise (the &lt;attribute&gt; element information item is within an lt;attributeGroup&gt; element information item), the Attribute Group Definition corresponding to that item or ·absent·. */
+		/** @return If the &lt;attribute&gt; element information item has &lt;complexType&gt; as an ancestor, the Complex Type Definition corresponding to that item, otherwise (the &lt;attribute&gt; element information item is within an &lt;attributeGroup&gt; element information item), the Attribute Group Definition corresponding to that item or ·absent·. */
 		public Node parent() {
 			return parent;
 		}

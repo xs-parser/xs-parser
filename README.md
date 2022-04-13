@@ -1,8 +1,12 @@
 # Description
 
+`xs-parser` is a Java software library that represents the object model described in the W3C XML Schema Definition Language (XSD) 1.1 Part 1 (https://www.w3.org/TR/xmlschema11-1/) and Part 2 (https://www.w3.org/TR/xmlschema11-2/).
+
 # Requirements
 
 `xs-parser` requires Java 8 or later. `xs-parser` has no third-party dependencies.
+
+If `Saxon-HE` version 10 is detected at runtime on the classpath, then it is used as the XPath and XQuery evaluation engine. When not detected, XQuery evaluation is disabled and the XPath engine defaults to the JAXP XPath 1.0 implementation. `Saxon-HE` version 11+ is not supported at this time.
 
 # Usage
 
@@ -18,7 +22,7 @@ repositories {
 }
 
 dependencies {
-	implementation 'com.github.xs-parser:xs-parser:1.0.0'
+	implementation 'io.github.xs-parser:xs-parser:1.0'
 }
 ```
 
@@ -32,12 +36,26 @@ import xs.parser.*;
 public class Runner {
 
 	public static void main(final String[] args) throws IOException {
-		final Schema schema = new Schema(new File("/path/to/schema/file.xsd"));
-		schema.typeDefinitions().forEach(t -> System.out.println((ComplexType.class.isInstance(t) ? "Complex" : "Simple") + "Type definition: " + t.name()));
+		final Schema schema = new Schema(new File("/path/to/schema.xsd"));
+		schema.typeDefinitions().forEach(t -> System.out.println((t instanceof ComplexType ? "Complex" : "Simple") + "Type definition: " + t.name()));
 		schema.attributeDeclarations().forEach(a -> System.out.println("Attribute declaration: " + a.name()));
 	}
 
 }
+```
+
+## XPath & XQuery
+
+```java
+final var schema = new xs.parser.Schema(new java.io.File("/path/to/schema.xsd"));
+var ns = xs.parser.x.NodeSet.of(schema);
+// Performs the XPath evaluation for every imported/included/redefined/overridden schema file
+ns = ns.xpath("fn:collection()/xs:schema");
+/* If instead of the above line you had used:
+ns = ns.xpath("/xs:schema");
+then only the /path/to/schema.xsd file would have been evaluated */
+ns = ns.xquery("xs:complexType"); // Gets all xs:complexTypes, note: XPath and XQuery usage can be mixed, however, Saxon-HE must be on the classpath to the use XQuery
+System.out.println(ns.size());
 ```
 
 # Design Goals

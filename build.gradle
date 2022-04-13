@@ -1,7 +1,9 @@
 plugins {
-	id 'java-library'
-	id 'jacoco'
 	id 'checkstyle'
+	id 'jacoco'
+	id 'java-library'
+	id 'maven-publish'
+	id 'signing'
 }
 
 repositories {
@@ -9,12 +11,9 @@ repositories {
 }
 
 dependencies {
-	compileOnly 'net.sf.saxon:Saxon-HE:10.0'
-	// Run with -Dsaxon=false to run tests without Saxon-HE
-	if (Boolean.valueOf(System.getProperty("saxon", true.toString()))) {
-		testRuntimeOnly 'net.sf.saxon:Saxon-HE:10.0'
-	}
+	compileOnly 'net.sf.saxon:Saxon-HE:10.+'
 	testImplementation 'junit:junit:4.13'
+	testRuntimeOnly 'net.sf.saxon:Saxon-HE:10.+'
 }
 
 java {
@@ -27,14 +26,35 @@ compileJava {
 	targetCompatibility = JavaVersion.VERSION_1_8
 }
 
-// Run with -Dsnapshot=true to enable SNAPSHOT builds
-version += (Boolean.valueOf(System.getProperty("snapshot")) ? "-SNAPSHOT" : "")
+tasks.withType(JavaCompile) {
+	options.encoding = 'UTF-8'
+}
+
+def getVersion = { ->
+	def stdout = new ByteArrayOutputStream()
+	def result = exec {
+		commandLine 'git', 'describe', '--tags', '--match', 'v[0-9]*'
+		standardOutput = stdout
+		ignoreExitValue true
+	}
+	if (result.getExitValue() != 0) {
+		return 'unspecified'
+	}
+	return stdout.toString().trim().substring(1)
+}
+
+// Run with -Psnapshot to enable SNAPSHOT builds
+def isSnapshot = project.hasProperty('snapshot')
+version = getVersion() + (isSnapshot ? '-SNAPSHOT' : '')
 
 test {
 	finalizedBy jacocoTestReport
 	maxHeapSize = '2048m'
 	maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
 	systemProperty 'XS_PARSER_VERBOSE', true
+	testLogging {
+		exceptionFormat 'full'
+	}
 }
 
 javadoc {
@@ -50,6 +70,12 @@ jar {
 	}
 }
 
+tasks.withType(Jar) {
+	from('LICENSE.md') {
+		into 'META-INF'
+	}
+}
+
 jacocoTestReport {
 	dependsOn test
 	reports {
@@ -58,21 +84,68 @@ jacocoTestReport {
 	}
 }
 
-task printCoverage {
-	dependsOn jacocoTestReport
-	doLast {
-		def slurper = new XmlSlurper()
-		slurper.setFeature('http://apache.org/xml/features/disallow-doctype-decl', false)
-		slurper.setFeature('http://apache.org/xml/features/nonvalidating/load-external-dtd', false)
-		File jacocoTestReport = new File("${project.buildDir}/reports/jacoco/test/jacocoTestReport.xml")
-		if (!jacocoTestReport.exists()) {
-			logger.error('Jacoco test report is missing.')
-			throw new GradleException('Jacoco test report is missing.')
+def getDescription = { ->
+	def desc = file('README.md').text.substring('# Description'.length()).trim().replace('\r\n', '\n').replace('\r', '\n')
+	return desc.substring(0, desc.indexOf('#')).trim().replaceAll('\n+', ' ').replace('`', '')
+}
+
+publishing {
+	repositories {
+		maven {
+			url = { isSnapshot ? snapshotRepositoryUrl : releaseRepositoryUrl }
+			credentials {
+				username = System.getenv('SONATYPE_USERNAME')
+				password = System.getenv('SONATYPE_PASSWORD')
+			}
 		}
-		def report = slurper.parse(jacocoTestReport)
-		double missed = report.counter.find { it.'@type' == coverageType }.@missed.toDouble()
-		double covered = report.counter.find { it.'@type' == coverageType }.@covered.toDouble()
-		def coverage = (100 / (missed + covered) * covered).round(2)
-		println "Coverage: ${coverage}%"
 	}
+	publications {
+		sonatype(MavenPublication) {
+			artifactId = artifact
+			from components.java
+			pom {
+				def repoUrl = System.getenv('GITHUB_SERVER_URL') + '/' + System.getenv('GITHUB_REPOSITORY')
+				def baseRepoUrl = repoUrl.substring('https://'.length())
+				name = rootProject.name
+				description = getDescription()
+				url = repoUrl
+				organization {
+					name = group
+					url = repoUrl.substring(0, repoUrl.lastIndexOf('/'))
+				}
+				issueManagement {
+					system = 'GitHub'
+					url = "${repoUrl}/issues"
+				}
+				licenses {
+					license {
+						name = file('LICENSE.md').text.split('\n', 2)[0].trim()
+						url = "${repoUrl}/blob/main/LICENSE.md"
+					}
+				}
+				scm {
+					connection = "scm:git:git://${baseRepoUrl}.git"
+					developerConnection = "scm:git:ssh://${baseRepoUrl}.git"
+					url = repoUrl
+				}
+				withXml {
+					def devs = asNode().appendNode('developers')
+					def authors = (file('CONTRIBUTORS.md').text =~ /- Copyright [0-9]{4}(-([0-9]{4}|present))? (.*?) <(.*?)>/).findAll()
+					authors.each {
+						def dev = devs.appendNode('developer')
+						dev.appendNode('name', it[3])
+						dev.appendNode('email', it[4])
+					}
+				}
+			}
+		}
+	}
+}
+
+signing {
+	required = { gradle.taskGraph.hasTask('uploadArchives') }
+	def signingKey = System.getenv('PGP_SIGNING_KEY')
+	def signingPassword = System.getenv('PGP_SIGNING_PASSWORD')
+	useInMemoryPgpKeys(signingKey, signingPassword)
+	sign publishing.publications
 }
