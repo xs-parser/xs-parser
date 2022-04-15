@@ -2,6 +2,17 @@
 
 `xs-parser` is a Java software library that represents the object model described in the W3C XML Schema Definition Language (XSD) 1.1 Part 1 (https://www.w3.org/TR/xmlschema11-1/) and Part 2 (https://www.w3.org/TR/xmlschema11-2/).
 
+![Build](https://github.com/xs-parser/xs-parser/workflows/Build/badge.svg)
+[![License](https://img.shields.io/github/license/xs-parser/xs-parser?label=License&logo=github)](https://github.com/xs-parser/xs-parser/blob/main/LICENSE.md)
+
+## Goals
+
+`xs-parser` aims to reduce the mysticism surrounding the complexity of the XSD 1.1 specification by providing users with direct access to the XSD properties.
+
+Due to the complex structure of XML schema documents and the potential variety of the structure of schemas, there is no preference for any particular schema component or structure. Therefore, `xs-parser` only provides the properties described in the XSD 1.1 specification.
+
+Unlike other software libraries that attempt to model XML schema documents, `xs-parser` does not sugarcoat the complexity inherent to the XSD 1.1 specification, but in returns offers a high level of fidelity to the specification. Another added benefit of this approach is that developers who are familiar with the XSD 1.1 specification may quickly adopt this library into their development tool chains.
+
 # Requirements
 
 `xs-parser` requires Java 8 or later. `xs-parser` has no third-party dependencies.
@@ -37,8 +48,11 @@ public class Runner {
 
 	public static void main(final String[] args) throws IOException {
 		final Schema schema = new Schema(new File("/path/to/schema.xsd"));
-		schema.typeDefinitions().forEach(t -> System.out.println((t instanceof ComplexType ? "Complex" : "Simple") + "Type definition: " + t.name()));
-		schema.attributeDeclarations().forEach(a -> System.out.println("Attribute declaration: " + a.name()));
+		schema.typeDefinitions().forEach(t ->
+			System.out.println((t instanceof ComplexType ? "Complex" : "Simple")
+				+ "Type definition: " + t.name()));
+		schema.attributeDeclarations().forEach(a ->
+			System.out.println("Attribute declaration: " + a.name()));
 	}
 
 }
@@ -48,18 +62,30 @@ public class Runner {
 
 ```java
 final var schema = new xs.parser.Schema(new java.io.File("/path/to/schema.xsd"));
-var ns = xs.parser.x.NodeSet.of(schema);
-// Performs the XPath evaluation for every imported/included/redefined/overridden schema file
-ns = ns.xpath("fn:collection()/xs:schema");
-/* If instead of the above line you had used:
-ns = ns.xpath("/xs:schema");
-then only the /path/to/schema.xsd file would have been evaluated */
-ns = ns.xquery("xs:complexType"); // Gets all xs:complexTypes, note: XPath and XQuery usage can be mixed, however, Saxon-HE must be on the classpath to the use XQuery
-System.out.println(ns.size());
+final var root = xs.parser.x.NodeSet.of(schema);
+
+// Performs the XPath evaluation for the root schema and all imported or included schemas
+final var allSchemas = root.xpath("fn:collection()/xs:schema");
+
+// Gets all xs:complexType name attributes
+// Note: XPath and XQuery usage can be mixed
+// However, Saxon-HE must be on the classpath to use XQuery
+final var complexTypeNames = allSchemas.xquery("xs:complexType").xpath("@name");
+
+// Only the /path/to/schema.xsd schema file is evaluated
+// Will not execute the given XPath for any imported or included schemas
+final var rootSchema = root.xpath("/xs:schema");
+
+// Gets all xs:simpleTypes in the /path/to/schema.xsd file
+final var simpleTypes = rootSchema.xpath("xs:simpleType");
+
+System.out.println("xs:complexType size: " + complexTypeNames.size());
+System.out.println("xs:simpleType size: " + simpleTypes.size());
+
+// The split() method creates a new single-element NodeSet for every element
+complexTypeNames.split().forEach(name ->
+	System.out.println("Name: " + name.getStringValue()));
+// The stream() method iterates over the underlying org.w3c.dom.Node elements
+simpleTypes.stream().forEach(node ->
+	System.out.println("Name: " + node.getAttributes().getNamedItemNS(null, "name")));
 ```
-
-# Design Goals
-
-Due to the complex structure of XML schema documents and the potential variety of usages, there is no preference for any particular schema component. Therefore, `xs-parser` aims to provide only the methods described in the XSD 1.1 specification with no added frills.
-
-This may inhibit clean and concise code but provides users the ability to reference the XSD specification directly and utilize `xs-parser` with regards to other specifications that are built upon XSD.

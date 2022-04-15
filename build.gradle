@@ -12,7 +12,7 @@ repositories {
 
 dependencies {
 	compileOnly 'net.sf.saxon:Saxon-HE:10.+'
-	testImplementation 'junit:junit:4.13'
+	testImplementation 'junit:junit:4.+'
 	testRuntimeOnly 'net.sf.saxon:Saxon-HE:10.+'
 }
 
@@ -86,7 +86,7 @@ jacocoTestReport {
 
 def getDescription = { ->
 	def desc = file('README.md').text.substring('# Description'.length()).trim().replace('\r\n', '\n').replace('\r', '\n')
-	return desc.substring(0, desc.indexOf('#')).trim().replaceAll('\n+', ' ').replace('`', '')
+	return desc.substring(0, desc.indexOf('![')).trim().replaceAll('\n+', ' ').replace('`', '')
 }
 
 publishing {
