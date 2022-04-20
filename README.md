@@ -3,6 +3,12 @@
 `xs-parser` is a Java software library that represents the object model described in the W3C XML Schema Definition Language (XSD) 1.1 Part 1 (https://www.w3.org/TR/xmlschema11-1/) and Part 2 (https://www.w3.org/TR/xmlschema11-2/).
 
 ![Build](https://github.com/xs-parser/xs-parser/workflows/Build/badge.svg)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=xs-parser_xs-parser&metric=coverage)](https://sonarcloud.io/dashboard?id=xs-parser_xs-parser)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=xs-parser_xs-parser&metric=bugs)](https://sonarcloud.io/dashboard?id=xs-parser_xs-parser)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=xs-parser_xs-parser&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=xs-parser_xs-parser)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=xs-parser_xs-parser&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=xs-parser_xs-parser)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=xs-parser_xs-parser&metric=security_rating)](https://sonarcloud.io/dashboard?id=xs-parser_xs-parser)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=xs-parser_xs-parser&metric=alert_status)](https://sonarcloud.io/dashboard?id=xs-parser_xs-parser)
 [![License](https://img.shields.io/github/license/xs-parser/xs-parser?label=License&logo=github)](https://github.com/xs-parser/xs-parser/blob/main/LICENSE.md)
 
 ## Goals
@@ -42,6 +48,7 @@ dependencies {
 `Runner.java`
 
 ```java
+import java.io.File;
 import xs.parser.*;
 
 public class Runner {

@@ -4,6 +4,11 @@ plugins {
 	id 'java-library'
 	id 'maven-publish'
 	id 'signing'
+	id 'org.sonarqube' version '3.3' apply false
+}
+
+if (System.getenv('SONAR_TOKEN') != null) {
+	apply plugin: 'org.sonarqube'
 }
 
 repositories {

@@ -36,7 +36,7 @@ public class Import {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		if (schema.targetNamespace() != null && schema.targetNamespace().equals(namespace)) {
-			throw new SchemaParseException(node, "Failed to resolve import: @namespace=" + namespace + " may not match the xs:schema/@targetNamespace=" + schema.targetNamespace() + " it is imported by");
+			throw new SchemaParseException(node, "namespace " + NodeHelper.toStringNamespace(namespace) + " must not match the targetNamespace " + NodeHelper.toStringNamespace(schema.targetNamespace()) + " of the current schema");
 		}
 		if (XMLConstants.NULL_NS_URI.equals(namespace)) {
 			throw new SchemaParseException(node, "@namespace must be absent or non-empty");
@@ -54,14 +54,14 @@ public class Import {
 	private Schema importSchema() {
 		try {
 			final Schema resultSchema = schema.findSchema(schema.documentResolver(), true, namespace, schemaLocation);
-			if (resultSchema.targetNamespace() == null && namespace == null || namespace.equals(resultSchema.targetNamespace())) {
+			if (Objects.equals(namespace, resultSchema.targetNamespace())) {
 				return resultSchema;
 			}
-			throw new SchemaParseException(node, "Failed to resolve xs:import, @namespace=" + namespace + " does not match expected xs:schema/@targetNamespace=" + resultSchema.targetNamespace());
+			throw new SchemaParseException(node, "namespace " + NodeHelper.toStringNamespace(namespace) + " must match the targetNamespace " + NodeHelper.toStringNamespace(resultSchema.targetNamespace()) + " of the imported schema");
 		} catch (final SchemaParseException e) {
 			throw e;
 		} catch (final Exception e) {
-			Reporting.report("Failed to resolve xs:import, " + e.getClass().getName() + " " + e.getMessage(), e);
+			Reporting.report("Could not resolve xs:import, caused by " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 		}
 		return Schema.EMPTY;
 	}

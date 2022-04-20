@@ -63,18 +63,12 @@ public class Particle<T extends Term> implements AnnotatedComponent {
 	protected static Particle<ModelGroup> parse(final Result result) {
 		final String maxOccurs = result.value(AttributeValue.MAXOCCURS);
 		final String minOccurs = result.value(AttributeValue.MINOCCURS);
-		final Deque<Particle<?>> elements = (Deque<Particle<?>>) (Object) result.parseAll(ElementValue.ELEMENT);
-		final Deque<Particle<?>> modelGroups = (Deque<Particle<?>>) (Object) result.parseAll(ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE);
-		final Deque<Particle<?>> any = (Deque<Particle<?>>) (Object) result.parseAll(ElementValue.ANY);
 		final Compositor compositor = ElementValue.ALL.equalsName(result.node()) ? Compositor.ALL
 				: ElementValue.CHOICE.equalsName(result.node()) ? Compositor.CHOICE
 				: ElementValue.SEQUENCE.equalsName(result.node()) ? Compositor.SEQUENCE
 				: null;
-		final Deque<Particle<?>> particles = new DeferredArrayDeque<>(modelGroups.size() + elements.size() + any.size());
-		particles.addAll(modelGroups);
-		particles.addAll(elements);
-		particles.addAll(any);
-		final ModelGroup term = ModelGroup.synthetic(result.node(), result.annotations(), compositor, particles);
+		final Deque<Particle<? extends Term>> particles = result.parseAll(ElementValue.ELEMENT, ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE, ElementValue.ANY);
+		final ModelGroup term = ModelGroup.synthetic(result.node(), result.annotations(), compositor, (Deque<Particle<Term>>) (Object) particles);
 		return new Particle<>(result.node(), result.annotations(), maxOccurs, minOccurs, term);
 	}
 
@@ -89,7 +83,7 @@ public class Particle<T extends Term> implements AnnotatedComponent {
 			final ModelGroup g = (ModelGroup) term();
 			final boolean isChoice = Compositor.CHOICE.equals(g.compositor());
 			long cumulative = 0L; // unsigned
-			for (final Particle<?> p : g.particles()) {
+			for (final Particle<Term> p : g.particles()) {
 				final String pEffectiveMax = p.effectiveMaximum();
 				if (UNBOUNDED.equals(pEffectiveMax)) {
 					return UNBOUNDED;
@@ -121,7 +115,7 @@ public class Particle<T extends Term> implements AnnotatedComponent {
 			final ModelGroup g = (ModelGroup) term();
 			final boolean isChoice = Compositor.CHOICE.equals(g.compositor());
 			long cumulative = 0L;
-			for (final Particle<?> p : g.particles()) {
+			for (final Particle<Term> p : g.particles()) {
 				final long pEffectiveMin = Long.parseUnsignedLong(p.effectiveMinimum());
 				// TODO unsignedMin
 				cumulative = isChoice ? Long.min(cumulative, pEffectiveMin) : cumulative + pEffectiveMin;

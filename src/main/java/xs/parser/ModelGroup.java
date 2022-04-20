@@ -38,9 +38,9 @@ public class ModelGroup implements Term {
 	private final String targetNamespace;
 	private final ModelGroup modelGroup;
 	private final Compositor compositor;
-	private final Deque<Particle<?>> particles;
+	private final Deque<Particle<Term>> particles;
 
-	ModelGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final ModelGroup modelGroup, final Compositor compositor, final Deque<Particle<?>> particles) {
+	ModelGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final ModelGroup modelGroup, final Compositor compositor, final Deque<Particle<Term>> particles) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -50,7 +50,7 @@ public class ModelGroup implements Term {
 		this.particles = Objects.requireNonNull(particles);
 	}
 
-	static ModelGroup synthetic(final Node node, final Deque<Annotation> annotations, final Compositor compositor, final Deque<Particle<?>> particles) {
+	static ModelGroup synthetic(final Node node, final Deque<Annotation> annotations, final Compositor compositor, final Deque<Particle<Term>> particles) {
 		return new ModelGroup(node, annotations, null, null, null, compositor, particles) {
 			@Override
 			public ModelGroup modelGroup() {
@@ -88,7 +88,7 @@ public class ModelGroup implements Term {
 				}
 
 				@Override
-				public Deque<Particle<?>> particles() {
+				public Deque<Particle<Term>> particles() {
 					return ref.get().particles();
 				}
 
@@ -96,7 +96,7 @@ public class ModelGroup implements Term {
 		} else {
 			term = parseDecl(result);
 		}
-		return new Particle<ModelGroup>(result.node(), result.annotations(), maxOccurs, minOccurs, term);
+		return new Particle<>(result.node(), result.annotations(), maxOccurs, minOccurs, term);
 	}
 
 	public String name() {
@@ -115,7 +115,7 @@ public class ModelGroup implements Term {
 		return compositor;
 	}
 
-	public Deque<Particle<?>> particles() {
+	public Deque<Particle<Term>> particles() {
 		return Deques.unmodifiableDeque(particles);
 	}
 

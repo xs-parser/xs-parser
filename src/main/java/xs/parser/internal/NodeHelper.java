@@ -17,6 +17,14 @@ public final class NodeHelper {
 	private static final DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 
 	static {
+		documentBuilderFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+		documentBuilderFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+		try {
+			documentBuilderFactory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+		} catch (final ParserConfigurationException e) {
+			throw new ExceptionInInitializerError(e);
+		}
+		documentBuilderFactory.setExpandEntityReferences(false);
 		documentBuilderFactory.setNamespaceAware(true);
 	}
 
@@ -32,6 +40,8 @@ public final class NodeHelper {
 	private static <X extends Throwable> Writer toString0(final Node node, final Writer writer) throws X {
 		try {
 			final TransformerFactory factory = TransformerFactory.newInstance();
+			factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+			factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
 			factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
 			final Transformer transformer = factory.newTransformer();
 			transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
@@ -142,9 +152,13 @@ public final class NodeHelper {
 		return node;
 	}
 
+	public static String toStringNamespace(final String namespace) {
+		return namespace == null ? "null" : '"' + namespace + '"';
+	}
+
 	public static String validateTargetNamespace(final String targetNamespace) {
 		if (XMLConstants.NULL_NS_URI.equals(targetNamespace)) {
-			throw new SchemaParseException("targetNamespace must either be absent or non-empty string");
+			throw new SchemaParseException("targetNamespace must either be absent or a non-empty string");
 		}
 		return targetNamespace;
 	}

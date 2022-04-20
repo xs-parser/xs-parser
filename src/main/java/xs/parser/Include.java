@@ -75,12 +75,12 @@ public class Include {
 			if (Objects.equals(expectedTargetNamespace, resultSchema.targetNamespace())) {
 				return resultSchema;
 			} else {
-				throw new SchemaParseException(node, "Failed to resolve include: xs:schema/@targetNamespace=" + resultSchema.targetNamespace() + " does not match expected xs:schema/@targetNamespace=" + expectedTargetNamespace);
+				throw new SchemaParseException(node, "targetNamespace " + NodeHelper.toStringNamespace(resultSchema.targetNamespace()) + " of the included schema must match the targetNamespace " + NodeHelper.toStringNamespace(expectedTargetNamespace) + " of the current schema");
 			}
 		} catch (final SchemaParseException e) {
 			throw e;
 		} catch (final Exception e) {
-			Reporting.report("Failed to resolve " + node.getNodeName() + " " + e.getClass().getName() + " " + e.getMessage(), e);
+			Reporting.report("Could not resolve " + node.getNodeName() + ", caused by " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 		}
 		return Schema.EMPTY;
 	}

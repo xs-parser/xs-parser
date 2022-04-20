@@ -162,16 +162,16 @@ public class ComplexType implements TypeDefinition {
 	public static class ContentType {
 
 		private final Variety variety;
-		private final Particle<?> particle;
+		private final Particle<Term> particle;
 		private final OpenContent openContent;
 		private final SimpleType simpleType;
 
-		private ContentType(final DefaultOpenContent defaultOpenContent, final Variety variety, final Particle<?> particle, final OpenContent openContent, final SimpleType simpleType) {
+		private ContentType(final DefaultOpenContent defaultOpenContent, final Variety variety, final Particle<Term> particle, final OpenContent openContent, final SimpleType simpleType) {
 			this.variety = Objects.requireNonNull(variety);
 			this.particle = particle;
 			if (openContent != null) {
 				this.openContent = openContent;
-			} else if (openContent == null && (!Variety.EMPTY.equals(variety) || (Variety.EMPTY.equals(variety) && defaultOpenContent != null && defaultOpenContent.appliesToEmpty()))) {
+			} else if (!Variety.EMPTY.equals(variety) || (defaultOpenContent != null && defaultOpenContent.appliesToEmpty())) {
 				this.openContent = defaultOpenContent;
 			} else {
 				this.openContent = null;
@@ -183,7 +183,7 @@ public class ComplexType implements TypeDefinition {
 			return variety;
 		}
 
-		public Particle<?> particle() {
+		public Particle<Term> particle() {
 			return particle;
 		}
 
@@ -251,6 +251,7 @@ public class ComplexType implements TypeDefinition {
 		this.assertions = Objects.requireNonNull(assertions);
 	}
 
+	@SuppressWarnings("unchecked")
 	protected static ComplexType parse(final Result result) {
 		final boolean isAbstract = result.value(AttributeValue.ABSTRACT);
 		Deque<Block> block = result.value(AttributeValue.BLOCK);
@@ -375,7 +376,7 @@ public class ComplexType implements TypeDefinition {
 					if (effectiveContent == null) { // 4.1.1
 						return new ContentType(result.schema().defaultOpenContent(), Variety.EMPTY, null, openContent, null);
 					} else { // 4.1.2
-						return new ContentType(result.schema().defaultOpenContent(), effectiveMixed ? Variety.MIXED : Variety.ELEMENT_ONLY, effectiveContent, openContent, null);
+						return new ContentType(result.schema().defaultOpenContent(), effectiveMixed ? Variety.MIXED : Variety.ELEMENT_ONLY, (Particle<Term>) effectiveContent, openContent, null);
 					}
 				};
 				switch (derivationMethod) {
@@ -391,21 +392,21 @@ public class ComplexType implements TypeDefinition {
 						} else if (!complexBase.contentType().variety().isMixedOrElementOnly()) {
 							return handleRestriction.get(); // 4.2.1
 						} else { // 4.2.3
-							final Particle<?> baseParticle = complexBase.contentType().particle();
-							final Particle<?> effectiveParticle;
+							final Particle<Term> baseParticle = complexBase.contentType().particle();
+							final Particle<Term> effectiveParticle;
 							if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && effectiveContent == null) { // 4.2.3.1
 								effectiveParticle = baseParticle;
 							} else if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && effectiveContent != null && effectiveContent.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) effectiveContent.term()).compositor())) { // 4.2.3.2
-								final Deque<Particle<?>> particles = new ArrayDeque<>(((ModelGroup) baseParticle.term()).particles());
+								final Deque<Particle<Term>> particles = new ArrayDeque<>(((ModelGroup) baseParticle.term()).particles());
 								particles.addAll(((ModelGroup) effectiveContent.term()).particles());
 								effectiveParticle = new Particle<>(result.node(), result.annotations(), "1", baseParticle.minOccurs(), ModelGroup.synthetic(result.node(), result.annotations(), Compositor.ALL, particles));
 							} else { // 4.2.3.3
-								final Deque<Particle<?>> particles = new ArrayDeque<>();
+								final Deque<Particle<Term>> particles = new ArrayDeque<>();
 								if (baseParticle != null) {
 									particles.add(baseParticle);
 								}
 								if (effectiveContent != null) {
-									particles.add(effectiveContent);
+									particles.add((Particle<Term>) effectiveContent);
 								}
 								effectiveParticle = new Particle<>(result.node(), result.annotations(), "1", "1", ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, particles));
 							}

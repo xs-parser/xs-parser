@@ -68,7 +68,7 @@ public class AttributeUse implements AnnotatedComponent {
 				targetNamespace = result.schema().targetNamespace();
 			}
 		} else if (scope.variety() != Scope.Variety.LOCAL) {
-			throw new SchemaParseException(result.node(), "@targetNamespace may only appear on local attributes");
+			throw new SchemaParseException(result.node(), "@targetNamespace may only appear on a local xs:attribute");
 		}
 		final String name = result.value(AttributeValue.NAME);
 		final Boolean inheritable = result.value(AttributeValue.INHERITABLE);
@@ -84,7 +84,7 @@ public class AttributeUse implements AnnotatedComponent {
 					: Deferred.value(simpleTypeChild != null ? simpleTypeChild : SimpleType.xsAnySimpleType());
 			attributeDecl = Deferred.value(new Attribute(result.node(), result.annotations(), name, targetNamespace, simpleType, scope, valueConstraint.apply(simpleType), inheritable));
 		}
-		return new AttributeUse(result.node(), use, attributeDecl, inheritable == null ? attributeDecl.map(a -> a.inheritable()) : Deferred.value(inheritable));
+		return new AttributeUse(result.node(), use, attributeDecl, inheritable == null ? attributeDecl.map(Attribute::inheritable) : Deferred.value(inheritable));
 	}
 
 	/** @return true if the &lt;attribute&gt; element has use = required, otherwise false. */

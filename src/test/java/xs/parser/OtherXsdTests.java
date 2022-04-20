@@ -303,7 +303,7 @@ public class OtherXsdTests {
 		if (g.modelGroup() != g) {
 			visitGroup(g.modelGroup());
 		}
-		for (final Particle<?> p : g.particles()) {
+		for (final Particle<Term> p : g.particles()) {
 			assertNotNull(g, p);
 			visitParticle(p);
 		}

@@ -201,18 +201,13 @@ public class Schema implements AnnotatedComponent {
 			if (schemaLocation != null) {
 				try {
 					final URI schemaLocationUri = new URI(schemaLocation);
-					if (schemaLocationUri != null) {
-						if (baseUri == null) {
+					if (baseUri == null) {
+						return schemaLocationUri;
+					} else {
+						try {
+							return new URI(baseUri).resolve(schemaLocationUri);
+						} catch (final URISyntaxException e) {
 							return schemaLocationUri;
-						} else {
-							try {
-								final URI bUri = new URI(baseUri);
-								if (bUri != null) {
-									return bUri.resolve(schemaLocationUri);
-								}
-							} catch (final URISyntaxException e) {
-								return schemaLocationUri;
-							}
 						}
 					}
 				} catch (final URISyntaxException e) {
@@ -416,7 +411,7 @@ public class Schema implements AnnotatedComponent {
 			this.elementDeclarations().forEach(e -> id.addAll(e.identityConstraints()));
 			this.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
 				if (c.contentType() != null && c.contentType().particle() != null) {
-					final Particle<?> p = c.contentType().particle();
+					final Particle<Term> p = c.contentType().particle();
 					if (p.term() instanceof Element) {
 						id.addAll(((Element) p.term()).identityConstraints());
 					} else if (p.term() instanceof ModelGroup) {
@@ -552,7 +547,7 @@ public class Schema implements AnnotatedComponent {
 			} else if (XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(name.getNamespaceURI())) {
 				return findIntrinsicSimpleType.apply(schema, name);
 			}
-			return schema.typeDefinitions().stream().filter(t -> NodeHelper.equalsName(name, t)).map(Deferred::<TypeDefinition>value).findAny().orElseThrow(() -> new SchemaParseException("Failed to find type definition: " + name));
+			return schema.typeDefinitions().stream().filter(t -> NodeHelper.equalsName(name, t)).map(Deferred::<TypeDefinition>value).findAny().orElseThrow(() -> new SchemaParseException("Type definition with name " + name + " not found"));
 		});
 		finders.put(AttributeGroup.class, (schema, name) -> schema.attributeGroupDefinitions().stream().filter(a -> NodeHelper.equalsName(name, a)).findAny().map(Deferred::value).orElseGet(Deferred::none));
 		finders.put(Attribute.class, (schema, name) -> schema.attributeDeclarations().stream().filter(a -> NodeHelper.equalsName(name, a)).findAny().map(Deferred::value).orElseGet(Deferred::none));
@@ -572,7 +567,7 @@ public class Schema implements AnnotatedComponent {
 			if (t != null) {
 				return t;
 			}
-			throw new SchemaParseException("Failed to find " + cls.getSimpleName() + ": " + name);
+			throw new SchemaParseException(cls.getSimpleName() + " with name " + name + " not found");
 		});
 	}
 
@@ -581,26 +576,29 @@ public class Schema implements AnnotatedComponent {
 		final URI normalizedResourceUri = resourceUri != null ? resourceUri.normalize() : null;
 		final Map.Entry<String, URI> key = new SimpleImmutableEntry<>(namespace, normalizedResourceUri);
 		Document doc = null;
-		final Supplier<Document> resolveDocument = () -> {
-			try {
-				return resolver.resolve(normalizedResourceUri);
-			} catch (final Exception e) {
-				Reporting.report("Failed to resolve @namespace=\"" + (namespace == null ? "" : namespace) + "\" @schemaLocation=\"" + (schemaLocation == null ? "" : schemaLocation) + "\" " + e.toString(), e);
-				return null;
-			}
-		};
+		final Consumer<Exception> reportException = e -> Reporting.report("Could not resolve schema with " + (namespace != null ? "namespace " + NodeHelper.toStringNamespace(namespace) : "") + (schemaLocation != null ? (namespace != null ? " and " : "") + "schemaLocation " + schemaLocation : ""), e);
 		if (cache) {
 			synchronized (schemaDocumentCache) {
 				doc = schemaDocumentCache.get(key);
 				if (doc == null) {
-					doc = resolveDocument.get();
+					try {
+						doc = resolver.resolve(normalizedResourceUri);
+					} catch (final Exception e) {
+						reportException.accept(e);
+						throw e;
+					}
 					if (doc != null) {
 						schemaDocumentCache.put(key, doc);
 					}
 				}
 			}
 		} else {
-			doc = resolveDocument.get();
+			try {
+				doc = resolver.resolve(normalizedResourceUri);
+			} catch (final Exception e) {
+				reportException.accept(e);
+				throw e;
+			}
 		}
 		if (doc == null) {
 			return Schema.EMPTY;

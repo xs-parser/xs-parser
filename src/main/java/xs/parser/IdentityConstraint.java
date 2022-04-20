@@ -92,7 +92,7 @@ public class IdentityConstraint implements AnnotatedComponent {
 				}
 			}
 			if (ref == null) {
-				throw new SchemaParseException(result.node(), "Failed to find sibling key for identity constraint @ref");
+				throw new SchemaParseException(result.node(), "No sibling key for identity constraint @ref");
 			}
 			return new IdentityConstraint(result.node(), result.annotations(), ref.name(), ref.targetNamespace(), category, ref.selector(), ref.fields(), ref.referencedKey());
 		}
@@ -109,7 +109,7 @@ public class IdentityConstraint implements AnnotatedComponent {
 				}
 			}
 			if (referencedKey == null) {
-				throw new SchemaParseException(result.node(), "Failed to find @refer " + refer);
+				throw new SchemaParseException(result.node(), refer + " did not match any known identity constraints");
 			}
 		}
 		return new IdentityConstraint(result.node(), result.annotations(), name, targetNamespace, category, selector, fields, referencedKey);
