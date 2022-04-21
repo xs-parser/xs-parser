@@ -6,6 +6,7 @@ import org.w3c.dom.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -334,6 +335,13 @@ public class Wildcard implements Term {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+		}
 	}
 
 	/** @return The ·annotation mapping· of the &lt;any&gt; element, as defined in XML Representation of Annotation Schema Components (§3.15.2). Note: When this rule is used for an attribute wildcard (see XML Representation of Complex Type Definition Schema Components (§3.4.2)), the {annotations} is the ·annotation mapping· of the &lt;anyAttribute&gt; element. */

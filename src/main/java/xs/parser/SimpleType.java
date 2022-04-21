@@ -5,10 +5,12 @@ import java.util.stream.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
+import org.w3c.dom.Node;
 import xs.parser.ConstrainingFacet.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -881,6 +883,23 @@ public class SimpleType implements TypeDefinition {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			VisitorHelper.visitTypeDefinition(this, visitor, baseType());
+			facets().forEach(f -> VisitorHelper.visitConstrainingFacet(this, visitor, f));
+			fundamentalFacets().forEach(f -> VisitorHelper.visitFundamentalFacet(this, visitor, f));
+			if (primitiveType() != null) {
+				VisitorHelper.visitSimpleType(this, visitor, primitiveType());
+			}
+			if (itemType() != null) {
+				VisitorHelper.visitSimpleType(this, visitor, itemType());
+			}
+			memberTypes().forEach(m -> VisitorHelper.visitSimpleType(this, visitor, m));
+		}
 	}
 
 	/** @return The ·annotation mapping· of the set of elements containing the &lt;simpleType&gt;, and one of the &lt;restriction&gt;, &lt;list&gt; or &lt;union&gt; [children], whichever is present, as defined in XML Representation of Annotation Schema Components (§3.15.2). */

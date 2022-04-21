@@ -7,6 +7,7 @@ import xs.parser.Assertion.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -148,6 +149,17 @@ public class IdentityConstraint implements AnnotatedComponent {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			// TODO: can this be null?
+			if (referencedKey != null) {
+				referencedKey.visit(visitor);
+			}
+		}
 	}
 
 	@Override

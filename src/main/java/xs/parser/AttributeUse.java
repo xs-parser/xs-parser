@@ -9,6 +9,7 @@ import xs.parser.Schema.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -144,6 +145,14 @@ public class AttributeUse implements AnnotatedComponent {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			VisitorHelper.visitAttribute(this, visitor, attributeDeclaration());
+		}
 	}
 
 	/** @return The same annotations as the {annotations} of the Attribute Declaration. See below. */

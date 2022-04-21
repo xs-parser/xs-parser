@@ -10,6 +10,7 @@ import xs.parser.TypeDefinition.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -378,6 +379,20 @@ public class Element implements Term {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			VisitorHelper.visitTypeDefinition(this, visitor, type());
+			if (typeTable != null) {
+				typeTable.alternatives.forEach(a -> VisitorHelper.visitAlternative(this, visitor, a));
+				VisitorHelper.visitAlternative(this, visitor, typeTable.defaultType);
+			}
+			identityConstraints.forEach(i -> VisitorHelper.visitIdentityConstraint(this, visitor, i));
+			substitutionGroupAffiliations.forEach(e -> VisitorHelper.visitElement(this, visitor, e));
+		}
 	}
 
 	@Override

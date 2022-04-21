@@ -6,6 +6,7 @@ import org.w3c.dom.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -157,6 +158,17 @@ public class AttributeGroup implements AnnotatedComponent {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			attributeUses().forEach(a -> VisitorHelper.visitAttributeUse(this, visitor, a));
+			if (attributeWildcard != null) {
+				VisitorHelper.visitWildcard(this, visitor, attributeWildcard);
+			}
+		}
 	}
 
 	/** @return The ·annotation mapping· of the &lt;attributeGroup&gt; element and its &lt;attributeGroup&gt; [children], if present, as defined in XML Representation of Annotation Schema Components (§3.15.2). */

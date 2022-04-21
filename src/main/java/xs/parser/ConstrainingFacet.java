@@ -6,10 +6,12 @@ import java.util.*;
 import java.util.stream.*;
 import javax.xml.*;
 import org.w3c.dom.*;
+import org.w3c.dom.Node;
 import xs.parser.internal.*;
 import xs.parser.internal.TagParser.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 public abstract class ConstrainingFacet implements AnnotatedComponent {
 
@@ -1173,6 +1175,13 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+		}
 	}
 
 	/** @return The annotation mapping of the element, as defined in section XML Representation of Annotation Schema Components of [XSD 1.1 Part 1: Structures]. */

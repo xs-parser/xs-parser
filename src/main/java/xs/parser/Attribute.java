@@ -8,6 +8,7 @@ import xs.parser.Schema.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -410,6 +411,14 @@ public class Attribute implements AnnotatedComponent {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			VisitorHelper.visitSimpleType(this, visitor, type());
+		}
 	}
 
 	/** @return The ·annotation mapping· of the &lt;attribute&gt; element, as defined in XML Representation of Annotation Schema Components (§3.15.2). */

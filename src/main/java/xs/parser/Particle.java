@@ -6,6 +6,7 @@ import xs.parser.ModelGroup.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -166,6 +167,16 @@ public class Particle implements AnnotatedComponent {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			if (term() != null) {
+				VisitorHelper.visitTerm(this, visitor, term());
+			}
+		}
 	}
 
 	@Override

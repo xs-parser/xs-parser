@@ -11,6 +11,7 @@ import xs.parser.Schema.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -1043,6 +1044,29 @@ public class ComplexType implements TypeDefinition {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			VisitorHelper.visitTypeDefinition(this, visitor, baseType());
+			attributeUses().forEach(a -> VisitorHelper.visitAttributeUse(this, visitor, a));
+			if (attributeWildcard != null) {
+				VisitorHelper.visitWildcard(this, visitor, attributeWildcard);
+			}
+			if (contentType().particle != null) {
+				VisitorHelper.visitParticle(this, visitor, contentType().particle);
+			}
+			if (contentType().openContent != null) {
+				contentType().openContent.annotations().forEach(a -> VisitorHelper.visitAnnotation(this, visitor, a));
+				VisitorHelper.visitParticle(this, visitor, contentType().openContent.wildcard());
+			}
+			if (contentType().simpleType != null) {
+				VisitorHelper.visitSimpleType(this, visitor, contentType().simpleType);
+			}
+			assertions.forEach(a -> VisitorHelper.visitAssertion(this, visitor, a));
+		}
 	}
 
 	@Override

@@ -12,6 +12,8 @@ import org.junit.runners.Parameterized.*;
 import xs.parser.Attribute.*;
 import xs.parser.Schema.*;
 import xs.parser.internal.util.*;
+import xs.parser.internal.*;
+import xs.parser.v.*;
 
 @RunWith(Parameterized.class)
 public class OtherXsdTests {
@@ -82,37 +84,6 @@ public class OtherXsdTests {
 				.collect(Collectors.toList());
 	}
 
-	private void assertNotNull(final Object o, final Object value) {
-		if (value == null) {
-			throw new AssertionError(Objects.toString(o));
-		}
-	}
-
-	private void assertNotNull(final SchemaComponent s, final Object value) {
-		if (value == null) {
-			throw new AssertionError(NodeHelper.toString(s.node()));
-		}
-	}
-
-	private void visitSchemaComponent(final SchemaComponent s) {
-		assertNotNull((Object) s, s.node());
-	}
-
-	private void visitAnnotatedComponent(final AnnotatedComponent a) {
-		visitSchemaComponent(a);
-		a.annotations().forEach(this::visitAnnotation);
-	}
-
-	private void visitAnnotation(final Annotation a) {
-		if (!visited.add(a)) {
-			return;
-		}
-		visitSchemaComponent(a);
-		a.applicationInformation().forEach(Assert::assertNotNull);
-		a.userInformation().forEach(Assert::assertNotNull);
-		a.attributes().forEach(Assert::assertNotNull); // TODO
-	}
-
 	private void visitAlternative(final Alternative a) {
 		if (!visited.add(a)) {
 			return;
@@ -174,17 +145,6 @@ public class OtherXsdTests {
 		assertNotNull(v, v.lexicalForm());
 	}
 
-	private void visitAttributeGroup(final AttributeGroup a) {
-		if (!visited.add(a)) {
-			return;
-		}
-		visitAnnotatedComponent(a);
-		a.name();
-		a.targetNamespace();
-		a.attributeWildcard();
-		a.attributeUses().forEach(this::visitAttributeUse);
-	}
-
 	private void visitSimpleType(final SimpleType s) {
 		if (!visited.add(s)) {
 			return;
@@ -222,20 +182,6 @@ public class OtherXsdTests {
 		}
 	}
 
-	private void visitConstrainingFacet(final ConstrainingFacet f) {
-		visitAnnotatedComponent(f);
-		f.fixed();
-		f.value();
-	}
-
-	private void visitWildcard(final Wildcard w) {
-		visitAnnotatedComponent(w);
-		assertNotNull(w, w.namespaceConstraint().variety());
-		w.namespaceConstraint().namespaces().forEach(Assert::assertNotNull);
-		w.namespaceConstraint().disallowedNames().forEach(Assert::assertNotNull);
-		assertNotNull(w, w.processContents());
-	}
-
 	private void visitComplexType(final ComplexType c) {
 		if (!visited.add(c)) {
 			return;
@@ -260,36 +206,6 @@ public class OtherXsdTests {
 		Assert.assertTrue(c.name(), c.baseType() instanceof ComplexType || c.baseType() instanceof SimpleType);
 	}
 
-	private void visitContentType(final ComplexType.ContentType c) {
-		switch (c.variety()) {
-		case EMPTY:
-			Assert.assertNull(c.particle());
-			Assert.assertNull(c.simpleType());
-			Assert.assertNull(c.openContent());
-			break;
-		case MIXED:
-		case ELEMENT_ONLY:
-			if (c.openContent() != null) {
-				visitOpenContent(c.openContent());
-			}
-			if (c.particle() != null) {
-				visitParticle(c.particle());
-			}
-			break;
-		case SIMPLE:
-			assertNotNull(c, c.simpleType());
-			visitSimpleType(c.simpleType());
-			break;
-		default:
-			Assert.fail(c.toString());
-		}
-	}
-
-	private void visitOpenContent(final ComplexType.OpenContent o) {
-		assertNotNull(o, o.mode());
-		visitParticle(o.wildcard());
-	}
-
 	private void visitGroup(final ModelGroup g) {
 		if (!visited.add(g)) {
 			return;
@@ -305,25 +221,6 @@ public class OtherXsdTests {
 		for (final Particle p : g.particles()) {
 			assertNotNull(g, p);
 			visitParticle(p);
-		}
-	}
-
-	private void visitParticle(final Particle p) {
-		if (!visited.add(p)) {
-			return;
-		}
-		visitAnnotatedComponent(p);
-		p.maxOccurs();
-		p.minOccurs();
-		assertNotNull(p, p.term());
-		if (p.term() instanceof Element) {
-			visitElement((Element) p.term());
-		} else if (p.term() instanceof ModelGroup) {
-			visitGroup((ModelGroup) p.term());
-		} else if (p.term() instanceof Wildcard) {
-			visitWildcard((Wildcard) p.term());
-		} else {
-			Assert.fail(p.term().getClass().getName());
 		}
 	}
 
@@ -356,42 +253,157 @@ public class OtherXsdTests {
 		}
 	}
 
-	private void visitIdentityConstraint(final IdentityConstraint i) {
-		if (!visited.add(i)) {
-			return;
-		}
-		visitAnnotatedComponent(i);
-		// TODO
-		i.name();
-		i.targetNamespace();
-		i.category();
-		i.referencedKey();
-		i.selector();
-		i.fields();
-	}
-
-	private void visitNotation(final Notation n) {
-		if (!visited.add(n)) {
-			return;
-		}
-		visitAnnotatedComponent(n);
-		n.name();
-		n.targetNamespace();
-		n.publicIdentiifer();
-		n.systemIdentifier();
-	}
-
 	@Test
 	public void testOtherXsds() throws Exception {
 		final Schema schema = new Schema(resolver, NodeHelper.newDocumentBuilder().parse(schemaFile.toFile()));
-		visitAnnotatedComponent(schema);
-		schema.attributeDeclarations().forEach(this::visitAttribute);
-		schema.attributeGroupDefinitions().forEach(this::visitAttributeGroup);
-		schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).map(SimpleType.class::cast).forEach(this::visitSimpleType);
-		schema.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(this::visitComplexType);
-		schema.elementDeclarations().forEach(this::visitElement);
-		schema.notationDeclarations().forEach(this::visitNotation);
-		schema.identityConstraintDefinitions().forEach(this::visitIdentityConstraint);
+		schema.visit(new Visitor() {
+
+			final Set<SchemaComponent> visited = new HashSet<>();
+
+			@Override
+			public boolean markVisited(final SchemaComponent s) {
+				return visited.add(s);
+			}
+
+			@Override
+			public void onAlternative(SchemaComponent owner, Alternative alternative) {
+				// TODO Auto-generated method stub
+
+				if (alternative.test() != null) {
+					alternative.test().defaultNamespace();
+					alternative.test().namespaceBindings().forEach(Assert::assertNotNull);
+					alternative.test().baseURI();
+					Assert.assertNotNull(alternative.test().expression());
+				}
+			}
+
+			@Override
+			public void onAnnotation(SchemaComponent owner, Annotation annotation) {
+				// TODO Auto-generated method stub
+				annotation.applicationInformation().forEach(Assert::assertNotNull);
+				annotation.userInformation().forEach(Assert::assertNotNull);
+				annotation.attributes().forEach(Assert::assertNotNull); // TODO
+			}
+
+			@Override
+			public void onAssertion(SchemaComponent owner, Assertion assertion) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onAttribute(SchemaComponent owner, Attribute attribute) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onAttributeGroup(SchemaComponent owner, AttributeGroup attributeGroup) {
+				attributeGroup.name();
+				attributeGroup.targetNamespace();
+			}
+
+			@Override
+			public void onAttributeUse(SchemaComponent owner, AttributeUse attributeUse) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onComplexType(SchemaComponent owner, ComplexType complexType) {
+				// TODO Auto-generated method stub
+				complexType.node(); // TODO: for all schema components
+
+				final ContentType c = complexType.contentType();
+				switch (c.variety()) {
+				case EMPTY:
+					Assert.assertNull(c.particle());
+					Assert.assertNull(c.simpleType());
+					Assert.assertNull(c.openContent());
+					break;
+				case MIXED:
+				case ELEMENT_ONLY:
+					if (c.openContent() != null) {
+						c.openContent().mode();
+					}
+					if (c.particle() != null) {
+						visitParticle(c.particle());
+					}
+					break;
+				case SIMPLE:
+					Assert.assertNotNull(c.simpleType());
+					visitSimpleType(c.simpleType());
+					break;
+				default:
+					Assert.fail(c.toString());
+				}
+
+			}
+
+			@Override
+			public void onConstrainingFacet(SchemaComponent owner, ConstrainingFacet<?> constrainingFacet) {
+				constrainingFacet.fixed();
+				constrainingFacet.value();
+			}
+
+			@Override
+			public void onElement(SchemaComponent owner, Element element) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onFundamentalFacet(SchemaComponent owner, FundamentalFacet<?> fundamentalFacet) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onIdentityConstraint(SchemaComponent owner, IdentityConstraint identityConstraint) {
+				// TODO
+				identityConstraint.name();
+				identityConstraint.targetNamespace();
+				identityConstraint.category();
+				identityConstraint.referencedKey();
+				identityConstraint.selector();
+				identityConstraint.fields();
+			}
+
+			@Override
+			public void onModelGroup(SchemaComponent owner, ModelGroup modelGroup) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onNotation(SchemaComponent owner, Notation notation) {
+				notation.name();
+				notation.targetNamespace();
+				notation.publicIdentiifer();
+				notation.systemIdentifier();
+			}
+
+			@Override
+			public void onParticle(SchemaComponent owner, Particle<Term> particle) {
+				particle.maxOccurs();
+				particle.minOccurs();
+			}
+
+			@Override
+			public void onSimpleType(SchemaComponent owner, SimpleType simpleType) {
+				// TODO Auto-generated method stub
+
+			}
+
+			@Override
+			public void onWildcard(SchemaComponent owner, Wildcard wildcard) {
+				Assert.assertNotNull(wildcard.namespaceConstraint().variety());
+				wildcard.namespaceConstraint().namespaces().forEach(Assert::assertNotNull);
+				wildcard.namespaceConstraint().disallowedNames().forEach(Assert::assertNotNull);
+				Assert.assertNotNull(wildcard.processContents());
+			}
+
+		});
 	}
 
 }

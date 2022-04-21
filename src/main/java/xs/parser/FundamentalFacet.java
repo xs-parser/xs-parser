@@ -3,6 +3,7 @@ package xs.parser;
 import java.util.*;
 import org.w3c.dom.*;
 import xs.parser.internal.util.*;
+import xs.parser.v.*;
 
 public abstract class FundamentalFacet implements SchemaComponent {
 
@@ -307,6 +308,11 @@ public abstract class FundamentalFacet implements SchemaComponent {
 	@Override
 	public Node node() {
 		return node;
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		visitor.markVisited(this);
 	}
 
 }

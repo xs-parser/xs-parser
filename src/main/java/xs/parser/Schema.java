@@ -15,6 +15,7 @@ import xs.parser.TypeDefinition.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -1104,6 +1105,20 @@ public class Schema implements AnnotatedComponent {
 	@Override
 	public Node node() {
 		return document.getDocumentElement();
+	}
+
+	@Override
+	public void visit(final Visitor visitor) {
+		if (visitor.markVisited(this)) {
+			VisitorHelper.visitAnnotations(this, visitor);
+			typeDefinitions().forEach(t -> VisitorHelper.visitTypeDefinition(this, visitor, t));
+			attributeDeclarations().forEach(a -> VisitorHelper.visitAttribute(this, visitor, a));
+			elementDeclarations().forEach(e -> VisitorHelper.visitElement(this, visitor, e));
+			attributeGroupDefinitions().forEach(a -> VisitorHelper.visitAttributeGroup(this, visitor, a));
+			modelGroupDefinitions().forEach(m -> VisitorHelper.visitModelGroup(this, visitor, m));
+			notationDeclarations().forEach(n -> VisitorHelper.visitNotation(this, visitor, n));
+			identityConstraintDefinitions().forEach(i -> VisitorHelper.visitIdentityConstraint(this, visitor, i));
+		}
 	}
 
 	/** @return The ·annotation mapping· of the set of elements containing the &lt;schema&gt; and all the &lt;include&gt;, &lt;redefine&gt;, &lt;override&gt;, &lt;import&gt;, and &lt;defaultOpenContent&gt; [children], if any, as defined in XML Representation of Annotation Schema Components (§3.15.2). */
