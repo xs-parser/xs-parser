@@ -31,12 +31,12 @@ public class SimpleList {
 	}
 
 	protected static SimpleList parse(final Result result) {
-		final QName itemType = result.value(AttributeValue.ITEMTYPE);
-		if (itemType != null) {
-			return new SimpleList(result.annotations(), result.schema().find(itemType, SimpleType.class));
+		final QName itemTypeName = result.value(AttributeValue.ITEMTYPE);
+		if (itemTypeName != null) {
+			return new SimpleList(result.annotations(), result.schema().find(itemTypeName, SimpleType.class));
 		}
-		final SimpleType itemTypeElem = result.parse(ElementValue.SIMPLETYPE);
-		return new SimpleList(result.annotations(), Deferred.value(itemTypeElem));
+		final SimpleType itemSimpleType = result.parse(ElementValue.SIMPLETYPE);
+		return new SimpleList(result.annotations(), Deferred.value(itemSimpleType));
 	}
 
 	protected Deque<Annotation> annotations() {

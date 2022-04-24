@@ -110,7 +110,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 						return e;
 					}
 				}
-				throw new IllegalArgumentException(name.toString());
+				throw new IllegalArgumentException(name);
 			}
 
 			public String getName() {
@@ -163,7 +163,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 		private static final String NAME = "bounded";
 		private final boolean value;
 
-		protected Bounded(final Node node, final boolean value) {
+		private Bounded(final Node node, final boolean value) {
 			super(node);
 			this.value = value;
 		}
@@ -213,7 +213,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 						return e;
 					}
 				}
-				throw new IllegalArgumentException(name.toString());
+				throw new IllegalArgumentException(name);
 			}
 
 			public String getName() {
@@ -230,7 +230,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 		private static final String NAME = "cardinality";
 		private final Value value;
 
-		protected Cardinality(final Node node, final Value value) {
+		private Cardinality(final Node node, final Value value) {
 			super(node);
 			this.value = Objects.requireNonNull(value);
 		}
@@ -266,7 +266,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 		private static final String NAME = "numeric";
 		private final boolean value;
 
-		protected Numeric(final Node node, final boolean value) {
+		private Numeric(final Node node, final boolean value) {
 			super(node);
 			this.value = value;
 		}

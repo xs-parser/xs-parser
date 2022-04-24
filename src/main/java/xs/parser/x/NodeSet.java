@@ -2,6 +2,7 @@ package xs.parser.x;
 
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.function.*;
 import java.util.stream.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
@@ -11,12 +12,12 @@ import xs.parser.internal.*;
 
 public abstract class NodeSet implements Iterable<NodeSet> {
 
-	static final class Namespaces implements Iterable<Map.Entry<String, String>>, NamespaceContext {
+	private static final class Namespaces implements Iterable<Map.Entry<String, String>>, NamespaceContext {
 
 		private final Map<String, String> prefixToNamespaceUri = new HashMap<>();
 		private final Map<String, String> namespaceUriToPrefix = new HashMap<>();
 
-		{
+		private Namespaces() {
 			put(XMLConstants.DEFAULT_NS_PREFIX, XMLConstants.NULL_NS_URI);
 			put(XMLConstants.XML_NS_PREFIX, XMLConstants.XML_NS_URI);
 			put(XMLConstants.XMLNS_ATTRIBUTE, XMLConstants.XMLNS_ATTRIBUTE_NS_URI);
@@ -51,12 +52,16 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 		@Override
 		public Iterator<String> getPrefixes(final String namespaceURI) {
 			final String prefix = getPrefix(namespaceURI);
-			return prefix == null ? Collections.emptyIterator() : Collections.singleton(prefix).iterator();
+			return prefix == null
+					? Collections.emptyIterator()
+					: Collections.singleton(prefix).iterator();
 		}
 
 		@Override
 		public Iterator<Map.Entry<String, String>> iterator() {
-			return prefixToNamespaceUri.entrySet().stream().filter(e -> !XMLConstants.XMLNS_ATTRIBUTE.equals(e.getKey())).iterator();
+			return prefixToNamespaceUri.entrySet().stream()
+					.filter(e -> !XMLConstants.XMLNS_ATTRIBUTE.equals(e.getKey()))
+					.iterator();
 		}
 
 	}
@@ -128,6 +133,8 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	}
 
 	private static final Method SCHEMA_CONSTITUENTSCHEMAS;
+	protected static final Supplier<IllegalStateException> IS_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + false + " to invoke this method");
+	protected static final Supplier<IllegalStateException> IS_NOT_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + true + " to invoke this method");
 	/**
 	 * The default namespace context for evaluation of XPath and XQuery expressions.
 	 * The following entries are defined:
@@ -209,7 +216,7 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	 * @return a new {@code NodeSet} with the given namespace context and node
 	 */
 	public static NodeSet of(final NamespaceContext namespaceContext, final Node node) {
-		return SaxonProcessor.isSaxonLoaded()
+		return SaxonProcessor.IS_SAXON_LOADED
 				? new SaxonNodeSet(namespaceContext, node)
 				: new JaxpNodeSet(namespaceContext, node);
 	}
@@ -230,7 +237,7 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	 * @return a new {@code NodeSet} with the given namespace context and schema
 	 */
 	public static NodeSet of(final NamespaceContext namespaceContext, final Schema schema) {
-		return SaxonProcessor.isSaxonLoaded()
+		return SaxonProcessor.IS_SAXON_LOADED
 				? new SaxonNodeSet(namespaceContext, schema)
 				: new JaxpNodeSet(namespaceContext, schema);
 	}
@@ -242,18 +249,6 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	 */
 	public static NodeSet of(final Schema schema) {
 		return of(DEFAULT_NAMESPACE_CONTEXT, schema);
-	}
-
-	protected void assertIsAtomic() {
-		if (!isAtomic()) {
-			throw new IllegalStateException("isAtomic() must be " + true + " to invoke this method");
-		}
-	}
-
-	protected void assertIsNotAtomic() {
-		if (isAtomic()) {
-			throw new IllegalStateException("isAtomic() must be " + false + " to invoke this method");
-		}
 	}
 
 	/**

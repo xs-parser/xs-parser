@@ -34,6 +34,8 @@ public class ComplexContent {
 				.optionalAttributes(AttributeValue.ID, AttributeValue.XPATHDEFAULTNAMESPACE)
 				.elements(0, 1, ElementValue.ANNOTATION);
 
+		private Assert() { }
+
 	}
 
 	protected static final SequenceParser parser = new SequenceParser()

@@ -2,10 +2,9 @@ package xs.parser.internal;
 
 public final class Reporting {
 
-	private static int SILENT = 0;
-	private static int DEFAULT = 1;
-	private static int STACKTRACE = 2;
-
+	private static final int SILENT = 0;
+	private static final int DEFAULT = 1;
+	private static final int STACKTRACE = 2;
 	private static final String SILENT_PROPERTY = "XS_PARSER_SILENT";
 	private static final String VERBOSE_PROPERTY = "XS_PARSER_VERBOSE";
 	private static final int REPORTING_LEVEL;

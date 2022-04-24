@@ -8,7 +8,6 @@ import java.util.stream.*;
 import javax.xml.*;
 import org.junit.*;
 import org.w3c.dom.*;
-import org.w3c.dom.Node;
 import xs.parser.ConstrainingFacet.*;
 import xs.parser.Schema.*;
 import xs.parser.internal.*;

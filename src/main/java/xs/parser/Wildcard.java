@@ -80,7 +80,7 @@ public class Wildcard implements Term {
 					return p;
 				}
 			}
-			throw new IllegalArgumentException(name.toString());
+			throw new IllegalArgumentException(name);
 		}
 
 		public String getName() {
@@ -169,7 +169,7 @@ public class Wildcard implements Term {
 	private final NamespaceConstraint namespaceConstraint;
 	private final ProcessContents processContents;
 
-	protected Wildcard(final Node node, final Deque<Annotation> annotations, final String schemaTargetNamespace, final Deque<String> namespace, final Deque<String> notNamespace, final Deque<String> notQName, final ProcessContents processContents) {
+	private Wildcard(final Node node, final Deque<Annotation> annotations, final String schemaTargetNamespace, final Deque<String> namespace, final Deque<String> notNamespace, final Deque<String> notQName, final ProcessContents processContents) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		final Variety variety;

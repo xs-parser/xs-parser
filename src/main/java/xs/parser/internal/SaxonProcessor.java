@@ -13,8 +13,6 @@ import org.w3c.dom.*;
  */
 public class SaxonProcessor {
 
-	private static final boolean isSaxonLoaded;
-
 	private static final class SaxonHolder {
 
 		private static final net.sf.saxon.s9api.Processor processor = new net.sf.saxon.s9api.Processor(false);
@@ -60,32 +58,30 @@ public class SaxonProcessor {
 
 	}
 
+	public static final boolean IS_SAXON_LOADED;
+
 	static {
-		boolean saxonLoaded = true;
+		boolean isSaxonLoaded = true;
 		try {
 			Class.forName("net.sf.saxon.s9api.Processor");
 		} catch (final ClassNotFoundException e) {
-			saxonLoaded = false;
+			isSaxonLoaded = false;
 		}
-		isSaxonLoaded = saxonLoaded;
+		IS_SAXON_LOADED = isSaxonLoaded;
 	}
 
 	private SaxonProcessor() { }
-
-	public static boolean isSaxonLoaded() {
-		return isSaxonLoaded;
-	}
 
 	public static Object processor() {
 		return SaxonHolder.processor;
 	}
 
 	public static Object compileTemplate(final Source source) {
-		return isSaxonLoaded ? SaxonHolder.compileTemplate(source) : null;
+		return IS_SAXON_LOADED ? SaxonHolder.compileTemplate(source) : null;
 	}
 
 	public static Document transform(final Object template, final Node node, final Map<String, ?> params, final String templateName) {
-		if (isSaxonLoaded) {
+		if (IS_SAXON_LOADED) {
 			return SaxonHolder.transform(template, node, params, templateName);
 		} else {
 			throw new UnsupportedOperationException("net.sf.saxon.s9api must be on the classpath to resolve xs:redefine or xs:override");

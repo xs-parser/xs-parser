@@ -250,9 +250,12 @@ final class SaxonNodeSet extends NodeSet {
 
 	@Override
 	public double getDoubleValue() {
-		assertIsAtomic();
+		final XdmAtomicValue atomicValue = getAtomicValue();
+		if (atomicValue == null) {
+			throw IS_NOT_ATOMIC_EXCEPTION.get();
+		}
 		try {
-			return getAtomicValue().getDoubleValue();
+			return atomicValue.getDoubleValue();
 		} catch (final SaxonApiException e) {
 			throw new SaxonApiUncheckedException(e);
 		}
@@ -260,9 +263,12 @@ final class SaxonNodeSet extends NodeSet {
 
 	@Override
 	public long getLongValue() {
-		assertIsAtomic();
+		final XdmAtomicValue atomicValue = getAtomicValue();
+		if (atomicValue == null) {
+			throw IS_NOT_ATOMIC_EXCEPTION.get();
+		}
 		try {
-			return getAtomicValue().getLongValue();
+			return atomicValue.getLongValue();
 		} catch (final SaxonApiException e) {
 			throw new SaxonApiUncheckedException(e);
 		}
@@ -270,15 +276,21 @@ final class SaxonNodeSet extends NodeSet {
 
 	@Override
 	public String getStringValue() {
-		assertIsAtomic();
-		return getAtomicValue().getStringValue();
+		final XdmAtomicValue atomicValue = getAtomicValue();
+		if (atomicValue == null) {
+			throw IS_NOT_ATOMIC_EXCEPTION.get();
+		}
+		return atomicValue.getStringValue();
 	}
 
 	@Override
 	public boolean getBooleanValue() {
-		assertIsAtomic();
+		final XdmAtomicValue atomicValue = getAtomicValue();
+		if (atomicValue == null) {
+			throw IS_NOT_ATOMIC_EXCEPTION.get();
+		}
 		try {
-			return getAtomicValue().getBooleanValue();
+			return atomicValue.getBooleanValue();
 		} catch (final SaxonApiException e) {
 			throw new SaxonApiUncheckedException(e);
 		}
@@ -301,7 +313,9 @@ final class SaxonNodeSet extends NodeSet {
 
 	@Override
 	public Stream<Node> stream() {
-		assertIsNotAtomic();
+		if (isAtomic()) {
+			throw IS_ATOMIC_EXCEPTION.get();
+		}
 		return ((XdmValue) underlyingValue).stream()
 				.filter(XdmItem::isNode)
 				.map(x -> NodeOverNodeInfo.wrap((NodeInfo) x.getUnderlyingValue()));

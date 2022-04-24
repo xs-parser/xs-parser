@@ -1,8 +1,10 @@
 package xs.parser.internal;
 
 import java.util.*;
+import java.util.concurrent.atomic.*;
 import java.util.function.*;
 
+@FunctionalInterface
 public interface Deferred<T> {
 
 	public static final Deferred<?> NONE = Deferred.value(null);
@@ -19,37 +21,25 @@ public interface Deferred<T> {
 	}
 
 	public static <T> Deferred<T> of(final Supplier<T> supplier) {
-		Objects.requireNonNull(supplier);
-		return new Deferred<T>() {
+		final class State {
 
-			volatile Supplier<T> s = supplier;
-			volatile T value;
+			final Supplier<T> supplier;
+			final T value;
 
-			@Override
-			public T get() {
-				if (s != null) {
-					synchronized (this) {
-						if (s != null) {
-							value = s.get();
-							s = null;
-						}
-					}
-				}
-				return value;
+			State(final Supplier<T> supplier, final T value) {
+				this.supplier = supplier;
+				this.value = value;
 			}
 
-		};
+		}
+
+		Objects.requireNonNull(supplier);
+		final AtomicReference<State> state = new AtomicReference<>(new State(supplier, null));
+		return () -> state.updateAndGet(s -> s.supplier == null ? s : new State(null, s.supplier.get())).value;
 	}
 
 	public static <T> Deferred<T> value(final T value) {
-		return new Deferred<T>() {
-
-			@Override
-			public T get() {
-				return value;
-			}
-
-		};
+		return () -> value;
 	}
 
 }

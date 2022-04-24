@@ -327,7 +327,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 						return e;
 					}
 				}
-				throw new IllegalArgumentException(name.toString());
+				throw new IllegalArgumentException(name);
 			}
 
 			public String getName() {
@@ -765,7 +765,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 						return e;
 					}
 				}
-				throw new IllegalArgumentException(name.toString());
+				throw new IllegalArgumentException(name);
 			}
 
 			public String getName() {

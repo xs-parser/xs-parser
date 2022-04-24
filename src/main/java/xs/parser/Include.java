@@ -85,7 +85,7 @@ public class Include {
 		return Schema.EMPTY;
 	}
 
-	protected Document resolveDocument(final Document resolvedDocument) throws Exception {
+	protected Document resolveDocument(final Document resolvedDocument) {
 		final Node childTargetNamespace = resolvedDocument.getDocumentElement().getAttributes().getNamedItemNS(null, AttributeValue.TARGETNAMESPACE.getName().getLocalPart());
 		final String parentTargetNamespace = schema.targetNamespace();
 		if (childTargetNamespace == null && parentTargetNamespace != null) {

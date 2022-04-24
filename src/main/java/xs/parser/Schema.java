@@ -111,7 +111,7 @@ public class Schema implements AnnotatedComponent {
 					return b;
 				}
 			}
-			throw new IllegalArgumentException(name.toString());
+			throw new IllegalArgumentException(name);
 		}
 
 		public String getName() {
@@ -181,7 +181,7 @@ public class Schema implements AnnotatedComponent {
 					return f;
 				}
 			}
-			throw new IllegalArgumentException(name.toString());
+			throw new IllegalArgumentException(name);
 		}
 
 		public String getName() {
@@ -199,19 +199,14 @@ public class Schema implements AnnotatedComponent {
 
 		public URI resolveUri(final String baseUri, final String namespace, final String schemaLocation) {
 			if (schemaLocation != null) {
+				URI schemaLocationUri = null;
 				try {
-					final URI schemaLocationUri = new URI(schemaLocation);
-					if (baseUri == null) {
-						return schemaLocationUri;
-					} else {
-						try {
-							return new URI(baseUri).resolve(schemaLocationUri);
-						} catch (final URISyntaxException e) {
-							return schemaLocationUri;
-						}
-					}
+					schemaLocationUri = new URI(schemaLocation);
+					return baseUri == null
+							? schemaLocationUri
+							: new URI(baseUri).resolve(schemaLocationUri);
 				} catch (final URISyntaxException e) {
-					return null;
+					return schemaLocationUri;
 				}
 			}
 			return null;
@@ -256,11 +251,11 @@ public class Schema implements AnnotatedComponent {
 			schemas.add(Schema.this);
 			this.constituents = findAll(schemas, mapper);
 			this.all = constituents.map(c -> {
-				final Deque<T> d = declared.get();
-				final Deque<T> all = new DeferredArrayDeque<>(d.size(), c);
-				all.addAll(d);
-				after.accept(all);
-				return all;
+				final Deque<T> deque = declared.get();
+				final Deque<T> allDeque = new DeferredArrayDeque<>(deque.size(), c);
+				allDeque.addAll(deque);
+				after.accept(allDeque);
+				return allDeque;
 			});
 		}
 
@@ -271,13 +266,13 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		private <U extends SchemaComponent> Deferred<Deque<U>> findAll(final Set<Schema> schemas, final Function<Schema, Def<U>> mapper) {
-			return constituentSchemas.map(constituents -> {
-				if (constituents.isEmpty()) {
+			return constituentSchemas.map(c -> {
+				if (c.isEmpty()) {
 					return Deques.emptyDeque();
 				}
 				int size = 0;
 				final Deque<Deque<U>> values = new ArrayDeque<>();
-				for (final Schema s : constituents) {
+				for (final Schema s : c) {
 					if (schemas.add(s)) {
 						final Def<U> def = mapper.apply(s);
 						final Deque<U> decls = def.declared.get();
@@ -339,9 +334,9 @@ public class Schema implements AnnotatedComponent {
 		if (EMPTY == this) {
 			return Collections.emptySet();
 		}
-		final Set<Schema> constituentSchemas = getConstituentSchemas();
-		constituentSchemas.remove(this);
-		return Collections.unmodifiableSet(constituentSchemas);
+		final Set<Schema> schemas = getConstituentSchemas();
+		schemas.remove(this);
+		return Collections.unmodifiableSet(schemas);
 	});
 
 	private Schema() {

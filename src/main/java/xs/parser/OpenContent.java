@@ -59,7 +59,7 @@ public class OpenContent {
 					return m;
 				}
 			}
-			throw new IllegalArgumentException(name.toString());
+			throw new IllegalArgumentException(name);
 		}
 
 		public String getName() {

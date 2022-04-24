@@ -112,9 +112,11 @@ public class Attribute implements AnnotatedComponent {
 		private final Node parent;
 
 		public Scope(final Variety variety, final Node parent) {
+			if ((Variety.LOCAL.equals(variety) && parent == null) || (Variety.GLOBAL.equals(variety) && parent != null)) {
+				throw new IllegalArgumentException(variety.toString());
+			}
 			this.variety = Objects.requireNonNull(variety);
 			this.parent = parent;
-			assert (Variety.LOCAL.equals(variety) && parent != null) || (Variety.GLOBAL.equals(variety) && parent == null) : variety.toString();
 		}
 
 		/** @return either local or global, as appropriate */
@@ -148,7 +150,7 @@ public class Attribute implements AnnotatedComponent {
 					return u;
 				}
 			}
-			throw new IllegalArgumentException(name.toString());
+			throw new IllegalArgumentException(name);
 		}
 
 		public String getName() {

@@ -216,8 +216,10 @@ final class JaxpNodeSet extends NodeSet {
 
 	@Override
 	public String getStringValue() {
-		assertIsAtomic();
-		return String.valueOf(underlyingValue);
+		if (isAtomic()) {
+			return String.valueOf(underlyingValue);
+		}
+		throw IS_NOT_ATOMIC_EXCEPTION.get();
 	}
 
 	@Override
@@ -255,8 +257,9 @@ final class JaxpNodeSet extends NodeSet {
 
 	@Override
 	public Stream<Node> stream() {
-		assertIsNotAtomic();
-		if (underlyingValue instanceof Node) {
+		if (isAtomic()) {
+			throw IS_ATOMIC_EXCEPTION.get();
+		} else if (underlyingValue instanceof Node) {
 			return Stream.of((Node) underlyingValue);
 		} else if (underlyingValue instanceof NodeList) {
 			final NodeList n = (NodeList) underlyingValue;

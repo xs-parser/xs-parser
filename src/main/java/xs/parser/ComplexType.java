@@ -270,7 +270,7 @@ public class ComplexType implements TypeDefinition {
 		final ComplexContent complexContent = result.parse(ElementValue.COMPLEXCONTENT);
 		final boolean effectiveMixed = complexContent != null && complexContent.mixed() != null
 				? complexContent.mixed()
-				: mixed != null ? mixed : false;
+				: mixed != null && mixed;
 		final AnnotationsBuilder annotations = new AnnotationsBuilder(result);
 		final Deferred<? extends TypeDefinition> baseType;
 		final Deque<Assertion> assertions;

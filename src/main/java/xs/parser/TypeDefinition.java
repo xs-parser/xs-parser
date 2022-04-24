@@ -30,7 +30,7 @@ public interface TypeDefinition extends AnnotatedComponent {
 					return f;
 				}
 			}
-			throw new IllegalArgumentException(name.toString());
+			throw new IllegalArgumentException(name);
 		}
 
 		public String getName() {

@@ -116,12 +116,15 @@ public final class NodeHelper {
 	}
 
 	public static QName qname(final Node thisNode, final String qualifiedName) {
-		assert qualifiedName != null && !qualifiedName.isEmpty() : toString(thisNode);
+		if (qualifiedName == null || qualifiedName.isEmpty()) {
+			throw new IllegalArgumentException(toString(thisNode));
+		}
 		final int separator = qualifiedName.indexOf(':');
 		final String prefix = separator == -1 ? null : qualifiedName.substring(0, separator);
 		final String localPart = separator == -1 ? qualifiedName : qualifiedName.substring(separator + 1);
-		assert !localPart.isEmpty() : toString(thisNode);
-		if (XMLConstants.XML_NS_PREFIX.equals(prefix)) {
+		if (localPart.isEmpty()) {
+			throw new IllegalArgumentException(toString(thisNode));
+		} else if (XMLConstants.XML_NS_PREFIX.equals(prefix)) {
 			return new QName(XMLConstants.XML_NS_URI, localPart, XMLConstants.XML_NS_PREFIX);
 		}
 		final String nsUri = thisNode.lookupNamespaceURI(prefix);

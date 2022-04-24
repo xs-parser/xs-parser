@@ -88,21 +88,19 @@ public final class AttributeValue<T> {
 		}
 	};
 	private static final Function<Node, Deque<Block>> blockParser = n -> {
-		switch (n.getNodeValue()) {
-		case "#all":
+		if ("#all".equals(n.getNodeValue())) {
 			return Deques.singletonDeque(Block.ALL);
-		default:
-			final String[] values = n.getNodeValue().split(LIST_SEP);
-			final Deque<Block> ls = new ArrayDeque<>();
-			for (final String v : values) {
-				final Block b = Block.getByName(v);
-				if (Block.ALL.equals(b)) {
-					throw new SchemaParseException(n, Block.ALL + " cannot be present in List of @block");
-				}
-				ls.add(b);
-			}
-			return Deques.unmodifiableDeque(ls);
 		}
+		final String[] values = n.getNodeValue().split(LIST_SEP);
+		final Deque<Block> ls = new ArrayDeque<>();
+		for (final String v : values) {
+			final Block b = Block.getByName(v);
+			if (Block.ALL.equals(b)) {
+				throw new SchemaParseException(n, Block.ALL + " cannot be present in @block");
+			}
+			ls.add(b);
+		}
+		return Deques.unmodifiableDeque(ls);
 	};
 	private static final Function<Node, Deque<Final>> finalParser = n -> {
 		switch (n.getNodeValue()) {

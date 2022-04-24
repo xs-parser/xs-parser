@@ -142,9 +142,11 @@ public class Element implements Term {
 		private final Deque<Alternative> alternatives;
 		private final Alternative defaultType;
 
-		public TypeTable(final Deque<Alternative> alternatives, final Element parent) {
+		private TypeTable(final Deque<Alternative> alternatives, final Element parent) {
+			if (alternatives.isEmpty()) {
+				throw new IllegalArgumentException("TypeTable must have at least one alternative");
+			}
 			this.alternatives = Objects.requireNonNull(alternatives);
-			assert !alternatives.isEmpty();
 			final Alternative last = alternatives.getFirst();
 			this.defaultType = last.test() == null
 					? last
@@ -185,7 +187,7 @@ public class Element implements Term {
 	private final Set<Final> substitutionGroupExclusions;
 	private final boolean isAbstract;
 
-	Element(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<? extends TypeDefinition> type, final Deque<Alternative> alternatives, final Scope scope, final boolean nillable, final Deferred<ValueConstraint> valueConstraint, final Deque<IdentityConstraint> identityConstraints, final Deque<Element> substitutionGroupAffiliations, final Set<Block> disallowedSubstitutions, final Set<Final> substitutionGroupExclusions, final boolean isAbstract) {
+	private Element(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<? extends TypeDefinition> type, final Deque<Alternative> alternatives, final Scope scope, final boolean nillable, final Deferred<ValueConstraint> valueConstraint, final Deque<IdentityConstraint> identityConstraints, final Deque<Element> substitutionGroupAffiliations, final Set<Block> disallowedSubstitutions, final Set<Final> substitutionGroupExclusions, final boolean isAbstract) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;

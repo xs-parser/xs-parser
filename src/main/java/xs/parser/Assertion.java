@@ -177,8 +177,8 @@ public class Assertion implements AnnotatedComponent {
 			}
 			this.namespaceBindings = new LinkedHashSet<>();
 			xmlns.forEach((prefix, namespace) -> this.namespaceBindings.add(new NamespaceBinding(prefix, namespace)));
-			final String defaultNamespace = xpathDefaultNamespace != null ? xpathDefaultNamespace : result.schema().xpathDefaultNamespace();
-			switch (defaultNamespace) {
+			final String defaultNs = xpathDefaultNamespace != null ? xpathDefaultNamespace : result.schema().xpathDefaultNamespace();
+			switch (defaultNs) {
 			case "##defaultNamespace":
 				this.defaultNamespace = namespaceBindings.stream().filter(n -> XMLConstants.DEFAULT_NS_PREFIX.equals(n.prefix())).map(NamespaceBinding::namespace).findAny().orElse(null);
 				break;
@@ -189,7 +189,7 @@ public class Assertion implements AnnotatedComponent {
 				this.defaultNamespace = null;
 				break;
 			default:
-				this.defaultNamespace = defaultNamespace;
+				this.defaultNamespace = defaultNs;
 			}
 			this.baseURI = result.node().getBaseURI();
 			this.expression = expression;

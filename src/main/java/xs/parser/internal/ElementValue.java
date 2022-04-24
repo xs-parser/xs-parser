@@ -119,11 +119,11 @@ public final class ElementValue<T> {
 	public static final ElementValue<ConstrainingFacet<?>> ASSERTION = new ElementValue<>("assertion", Parser.of(ConstrainingFacet.class));
 	public static final ElementValue<ConstrainingFacet<?>> EXPLICITTIMEZONE = new ElementValue<>("explicitTimezone", Parser.of(ConstrainingFacet.class));
 
-	private final QName name;
+	private final QName qname;
 	private final Parser<T> parser;
 
 	ElementValue(final String localName, final Parser<T> parser) {
-		this.name = new QName(XMLConstants.W3C_XML_SCHEMA_NS_URI, localName);
+		this.qname = new QName(XMLConstants.W3C_XML_SCHEMA_NS_URI, localName);
 		this.parser = parser;
 	}
 
@@ -151,7 +151,7 @@ public final class ElementValue<T> {
 	}
 
 	public QName getName() {
-		return name;
+		return qname;
 	}
 
 	public Parser<T> getParser() {
@@ -159,7 +159,7 @@ public final class ElementValue<T> {
 	}
 
 	public boolean equalsName(final Node node) {
-		return name.getNamespaceURI().equals(NodeHelper.namespaceUri(node)) && name.getLocalPart().equals(node.getLocalName());
+		return qname.getNamespaceURI().equals(NodeHelper.namespaceUri(node)) && qname.getLocalPart().equals(node.getLocalName());
 	}
 
 	@Override

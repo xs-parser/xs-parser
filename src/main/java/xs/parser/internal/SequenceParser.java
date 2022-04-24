@@ -264,7 +264,7 @@ public final class SequenceParser {
 						amount = 0;
 					}
 					final Result r = elementValue.getParser().get().parse(schema, n, result);
-					result.parserResults.computeIfAbsent(elementValue, __ -> new ArrayDeque<>()).add(r);
+					result.parserResults.computeIfAbsent(elementValue, e -> new ArrayDeque<>()).add(r);
 					++amount;
 				}
 			}
