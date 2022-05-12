@@ -4,7 +4,8 @@ import java.util.*;
 import javax.xml.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -140,7 +141,7 @@ public class Assertion implements AnnotatedComponent {
 	 */
 	public static class XPathExpression {
 
-		protected static final SequenceParser parser = new SequenceParser()
+		static final SequenceParser parser = new SequenceParser()
 				.requiredAttributes(AttributeValue.XPATH)
 				.optionalAttributes(AttributeValue.ID, AttributeValue.XPATHDEFAULTNAMESPACE)
 				.elements(0, 1, ElementValue.ANNOTATION);
@@ -166,14 +167,10 @@ public class Assertion implements AnnotatedComponent {
 			final Map<String, String> xmlns = new LinkedHashMap<>();
 			while (!xmlnsAttrs.isEmpty()) {
 				final Node attr = xmlnsAttrs.removeLast();
-				switch (attr.getNodeName()) {
-				case XMLConstants.XMLNS_ATTRIBUTE:
-					xmlns.put(XMLConstants.DEFAULT_NS_PREFIX, attr.getNodeValue());
-					break;
-				default:
-					xmlns.put(attr.getNodeName().substring(XMLConstants.XMLNS_ATTRIBUTE.length() + 1), attr.getNodeValue());
-					break;
-				}
+				final String key = XMLConstants.XMLNS_ATTRIBUTE.equals(attr.getNodeName())
+						? XMLConstants.DEFAULT_NS_PREFIX
+						: attr.getNodeName().substring(XMLConstants.XMLNS_ATTRIBUTE.length() + 1);
+				xmlns.put(key, attr.getNodeValue());
 			}
 			this.namespaceBindings = new LinkedHashSet<>();
 			xmlns.forEach((prefix, namespace) -> this.namespaceBindings.add(new NamespaceBinding(prefix, namespace)));
@@ -195,7 +192,7 @@ public class Assertion implements AnnotatedComponent {
 			this.expression = expression;
 		}
 
-		protected static XPathExpression parse(final Result result) {
+		static XPathExpression parse(final Result result) {
 			final String expression = result.value(AttributeValue.XPATH);
 			final String xpathDefaultNamespace = result.value(AttributeValue.XPATHDEFAULTNAMESPACE);
 			return new XPathExpression(result, xpathDefaultNamespace, expression);
@@ -234,7 +231,7 @@ public class Assertion implements AnnotatedComponent {
 
 	}
 
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.requiredAttributes(AttributeValue.TEST)
 			.optionalAttributes(AttributeValue.ID, AttributeValue.XPATHDEFAULTNAMESPACE)
 			.elements(0, 1, ElementValue.ANNOTATION);
@@ -243,13 +240,13 @@ public class Assertion implements AnnotatedComponent {
 	private final Deque<Annotation> annotations;
 	private final XPathExpression test;
 
-	private Assertion(final Node node, final Deque<Annotation> annotations, final XPathExpression test) {
+	Assertion(final Node node, final Deque<Annotation> annotations, final XPathExpression test) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.test = test;
 	}
 
-	protected static Assertion parse(final Result result) {
+	static Assertion parse(final Result result) {
 		final XPathExpression test = XPathExpression.parse(result);
 		return new Assertion(result.node(), result.annotations(), test);
 	}

@@ -4,7 +4,8 @@ import java.util.*;
 import java.util.stream.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -157,10 +158,10 @@ public class Wildcard implements Term {
 
 	}
 
-	protected static final SequenceParser anyParser = new SequenceParser()
+	static final SequenceParser anyParser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.MAXOCCURS, AttributeValue.MINOCCURS, AttributeValue.ANY_NAMESPACE, AttributeValue.NOTNAMESPACE, AttributeValue.NOTQNAME, AttributeValue.PROCESSCONTENTS)
 			.elements(0, 1, ElementValue.ANNOTATION);
-	protected static final SequenceParser anyAttributeParser = new SequenceParser()
+	static final SequenceParser anyAttributeParser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.ANY_NAMESPACE, AttributeValue.NOTNAMESPACE, AttributeValue.NOTQNAME, AttributeValue.PROCESSCONTENTS)
 			.elements(0, 1, ElementValue.ANNOTATION);
 
@@ -219,7 +220,7 @@ public class Wildcard implements Term {
 		this.processContents = processContents;
 	}
 
-	protected static Particle<Wildcard> parseAny(final Result result) {
+	static Particle parseAny(final Result result) {
 		final String schemaTargetNamespace = result.schema().targetNamespace();
 		final Deque<String> namespace = result.value(AttributeValue.ANY_NAMESPACE);
 		final Deque<String> notNamespace = result.value(AttributeValue.NOTNAMESPACE);
@@ -228,10 +229,10 @@ public class Wildcard implements Term {
 		final String maxOccurs = result.value(AttributeValue.MAXOCCURS);
 		final String minOccurs = result.value(AttributeValue.MINOCCURS);
 		final Wildcard wildcard = new Wildcard(result.node(), result.annotations(), schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
-		return new Particle<>(result.node(), result.annotations(), maxOccurs, minOccurs, wildcard);
+		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, wildcard);
 	}
 
-	protected static Wildcard parseAnyAttribute(final Result result) {
+	static Wildcard parseAnyAttribute(final Result result) {
 		final String schemaTargetNamespace = result.schema().targetNamespace();
 		final Deque<String> namespace = result.value(AttributeValue.ANY_NAMESPACE);
 		final Deque<String> notNamespace = result.value(AttributeValue.NOTNAMESPACE);

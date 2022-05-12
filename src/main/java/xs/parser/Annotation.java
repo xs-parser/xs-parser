@@ -5,7 +5,8 @@ import java.util.function.*;
 import java.util.stream.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -59,28 +60,28 @@ import xs.parser.internal.SequenceParser.*;
  */
 public class Annotation implements SchemaComponent {
 
-	protected static class AnnotationsBuilder {
+	static class AnnotationsBuilder {
 
 		private final Result result;
 		private final Deque<Deque<Annotation>> annotations = new ArrayDeque<>();
 
-		public AnnotationsBuilder(final Result result) {
+		AnnotationsBuilder(final Result result) {
 			this.result = result;
 		}
 
-		public AnnotationsBuilder add(final Supplier<Deque<Annotation>> annotations) {
+		AnnotationsBuilder add(final Supplier<Deque<Annotation>> annotations) {
 			this.annotations.add(annotations.get());
 			return this;
 		}
 
-		public AnnotationsBuilder add(final Deque<? extends AnnotatedComponent> annotations) {
+		AnnotationsBuilder add(final Deque<? extends AnnotatedComponent> annotations) {
 			for (final AnnotatedComponent a : annotations) {
 				this.annotations.add(a.annotations());
 			}
 			return this;
 		}
 
-		public Deque<Annotation> build() {
+		Deque<Annotation> build() {
 			final Deque<Annotation> baseAnnotations = result.annotations();
 			int size = baseAnnotations.size();
 			for (final Deque<Annotation> a : annotations) {
@@ -98,7 +99,7 @@ public class Annotation implements SchemaComponent {
 
 	public static class Appinfo {
 
-		protected static final SequenceParser parser = new SequenceParser()
+		static final SequenceParser parser = new SequenceParser()
 				.optionalAttributes(AttributeValue.SOURCE)
 				.allowsAnyContent(true);
 
@@ -108,19 +109,15 @@ public class Annotation implements SchemaComponent {
 			this.node = Objects.requireNonNull(node);
 		}
 
-		protected static Appinfo parse(final Result result) {
+		static Appinfo parse(final Result result) {
 			return new Appinfo(result.node());
-		}
-
-		protected Node node() {
-			return node;
 		}
 
 	}
 
 	public static class Documentation {
 
-		protected static final SequenceParser parser = new SequenceParser()
+		static final SequenceParser parser = new SequenceParser()
 				.optionalAttributes(AttributeValue.SOURCE, AttributeValue.XML_LANG)
 				.allowsAnyContent(true);
 
@@ -130,17 +127,13 @@ public class Annotation implements SchemaComponent {
 			this.node = Objects.requireNonNull(node);
 		}
 
-		protected static Documentation parse(final Result result) {
+		static Documentation parse(final Result result) {
 			return new Documentation(result.node());
-		}
-
-		protected Node node() {
-			return node;
 		}
 
 	}
 
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID)
 			.elements(0, Integer.MAX_VALUE, ElementValue.DOCUMENTATION, ElementValue.APPINFO);
 
@@ -156,12 +149,12 @@ public class Annotation implements SchemaComponent {
 		this.attributes = Objects.requireNonNull(attributes);
 	}
 
-	protected static Annotation parse(final Result result) {
+	static Annotation parse(final Result result) {
 		final Deque<Appinfo> appinfo = result.parseAll(ElementValue.APPINFO);
-		final Deque<Node> applicationInformation = appinfo.stream().map(Appinfo::node).collect(Collectors.toCollection(ArrayDeque::new));
+		final Deque<Node> applicationInformation = appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new));
 		final Deque<Documentation> documentation = result.parseAll(ElementValue.DOCUMENTATION);
-		final Deque<Node> userInformation = documentation.stream().map(Documentation::node).collect(Collectors.toCollection(ArrayDeque::new));
-		return new Annotation(result.node(), applicationInformation, userInformation, Deferred.value(Collections.emptySet() /*TODO*/));
+		final Deque<Node> userInformation = documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new));
+		return new Annotation(result.node(), applicationInformation, userInformation, Collections::emptySet /*TODO*/);
 	}
 
 	/** @return A sequence of the &lt;appinfo&gt; element information items from among the [children], in order, if any, otherwise the empty sequence. */

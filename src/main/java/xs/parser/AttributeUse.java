@@ -7,7 +7,8 @@ import org.w3c.dom.*;
 import xs.parser.Attribute.*;
 import xs.parser.Schema.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -29,7 +30,7 @@ import xs.parser.internal.SequenceParser.*;
  */
 public class AttributeUse implements AnnotatedComponent {
 
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.DEFAULT, AttributeValue.FIXED, AttributeValue.FORM, AttributeValue.NAME, AttributeValue.REF, AttributeValue.TARGETNAMESPACE, AttributeValue.TYPE, AttributeValue.USE, AttributeValue.INHERITABLE)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, 1, ElementValue.SIMPLETYPE);
@@ -39,14 +40,14 @@ public class AttributeUse implements AnnotatedComponent {
 	private final Deferred<Attribute> attributeDeclaration;
 	private final Deferred<Boolean> inheritable;
 
-	AttributeUse(final Node node, final Use use, final Deferred<Attribute> attributeDeclaration, final Deferred<Boolean> inheritable) {
+	private AttributeUse(final Node node, final Use use, final Deferred<Attribute> attributeDeclaration, final Deferred<Boolean> inheritable) {
 		this.node = Objects.requireNonNull(node);
 		this.use = use;
 		this.attributeDeclaration = Objects.requireNonNull(attributeDeclaration);
 		this.inheritable = inheritable;
 	}
 
-	protected static AttributeUse parse(final Result result) {
+	static AttributeUse parse(final Result result) {
 		final Use use = result.value(AttributeValue.USE);
 		final String defaultValue = result.value(AttributeValue.DEFAULT);
 		final String fixedValue = result.value(AttributeValue.FIXED);
@@ -81,10 +82,11 @@ public class AttributeUse implements AnnotatedComponent {
 			final SimpleType simpleTypeChild = result.parse(ElementValue.SIMPLETYPE);
 			final Deferred<SimpleType> simpleType = typeName != null
 					? result.schema().find(typeName, SimpleType.class)
-					: Deferred.value(simpleTypeChild != null ? simpleTypeChild : SimpleType.xsAnySimpleType());
-			attributeDecl = Deferred.value(new Attribute(result.node(), result.annotations(), name, targetNamespace, simpleType, scope, valueConstraint.apply(simpleType), inheritable));
+					: simpleTypeChild != null ? () -> simpleTypeChild : SimpleType::xsAnySimpleType;
+			final Attribute attr = new Attribute(result.node(), result.annotations(), name, targetNamespace, simpleType, scope, valueConstraint.apply(simpleType), inheritable);
+			attributeDecl = () -> attr;
 		}
-		return new AttributeUse(result.node(), use, attributeDecl, inheritable == null ? attributeDecl.map(Attribute::inheritable) : Deferred.value(inheritable));
+		return new AttributeUse(result.node(), use, attributeDecl, inheritable == null ? attributeDecl.map(Attribute::inheritable) : () -> inheritable);
 	}
 
 	/** @return true if the &lt;attribute&gt; element has use = required, otherwise false. */

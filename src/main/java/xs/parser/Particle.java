@@ -4,7 +4,8 @@ import java.util.*;
 import org.w3c.dom.*;
 import xs.parser.ModelGroup.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -33,10 +34,10 @@ import xs.parser.internal.SequenceParser.*;
  * &lt;/sequence&gt;
  * </pre>
  */
-public class Particle<T extends Term> implements AnnotatedComponent {
+public class Particle implements AnnotatedComponent {
 
-	protected static final String UNBOUNDED = "unbounded";
-	protected static final SequenceParser parser = new SequenceParser()
+	static final String UNBOUNDED = "unbounded";
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.MAXOCCURS, AttributeValue.MINOCCURS)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, Integer.MAX_VALUE, ElementValue.ELEMENT, ElementValue.GROUP, ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE, ElementValue.ANY);
@@ -45,13 +46,13 @@ public class Particle<T extends Term> implements AnnotatedComponent {
 	private final Deque<Annotation> annotations;
 	private final String maxOccurs;
 	private final String minOccurs;
-	private final Deferred<T> term;
+	private final Deferred<? extends Term> term;
 
-	Particle(final Node node, final Deque<Annotation> annotations, final String maxOccurs, final String minOccurs, final T term) {
-		this(node, annotations, maxOccurs, minOccurs, Deferred.value(term));
+	Particle(final Node node, final Deque<Annotation> annotations, final String maxOccurs, final String minOccurs, final Term term) {
+		this(node, annotations, maxOccurs, minOccurs, () -> term);
 	}
 
-	Particle(final Node node, final Deque<Annotation> annotations, final String maxOccurs, final String minOccurs, final Deferred<T> term) {
+	Particle(final Node node, final Deque<Annotation> annotations, final String maxOccurs, final String minOccurs, final Deferred<? extends Term> term) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.maxOccurs = maxOccurs;
@@ -60,31 +61,31 @@ public class Particle<T extends Term> implements AnnotatedComponent {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected static Particle<ModelGroup> parse(final Result result) {
+	static Particle parse(final Result result) {
 		final String maxOccurs = result.value(AttributeValue.MAXOCCURS);
 		final String minOccurs = result.value(AttributeValue.MINOCCURS);
 		final Compositor compositor = ElementValue.ALL.equalsName(result.node()) ? Compositor.ALL
 				: ElementValue.CHOICE.equalsName(result.node()) ? Compositor.CHOICE
 				: ElementValue.SEQUENCE.equalsName(result.node()) ? Compositor.SEQUENCE
 				: null;
-		final Deque<Particle<? extends Term>> particles = result.parseAll(ElementValue.ELEMENT, ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE, ElementValue.ANY);
-		final ModelGroup term = ModelGroup.synthetic(result.node(), result.annotations(), compositor, (Deque<Particle<Term>>) (Object) particles);
-		return new Particle<>(result.node(), result.annotations(), maxOccurs, minOccurs, term);
+		final Deque<Particle> particles = result.parseAll(ElementValue.ELEMENT, ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE, ElementValue.ANY);
+		final ModelGroup term = ModelGroup.synthetic(result.node(), result.annotations(), compositor, (Deque<Particle>) (Object) particles);
+		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, term);
 	}
 
 	/**
 	 * The effective total range algorithm defined at <a href="https://www.w3.org/TR/xmlschema11-1/#cos-seq-range">https://www.w3.org/TR/xmlschema11-1/#cos-seq-range</a> and <a href="https://www.w3.org/TR/xmlschema11-1/#cos-choice-range">https://www.w3.org/TR/xmlschema11-1/#cos-choice-range</a>.
 	 * @return the maximum portion of the effective total range
 	 */
-	protected String effectiveMaximum() {
+	private String effectiveTotalRangeMaximum() {
 		if (term() instanceof Element || term() instanceof Wildcard) {
 			return maxOccurs;
 		} else if (term() instanceof ModelGroup) {
 			final ModelGroup g = (ModelGroup) term();
 			final boolean isChoice = Compositor.CHOICE.equals(g.compositor());
 			long cumulative = 0L; // unsigned
-			for (final Particle<Term> p : g.particles()) {
-				final String pEffectiveMax = p.effectiveMaximum();
+			for (final Particle p : g.particles()) {
+				final String pEffectiveMax = p.effectiveTotalRangeMaximum();
 				if (UNBOUNDED.equals(pEffectiveMax)) {
 					return UNBOUNDED;
 				} else {
@@ -108,15 +109,15 @@ public class Particle<T extends Term> implements AnnotatedComponent {
 	 * The effective total range algorithm defined at <a href="https://www.w3.org/TR/xmlschema11-1/#cos-seq-range">https://www.w3.org/TR/xmlschema11-1/#cos-seq-range</a> and <a href="https://www.w3.org/TR/xmlschema11-1/#cos-choice-range">https://www.w3.org/TR/xmlschema11-1/#cos-choice-range</a>.
 	 * @return the minimum portion of the effective total range
 	 */
-	protected String effectiveMinimum() {
+	private String effectiveTotalRangeMinimum() {
 		if (term() instanceof Element || term() instanceof Wildcard) {
 			return minOccurs;
 		} else if (term() instanceof ModelGroup) {
 			final ModelGroup g = (ModelGroup) term();
 			final boolean isChoice = Compositor.CHOICE.equals(g.compositor());
 			long cumulative = 0L;
-			for (final Particle<Term> p : g.particles()) {
-				final long pEffectiveMin = Long.parseUnsignedLong(p.effectiveMinimum());
+			for (final Particle p : g.particles()) {
+				final long pEffectiveMin = Long.parseUnsignedLong(p.effectiveTotalRangeMinimum());
 				// TODO unsignedMin
 				cumulative = isChoice ? Long.min(cumulative, pEffectiveMin) : cumulative + pEffectiveMin;
 			}
@@ -129,11 +130,11 @@ public class Particle<T extends Term> implements AnnotatedComponent {
 	 * Particle emptiable algorithm defined at <a href="https://www.w3.org/TR/xmlschema11-1/#cos-group-emptiable">https://www.w3.org/TR/xmlschema11-1/#cos-group-emptiable</a>.
 	 * @return {@code true} if this {@code Particle} is emptiable
 	 */
-	protected boolean isEmptiable() {
+	boolean isEmptiable() {
 		if ("0".equals(minOccurs)) {
 			return true;
 		} else if (term() instanceof ModelGroup) {
-			return "0".equals(effectiveMinimum());
+			return "0".equals(effectiveTotalRangeMinimum());
 		}
 		return false;
 	}
@@ -146,7 +147,7 @@ public class Particle<T extends Term> implements AnnotatedComponent {
 		return minOccurs;
 	}
 
-	public T term() {
+	public Term term() {
 		return term.get();
 	}
 

@@ -1,15 +1,16 @@
 package xs.parser;
 
-import static xs.parser.internal.Deques.*;
+import static xs.parser.internal.util.Deques.*;
 
 import java.util.*;
 import java.util.stream.*;
 import javax.xml.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
-public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
+public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 	/**
 	 * <pre>
@@ -50,12 +51,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class Length extends ConstrainingFacet<String> {
+	public static class Length extends ConstrainingFacet {
 
 		private static final String NAME = "length";
 
+		private final String value;
+
 		Length(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -99,12 +108,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class MinLength extends ConstrainingFacet<String> {
+	public static class MinLength extends ConstrainingFacet {
 
 		private static final String NAME = "minLength";
 
+		private final String value;
+
 		MinLength(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -148,12 +165,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class MaxLength extends ConstrainingFacet<String> {
+	public static class MaxLength extends ConstrainingFacet {
 
 		private static final String NAME = "maxLength";
 
+		private final String value;
+
 		MaxLength(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -191,12 +216,15 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class Pattern extends ConstrainingFacet<Set<String>> {
+	public static class Pattern extends ConstrainingFacet {
 
 		private static final String NAME = "pattern";
 
+		private final Set<String> value;
+
 		Pattern(final Node node, final Deque<Annotation> annotations, final Set<String> value) {
-			super(node, annotations, null, Objects.requireNonNull(value));
+			super(node, annotations, null);
+			this.value = Objects.requireNonNull(value);
 		}
 
 		/**
@@ -208,8 +236,8 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 		 * <br>2 otherwise just {·R·}
 		 */
 		@Override
-		public final Set<String> value() {
-			return value;
+		public Set<String> value() {
+			return Collections.unmodifiableSet(value);
 		}
 
 	}
@@ -247,12 +275,15 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class Enumeration extends ConstrainingFacet<Set<String>> {
+	public static class Enumeration extends ConstrainingFacet {
 
 		private static final String NAME = "enumeration";
 
+		private final Set<String> value;
+
 		Enumeration(final Node node, final Deque<Annotation> annotations, final Set<String> value) {
-			super(node, annotations, null, Objects.requireNonNull(value));
+			super(node, annotations, null);
+			this.value = Objects.requireNonNull(value);
 		}
 
 		/**
@@ -262,7 +293,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 		 * <br>Note: The value [attribute] is declared as having type ·anySimpleType·, but the {value} property of the enumeration facet must be a member of the {base type definition}. So in mapping from the XML representation to the enumeration component, the actual value is identified by using the ·lexical mapping· of the {base type definition}.
 		 */
 		@Override
-		public final Set<String> value() {
+		public Set<String> value() {
 			return Collections.unmodifiableSet(value);
 		}
 
@@ -307,7 +338,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class WhiteSpace extends ConstrainingFacet<WhiteSpace.Value> {
+	public static class WhiteSpace extends ConstrainingFacet {
 
 		public enum Value {
 
@@ -343,8 +374,16 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 
 		private static final String NAME = "whiteSpace";
 
+		private final Value value;
+
 		WhiteSpace(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final Value value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public Value value() {
+			return value;
 		}
 
 	}
@@ -388,12 +427,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class MaxInclusive extends ConstrainingFacet<String> {
+	public static class MaxInclusive extends ConstrainingFacet {
 
 		private static final String NAME = "maxInclusive";
 
+		private final String value;
+
 		MaxInclusive(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -437,12 +484,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class MaxExclusive extends ConstrainingFacet<String> {
+	public static class MaxExclusive extends ConstrainingFacet {
 
 		private static final String NAME = "maxExclusive";
 
+		private final String value;
+
 		MaxExclusive(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -486,12 +541,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class MinExclusive extends ConstrainingFacet<String> {
+	public static class MinExclusive extends ConstrainingFacet {
 
 		private static final String NAME = "minExclusive";
 
+		private final String value;
+
 		MinExclusive(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -535,12 +598,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class MinInclusive extends ConstrainingFacet<String> {
+	public static class MinInclusive extends ConstrainingFacet {
 
 		private static final String NAME = "minInclusive";
 
+		private final String value;
+
 		MinInclusive(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -584,12 +655,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class TotalDigits extends ConstrainingFacet<String> {
+	public static class TotalDigits extends ConstrainingFacet {
 
 		private static final String NAME = "totalDigits";
 
+		private final String value;
+
 		TotalDigits(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -633,12 +712,20 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class FractionDigits extends ConstrainingFacet<String> {
+	public static class FractionDigits extends ConstrainingFacet {
 
 		private static final String NAME = "fractionDigits";
 
+		private final String value;
+
 		FractionDigits(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public String value() {
+			return value;
 		}
 
 	}
@@ -677,12 +764,15 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class Assertions extends ConstrainingFacet<Deque<Assertion>> {
+	public static class Assertions extends ConstrainingFacet {
 
 		private static final String NAME = "assertion";
 
+		private final Deque<Assertion> value;
+
 		Assertions(final Node node, final Deque<Assertion> value) {
-			super(node, Deques.emptyDeque(), null, Objects.requireNonNull(value));
+			super(node, Deques.emptyDeque(), null);
+			this.value = Objects.requireNonNull(value);
 		}
 
 		/**
@@ -691,7 +781,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 		 * <br>2 Assertions corresponding to the &lt;assertion&gt; element information items among the [children] of &lt;restriction&gt;, if any, in document order. For details of the construction of the Assertion components, see section 3.13.2 of [XSD 1.1 Part 1: Structures].
 		 */
 		@Override
-		public final Deque<Assertion> value() {
+		public Deque<Assertion> value() {
 			return Deques.unmodifiableDeque(value);
 		}
 
@@ -701,7 +791,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 		 */
 		@Override
 		public final Deque<Annotation> annotations() {
-			return annotations;
+			return super.annotations();
 		}
 
 	}
@@ -745,7 +835,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class ExplicitTimezone extends ConstrainingFacet<ExplicitTimezone.Value> {
+	public static class ExplicitTimezone extends ConstrainingFacet {
 
 		public enum Value {
 
@@ -781,15 +871,23 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 
 		private static final String NAME = "explicitTimezone";
 
+		private final Value value;
+
 		ExplicitTimezone(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final Value value) {
-			super(node, annotations, fixed, value);
+			super(node, annotations, fixed);
+			this.value = value;
+		}
+
+		@Override
+		public Value value() {
+			return value;
 		}
 
 	}
 
 	private static final Map<String, Deque<Object>> defaultFacets;
 	private static final Document defaultConstrainingFacetsDocument;
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.requiredAttributes(AttributeValue.VALUE)
 			.optionalAttributes(AttributeValue.ID, AttributeValue.FIXED)
 			.elements(0, 1, ElementValue.ANNOTATION);
@@ -891,14 +989,12 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 
 	private final Node node;
 	private final Boolean fixed;
-	protected final Deque<Annotation> annotations;
-	protected final T value;
+	private final Deque<Annotation> annotations;
 
-	private ConstrainingFacet(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final T value) {
+	private ConstrainingFacet(final Node node, final Deque<Annotation> annotations, final Boolean fixed) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.fixed = fixed;
-		this.value = value;
 	}
 
 	private static Node createSynthetic(final String name, final Object value) {
@@ -910,22 +1006,22 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 		return elem;
 	}
 
-	protected static Deque<Object> find(final String simpleTypeName) {
+	static Deque<Object> find(final String simpleTypeName) {
 		return defaultFacets.get(simpleTypeName);
 	}
 
-	protected static Deque<Object> combineLikeFacets(final SimpleType baseType, final Deque<Object> baseFacets, final Deque<? extends ConstrainingFacet<?>> declaredFacets) {
+	static Deque<Object> combineLikeFacets(final SimpleType baseType, final Deque<Object> baseFacets, final Deque<? extends ConstrainingFacet> declaredFacets) {
 		final Deque<Object> newFacets = new DeferredArrayDeque<>(ConstrainingFacet.class.getClasses().length);
 		boolean patternFound = false;
 		boolean enumerationFound = false;
 		boolean assertionFound = false;
-		for (final ConstrainingFacet<?> facet : declaredFacets) {
+		for (final ConstrainingFacet facet : declaredFacets) {
 			if (facet instanceof Pattern) {
 				if (!patternFound) {
 					patternFound = true;
 					final Deque<Annotation> annotations = new ArrayDeque<>();
 					final StringBuilder value = new StringBuilder();
-					for (final ConstrainingFacet<?> c : declaredFacets) {
+					for (final ConstrainingFacet c : declaredFacets) {
 						if (c instanceof Pattern) {
 							for (final Annotation a : c.annotations()) {
 								annotations.addFirst(a);
@@ -941,9 +1037,10 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 					final Optional<Pattern> basePattern = baseType.facets().stream().filter(Pattern.class::isInstance).map(Pattern.class::cast).findAny();
 					final Pattern first;
 					if (basePattern.isPresent()) {
-						first = new Pattern(facet.node(), new ArrayDeque<>(basePattern.get().annotations().size() + annotations.size()), new LinkedHashSet<>(basePattern.get().value()));
-						first.annotations.addAll(basePattern.get().annotations());
-						first.annotations.addAll(annotations);
+						final Deque<Annotation> firstAnnotations = new ArrayDeque<>(basePattern.get().annotations().size() + annotations.size());
+						first = new Pattern(facet.node(), firstAnnotations, new LinkedHashSet<>(basePattern.get().value()));
+						firstAnnotations.addAll(basePattern.get().annotations());
+						firstAnnotations.addAll(annotations);
 						first.value.add(value.toString());
 					} else {
 						first = new Pattern(facet.node(), annotations, Collections.singleton(value.toString()));
@@ -955,7 +1052,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 					enumerationFound = true;
 					final Deque<Annotation> annotations = new ArrayDeque<>();
 					final Set<String> value = new LinkedHashSet<>();
-					for (final ConstrainingFacet<?> c : declaredFacets) {
+					for (final ConstrainingFacet c : declaredFacets) {
 						if (c instanceof Enumeration) {
 							annotations.addAll(c.annotations());
 							for (final String v : ((Enumeration) c).value()) {
@@ -969,8 +1066,8 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 				if (!assertionFound) {
 					assertionFound = true;
 					final Deque<Assertion> value = new ArrayDeque<>();
-					for (final Deque<? extends ConstrainingFacet<?>> x : Deques.asDeque(baseType.facets(), declaredFacets)) {
-						for (final ConstrainingFacet<?> c : x) {
+					for (final Deque<? extends ConstrainingFacet> x : Deques.asDeque(baseType.facets(), declaredFacets)) {
+						for (final ConstrainingFacet c : x) {
 							if (c instanceof Assertions) {
 								value.addAll(((Assertions) c).value());
 							}
@@ -984,29 +1081,29 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 		}
 		final Set<Object> foundBaseFacets = new HashSet<>();
 		// Add the declared facets that override any of the base facets
-		for (final ConstrainingFacet<?> declaredFacet : declaredFacets) {
+		for (final ConstrainingFacet declaredFacet : declaredFacets) {
 			if (declaredFacet instanceof Pattern || declaredFacet instanceof Enumeration || declaredFacet instanceof Assertions) {
 				// Do nothing; handled above
 				continue;
 			}
 			boolean found = false;
-			for (final Object o : baseFacets) {
-				if (o instanceof Class) {
-					final Class<?> facetClass = (Class<?>) o;
+			final Iterator<Object> iter = baseFacets.iterator();
+			while (iter.hasNext() && !found) {
+				final Object obj = iter.next();
+				if (obj instanceof Class) {
+					final Class<?> facetClass = (Class<?>) obj;
 					if (facetClass.isInstance(declaredFacet)) {
 						found = true;
-						foundBaseFacets.add(o);
-						break;
+						foundBaseFacets.add(obj);
 					}
 				} else {
-					final ConstrainingFacet<?> sibling = (ConstrainingFacet<?>) o;
+					final ConstrainingFacet sibling = (ConstrainingFacet) obj;
 					if (sibling.getClass().equals(declaredFacet.getClass())) {
 						if (Boolean.TRUE == sibling.fixed() && !Objects.equals(sibling.value(), declaredFacet.value())) {
 							throw new SchemaParseException(declaredFacet.node(), "Cannot modify constraining facet with fixed value = true");
 						}
 						found = true;
-						foundBaseFacets.add(o);
-						break;
+						foundBaseFacets.add(obj);
 					}
 				}
 			}
@@ -1028,7 +1125,7 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 		return newFacets;
 	}
 
-	protected static ConstrainingFacet<?> parse(final Result result) {
+	static ConstrainingFacet parse(final Result result) {
 		final Boolean fixed = Boolean.valueOf(result.value(AttributeValue.FIXED));
 		final String value = result.value(AttributeValue.VALUE);
 		switch (result.node().getLocalName()) {
@@ -1061,14 +1158,12 @@ public abstract class ConstrainingFacet<T> implements AnnotatedComponent {
 		case ExplicitTimezone.NAME:
 			return new ExplicitTimezone(result.node(), result.annotations(), fixed, ExplicitTimezone.Value.getByName(value));
 		default:
-			throw new AssertionError(result.node().getLocalName());
+			throw new SchemaParseException(result.node(), "Unknown constraining facet " + result.node().getLocalName());
 		}
 	}
 
 	/** @return The actual value of the value [attribute] */
-	public T value() {
-		return value;
-	}
+	public abstract Object value();
 
 	/** @return The actual value of the fixed [attribute], if present, otherwise false or ·absent· */
 	public Boolean fixed() {

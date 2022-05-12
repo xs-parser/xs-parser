@@ -8,7 +8,8 @@ import xs.parser.ComplexType.*;
 import xs.parser.Schema.*;
 import xs.parser.TypeDefinition.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -150,7 +151,7 @@ public class Element implements Term {
 			final Alternative last = alternatives.getFirst();
 			this.defaultType = last.test() == null
 					? last
-					: new Alternative(parent.node(), Deques.emptyDeque(), null, Deferred.of(last::type));
+					: new Alternative(parent.node(), Deques.emptyDeque(), null, last::type);
 		}
 
 		public Deque<Alternative> alternatives() {
@@ -163,14 +164,14 @@ public class Element implements Term {
 
 	}
 
-	protected static final SequenceParser parser = new SequenceParser()
+	private static final Deque<Block> ALLOWED_BLOCK = Deques.asDeque(Block.EXTENSION, Block.RESTRICTION, Block.SUBSTITUTION);
+	private static final Deque<Final> ALLOWED_FINAL = Deques.asDeque(Final.EXTENSION, Final.RESTRICTION);
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.ABSTRACT, AttributeValue.BLOCK, AttributeValue.DEFAULT, AttributeValue.FINAL, AttributeValue.FIXED, AttributeValue.FORM, AttributeValue.MAXOCCURS, AttributeValue.MINOCCURS, AttributeValue.NAME, AttributeValue.NILLABLE, AttributeValue.REF, AttributeValue.SUBSTITUTIONGROUP, AttributeValue.TARGETNAMESPACE, AttributeValue.TYPE)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, 1, ElementValue.COMPLEXTYPE, ElementValue.SIMPLETYPE)
 			.elements(0, Integer.MAX_VALUE, ElementValue.ALTERNATIVE)
 			.elements(0, Integer.MAX_VALUE, ElementValue.KEY, ElementValue.KEYREF, ElementValue.UNIQUE);
-	private static final Deque<Block> ALLOWED_BLOCK = Deques.asDeque(Block.EXTENSION, Block.RESTRICTION, Block.SUBSTITUTION);
-	private static final Deque<Final> ALLOWED_FINAL = Deques.asDeque(Final.EXTENSION, Final.RESTRICTION);
 
 	private final Node node;
 	private final Deque<Annotation> annotations;
@@ -204,7 +205,7 @@ public class Element implements Term {
 		this.isAbstract = isAbstract;
 	}
 
-	protected static Element parseDecl(final Result result) {
+	static Element parseDecl(final Result result) {
 		final String defaultValue = result.value(AttributeValue.DEFAULT);
 		final String fixedValue = result.value(AttributeValue.FIXED);
 		Deque<Block> effectiveBlockValue = result.value(AttributeValue.BLOCK);
@@ -269,50 +270,51 @@ public class Element implements Term {
 		if (typeName != null) {
 			type = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final SimpleType simpleType = result.parse(ElementValue.SIMPLETYPE);
-			if (simpleType != null) {
-				type = Deferred.value(simpleType);
-			} else {
-				final ComplexType complexType = result.parse(ElementValue.COMPLEXTYPE);
-				type = complexType != null ? Deferred.value(complexType)
-						: !substitutionGroupAffiliations.isEmpty() ? substitutionGroupAffiliations.getFirst().type
-						: Deferred.value(ComplexType.xsAnyType());
-			}
+			final TypeDefinition typeDefinition = result.parse(ElementValue.COMPLEXTYPE, ElementValue.SIMPLETYPE);
+			type = typeDefinition != null
+					? () -> typeDefinition
+					: substitutionGroupAffiliations.isEmpty()
+							? ComplexType::xsAnyType
+							: substitutionGroupAffiliations.getFirst().type;
 		}
 		final Deferred<ValueConstraint> valueConstraint;
 		if (defaultValue != null || fixedValue != null) {
 			valueConstraint = type.map(t -> {
 				final Deferred<SimpleType> effectiveSimpleType;
-				final ContentType c;
 				if (t instanceof SimpleType) {
-					effectiveSimpleType = Deferred.value((SimpleType) t);
-				} else if (ComplexType.Variety.SIMPLE.equals((c = ((ComplexType) t).contentType()).variety())) {
-					effectiveSimpleType = Deferred.value(c.simpleType());
+					effectiveSimpleType = () -> (SimpleType) t;
 				} else {
-					effectiveSimpleType = Deferred.value(SimpleType.xsString());
+					final ContentType contentType = ((ComplexType) t).contentType();
+					effectiveSimpleType = ComplexType.Variety.SIMPLE.equals(contentType.variety())
+							? contentType::simpleType
+							: SimpleType::xsString;
 				}
-				if (defaultValue != null) {
-					return new ValueConstraint(effectiveSimpleType, ValueConstraint.Variety.DEFAULT, defaultValue);
-				} else {
-					return new ValueConstraint(effectiveSimpleType, ValueConstraint.Variety.FIXED, fixedValue);
-				}
+				return defaultValue != null
+						? new ValueConstraint(effectiveSimpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
+						: fixedValue != null
+								? new ValueConstraint(effectiveSimpleType, ValueConstraint.Variety.FIXED, fixedValue)
+								: null;
 			});
 		} else {
 			valueConstraint = Deferred.none();
 		}
-		substitutionGroup.forEach(s -> substitutionGroupAffiliations.add(result.schema().find(s, Element.class))); // TODO (???)
+		substitutionGroup.forEach(s -> substitutionGroupAffiliations.add(result.schema().find(s, Element.class)));
 		final String name = result.value(AttributeValue.NAME);
 		return new Element(result.node(), result.annotations(), name, targetNamespace, type, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
 	}
 
-	protected static Particle<Element> parse(final Result result) {
+	static Particle parse(final Result result) {
 		final String maxOccurs = result.value(AttributeValue.MAXOCCURS);
 		final String minOccurs = result.value(AttributeValue.MINOCCURS);
 		final QName refName = result.value(AttributeValue.REF);
-		final Deferred<Element> decl = refName != null
-				? result.schema().find(refName, Element.class)
-				: Deferred.value(parseDecl(result));
-		return new Particle<>(result.node(), result.annotations(), maxOccurs, minOccurs, decl);
+		final Deferred<Element> decl;
+		if (refName != null) {
+			decl = result.schema().find(refName, Element.class);
+		} else {
+			final Element elem = parseDecl(result);
+			decl = () -> elem;
+		}
+		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, decl);
 	}
 
 	public String name() {

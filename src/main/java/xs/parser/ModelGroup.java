@@ -4,7 +4,8 @@ import java.util.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -23,11 +24,13 @@ public class ModelGroup implements Term {
 
 	public enum Compositor {
 
-		ALL, CHOICE, SEQUENCE;
+		ALL,
+		CHOICE,
+		SEQUENCE
 
 	}
 
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.MAXOCCURS, AttributeValue.MINOCCURS, AttributeValue.NAME, AttributeValue.REF)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, 1, ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE);
@@ -38,9 +41,9 @@ public class ModelGroup implements Term {
 	private final String targetNamespace;
 	private final ModelGroup modelGroup;
 	private final Compositor compositor;
-	private final Deque<Particle<Term>> particles;
+	private final Deque<Particle> particles;
 
-	ModelGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final ModelGroup modelGroup, final Compositor compositor, final Deque<Particle<Term>> particles) {
+	private ModelGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final ModelGroup modelGroup, final Compositor compositor, final Deque<Particle> particles) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -50,7 +53,7 @@ public class ModelGroup implements Term {
 		this.particles = Objects.requireNonNull(particles);
 	}
 
-	static ModelGroup synthetic(final Node node, final Deque<Annotation> annotations, final Compositor compositor, final Deque<Particle<Term>> particles) {
+	static ModelGroup synthetic(final Node node, final Deque<Annotation> annotations, final Compositor compositor, final Deque<Particle> particles) {
 		return new ModelGroup(node, annotations, null, null, null, compositor, particles) {
 			@Override
 			public ModelGroup modelGroup() {
@@ -59,15 +62,15 @@ public class ModelGroup implements Term {
 		};
 	}
 
-	protected static ModelGroup parseDecl(final Result result) {
-		final Particle<ModelGroup> particle = result.parse(ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE);
+	static ModelGroup parseDecl(final Result result) {
+		final Particle particle = result.parse(ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE);
 		final String name = result.value(AttributeValue.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
-		final ModelGroup term = particle.term();
+		final ModelGroup term = (ModelGroup) particle.term();
 		return new ModelGroup(result.node(), result.annotations(), name, targetNamespace, term, term.compositor(), term.particles());
 	}
 
-	protected static Particle<ModelGroup> parse(final Result result) {
+	static Particle parse(final Result result) {
 		final String maxOccurs = result.value(AttributeValue.MAXOCCURS);
 		final String minOccurs = result.value(AttributeValue.MINOCCURS);
 		final QName refName = result.value(AttributeValue.REF);
@@ -88,7 +91,7 @@ public class ModelGroup implements Term {
 				}
 
 				@Override
-				public Deque<Particle<Term>> particles() {
+				public Deque<Particle> particles() {
 					return ref.get().particles();
 				}
 
@@ -96,7 +99,7 @@ public class ModelGroup implements Term {
 		} else {
 			term = parseDecl(result);
 		}
-		return new Particle<>(result.node(), result.annotations(), maxOccurs, minOccurs, term);
+		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, term);
 	}
 
 	public String name() {
@@ -115,7 +118,7 @@ public class ModelGroup implements Term {
 		return compositor;
 	}
 
-	public Deque<Particle<Term>> particles() {
+	public Deque<Particle> particles() {
 		return Deques.unmodifiableDeque(particles);
 	}
 

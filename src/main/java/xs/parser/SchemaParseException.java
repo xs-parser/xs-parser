@@ -1,7 +1,7 @@
 package xs.parser;
 
 import org.w3c.dom.*;
-import xs.parser.internal.*;
+import xs.parser.internal.util.*;
 
 public class SchemaParseException extends RuntimeException {
 

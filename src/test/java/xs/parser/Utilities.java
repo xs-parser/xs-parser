@@ -6,7 +6,7 @@ import java.nio.charset.*;
 import org.w3c.dom.*;
 import org.xml.sax.*;
 import xs.parser.Schema.*;
-import xs.parser.internal.*;
+import xs.parser.internal.util.*;
 
 public class Utilities {
 

@@ -1,4 +1,4 @@
-package xs.parser.internal;
+package xs.parser.internal.util;
 
 import java.util.*;
 

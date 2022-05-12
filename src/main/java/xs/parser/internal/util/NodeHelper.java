@@ -1,4 +1,4 @@
-package xs.parser.internal;
+package xs.parser.internal.util;
 
 import java.io.*;
 import java.util.*;
@@ -11,6 +11,7 @@ import javax.xml.transform.stream.*;
 import org.w3c.dom.*;
 import xs.parser.*;
 import xs.parser.Element;
+import xs.parser.internal.*;
 
 public final class NodeHelper {
 

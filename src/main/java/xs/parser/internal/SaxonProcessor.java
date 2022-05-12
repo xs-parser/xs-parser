@@ -7,6 +7,7 @@ import java.util.stream.*;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.*;
 import org.w3c.dom.*;
+import xs.parser.internal.util.*;
 
 /**
  * Processor for XPath and XSLT.

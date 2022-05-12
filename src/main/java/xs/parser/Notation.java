@@ -3,7 +3,8 @@ package xs.parser;
 import java.util.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -19,7 +20,7 @@ import xs.parser.internal.SequenceParser.*;
  */
 public class Notation implements AnnotatedComponent {
 
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.requiredAttributes(AttributeValue.NAME)
 			.optionalAttributes(AttributeValue.ID, AttributeValue.PUBLIC, AttributeValue.SYSTEM)
 			.elements(0, 1, ElementValue.ANNOTATION);
@@ -40,7 +41,7 @@ public class Notation implements AnnotatedComponent {
 		this.systemIdentifier = systemId;
 	}
 
-	protected static Notation parse(final Result result) {
+	static Notation parse(final Result result) {
 		final String name = result.value(AttributeValue.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
 		final String publicId = result.value(AttributeValue.PUBLIC);

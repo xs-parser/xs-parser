@@ -3,10 +3,12 @@ package xs.parser;
 import java.util.*;
 import java.util.stream.*;
 import javax.xml.*;
+import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.ConstrainingFacet.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -102,10 +104,159 @@ public class SimpleType implements TypeDefinition {
 
 	}
 
-	protected static final SequenceParser parser = new SequenceParser()
+	/**
+	 * <pre>
+	 * &lt;list
+	 *   id = ID
+	 *   itemType = QName
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?, simpleType?)
+	 * &lt;/list&gt;
+	 * </pre>
+	 */
+	public static class List {
+
+		static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttributeValue.ID, AttributeValue.ITEMTYPE)
+				.elements(0, 1, ElementValue.ANNOTATION)
+				.elements(0, 1, ElementValue.SIMPLETYPE);
+
+		private final Deque<Annotation> annotations;
+		private final Deferred<SimpleType> itemType;
+
+		List(final Deque<Annotation> annotations, final Deferred<SimpleType> itemType) {
+			this.annotations = Objects.requireNonNull(annotations);
+			this.itemType = Objects.requireNonNull(itemType);
+		}
+
+		static List parse(final Result result) {
+			final QName itemTypeName = result.value(AttributeValue.ITEMTYPE);
+			if (itemTypeName != null) {
+				return new List(result.annotations(), result.schema().find(itemTypeName, SimpleType.class));
+			}
+			final SimpleType itemSimpleType = result.parse(ElementValue.SIMPLETYPE);
+			return new List(result.annotations(), () -> itemSimpleType);
+		}
+
+		private Deque<Annotation> annotations() {
+			return annotations;
+		}
+
+		private Deferred<SimpleType> itemType() {
+			return itemType;
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;restriction
+	 *   base = QName
+	 *   id = ID
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?, (simpleType?, (minExclusive | minInclusive | maxExclusive | maxInclusive | totalDigits | fractionDigits | length | minLength | maxLength | enumeration | whiteSpace | pattern | assertion | explicitTimezone | {any with namespace: ##other})*))
+	 * &lt;/restriction&gt;
+	 * </pre>
+	 */
+	public static class Restriction {
+
+		static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttributeValue.BASE, AttributeValue.ID)
+				.elements(0, 1, ElementValue.ANNOTATION)
+				.elements(0, 1, ElementValue.SIMPLETYPE)
+				.elements(0, Integer.MAX_VALUE, ElementValue.MINEXCLUSIVE, ElementValue.MININCLUSIVE, ElementValue.MAXEXCLUSIVE, ElementValue.MAXINCLUSIVE, ElementValue.TOTALDIGITS, ElementValue.FRACTIONDIGITS, ElementValue.LENGTH, ElementValue.MINLENGTH, ElementValue.MAXLENGTH, ElementValue.ENUMERATION, ElementValue.WHITESPACE, ElementValue.PATTERN, ElementValue.ASSERTION, ElementValue.EXPLICITTIMEZONE, ElementValue.ANY);
+
+		private final Deque<Annotation> annotations;
+		private final Deferred<SimpleType> base;
+		private final Deque<ConstrainingFacet> facets;
+		private final Deque<Particle> wildcard;
+
+		private Restriction(final Deque<Annotation> annotations, final Deferred<SimpleType> base, final Deque<ConstrainingFacet> facets, final Deque<Particle> wildcard) {
+			this.annotations = Objects.requireNonNull(annotations);
+			this.base = Objects.requireNonNull(base);
+			this.facets = Objects.requireNonNull(facets);
+			this.wildcard = Objects.requireNonNull(wildcard);
+		}
+
+		static Restriction parse(final Result result) {
+			final QName baseType = result.value(AttributeValue.BASE);
+			final Deferred<SimpleType> base = baseType == null
+					? Deferred.of(() -> result.parse(ElementValue.SIMPLETYPE))
+					: result.schema().find(baseType, SimpleType.class);
+			final Deque<ConstrainingFacet> facets = result.parseAll(ElementValue.MINEXCLUSIVE, ElementValue.MININCLUSIVE, ElementValue.MAXEXCLUSIVE, ElementValue.MAXINCLUSIVE, ElementValue.TOTALDIGITS, ElementValue.FRACTIONDIGITS, ElementValue.LENGTH, ElementValue.MINLENGTH, ElementValue.MAXLENGTH, ElementValue.ENUMERATION, ElementValue.WHITESPACE, ElementValue.PATTERN, ElementValue.ASSERTION, ElementValue.EXPLICITTIMEZONE);
+			final Deque<Particle> wildcard = result.parseAll(ElementValue.ANY);
+			return new Restriction(result.annotations(), base, facets, wildcard);
+		}
+
+		private Deque<Annotation> annotations() {
+			return annotations;
+		}
+
+		private Deferred<SimpleType> base() {
+			return base;
+		}
+
+		private Deque<ConstrainingFacet> facets() {
+			return facets;
+		}
+
+		private Deque<Particle> wildcard() {
+			return wildcard;
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;union
+	 *   id = ID
+	 *   memberTypes = List of QName
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?, simpleType*)
+	 * &lt;/union&gt;
+	 * </pre>
+	 */
+	public static class Union {
+
+		static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttributeValue.ID, AttributeValue.MEMBERTYPES)
+				.elements(0, 1, ElementValue.ANNOTATION)
+				.elements(0, Integer.MAX_VALUE, ElementValue.SIMPLETYPE);
+
+		private final Deque<Annotation> annotations;
+		private final Deque<SimpleType> memberTypes;
+
+		private Union(final Deque<Annotation> annotations, final Deque<SimpleType> memberTypes) {
+			this.annotations = Objects.requireNonNull(annotations);
+			this.memberTypes = Objects.requireNonNull(memberTypes);
+		}
+
+		static Union parse(final Result result) {
+			final Deque<QName> memberTypes = result.value(AttributeValue.MEMBERTYPES);
+			if (memberTypes != null) {
+				final Deque<SimpleType> memberTypesValues = DeferredArrayDeque.of(memberTypes.stream()
+						.map(memberType -> result.schema().find(memberType, SimpleType.class))
+						.collect(Collectors.toCollection(ArrayDeque::new)));
+				return new Union(result.annotations(), memberTypesValues);
+			}
+			final Deque<SimpleType> memberTypesElem = result.parseAll(ElementValue.SIMPLETYPE);
+			return new Union(result.annotations(), memberTypesElem);
+		}
+
+		private Deque<Annotation> annotations() {
+			return annotations;
+		}
+
+		private Deque<SimpleType> memberTypes() {
+			return memberTypes;
+		}
+
+	}
+
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.FINAL, AttributeValue.ID, AttributeValue.NAME)
 			.elements(0, 1, ElementValue.ANNOTATION)
-			.elements(1, 1, ElementValue.SIMPLE_RESTRICTION, ElementValue.LIST, ElementValue.UNION);
+			.elements(1, 1, ElementValue.SIMPLETYPE_RESTRICTION, ElementValue.SIMPLETYPE_LIST, ElementValue.SIMPLETYPE_UNION);
 	private static final java.util.regex.Pattern REPLACE_PATTERN = java.util.regex.Pattern.compile("\\r\\n\\t");
 	private static final java.util.regex.Pattern COLLAPSE_PATTERN = java.util.regex.Pattern.compile("\\r\\n\\t[ ]{2,}");
 	static final String ANYSIMPLETYPE_NAME = "anySimpleType";
@@ -165,65 +316,61 @@ public class SimpleType implements TypeDefinition {
 	static {
 		final Document doc = NodeHelper.newDocument();
 		final Node xsAnySimpleTypeNode = NodeHelper.newNode(doc, ElementValue.SIMPLETYPE, "xs", XMLConstants.W3C_XML_SCHEMA_NS_URI, ANYSIMPLETYPE_NAME);
-		xsAnySimpleType = new SimpleType(xsAnySimpleTypeNode, Deques.emptyDeque(), ANYSIMPLETYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, Deferred.of(ComplexType::xsAnyType), Deferred.none(), Deferred.value(Deques.emptyDeque()), null, null, null);
+		xsAnySimpleType = new SimpleType(xsAnySimpleTypeNode, Deques.emptyDeque(), ANYSIMPLETYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, ComplexType::xsAnyType, Deferred.none(), Deques::emptyDeque, null, null, null);
 		xsAnyAtomicType = create(doc, ANYATOMICTYPE_NAME, xsAnySimpleType);
-		{
-			final Map<String, SimpleType> primitiveTypes = new HashMap<>();
-			primitiveTypes.put(STRING_NAME, create(doc, STRING_NAME, xsAnyAtomicType));
-			primitiveTypes.put(BOOLEAN_NAME, create(doc, BOOLEAN_NAME, xsAnyAtomicType));
-			primitiveTypes.put(DECIMAL_NAME, create(doc, DECIMAL_NAME, xsAnyAtomicType));
-			primitiveTypes.put(FLOAT_NAME, create(doc, FLOAT_NAME, xsAnyAtomicType));
-			primitiveTypes.put(DOUBLE_NAME, create(doc, DOUBLE_NAME, xsAnyAtomicType));
-			primitiveTypes.put(DURATION_NAME, create(doc, DURATION_NAME, xsAnyAtomicType));
-			primitiveTypes.put(DATETIME_NAME, create(doc, DATETIME_NAME, xsAnyAtomicType));
-			primitiveTypes.put(DATE_NAME, create(doc, DATE_NAME, xsAnyAtomicType));
-			primitiveTypes.put(TIME_NAME, create(doc, TIME_NAME, xsAnyAtomicType));
-			primitiveTypes.put(GYEARMONTH_NAME, create(doc, GYEARMONTH_NAME, xsAnyAtomicType));
-			primitiveTypes.put(GYEAR_NAME, create(doc, GYEAR_NAME, xsAnyAtomicType));
-			primitiveTypes.put(GMONTHDAY_NAME, create(doc, GMONTHDAY_NAME, xsAnyAtomicType));
-			primitiveTypes.put(GDAY_NAME, create(doc, GDAY_NAME, xsAnyAtomicType));
-			primitiveTypes.put(GMONTH_NAME, create(doc, GMONTH_NAME, xsAnyAtomicType));
-			primitiveTypes.put(HEXBINARY_NAME, create(doc, HEXBINARY_NAME, xsAnyAtomicType));
-			primitiveTypes.put(BASE64BINARY_NAME, create(doc, BASE64BINARY_NAME, xsAnyAtomicType));
-			primitiveTypes.put(ANYURI_NAME, create(doc, ANYURI_NAME, xsAnyAtomicType));
-			primitiveTypes.put(QNAME_NAME, create(doc, QNAME_NAME, xsAnyAtomicType));
-			primitiveTypes.put(NOTATION_NAME, create(doc, NOTATION_NAME, xsAnyAtomicType));
-			assert primitiveTypes.size() == 19 : primitiveTypes.size() + ", " + primitiveTypes;
-			PRIMITIVE_TYPES = Collections.unmodifiableMap(primitiveTypes);
-		}
-		{
-			final Map<String, SimpleType> builtinTypes = new HashMap<>();
-			builtinTypes.put(NORMALIZEDSTRING_NAME, create(doc, NORMALIZEDSTRING_NAME, PRIMITIVE_TYPES.get(STRING_NAME)));
-			builtinTypes.put(TOKEN_NAME, create(doc, TOKEN_NAME, builtinTypes.get(NORMALIZEDSTRING_NAME)));
-			builtinTypes.put(LANGUAGE_NAME, create(doc, LANGUAGE_NAME, builtinTypes.get(TOKEN_NAME)));
-			builtinTypes.put(NMTOKEN_NAME, create(doc, NMTOKEN_NAME, builtinTypes.get(TOKEN_NAME)));
-			builtinTypes.put(NMTOKENS_NAME, create(doc, NMTOKENS_NAME, xsAnySimpleType));
-			builtinTypes.put(NAME_NAME, create(doc, NAME_NAME, builtinTypes.get(TOKEN_NAME)));
-			builtinTypes.put(NCNAME_NAME, create(doc, NCNAME_NAME, builtinTypes.get(NAME_NAME)));
-			builtinTypes.put(ID_NAME, create(doc, ID_NAME, builtinTypes.get(NCNAME_NAME)));
-			builtinTypes.put(IDREF_NAME, create(doc, IDREF_NAME, builtinTypes.get(NCNAME_NAME)));
-			builtinTypes.put(IDREFS_NAME, create(doc, IDREFS_NAME, xsAnySimpleType));
-			builtinTypes.put(ENTITY_NAME, create(doc, ENTITY_NAME, builtinTypes.get(NCNAME_NAME)));
-			builtinTypes.put(ENTITIES_NAME, create(doc, ENTITIES_NAME, xsAnySimpleType));
-			builtinTypes.put(INTEGER_NAME, create(doc, INTEGER_NAME, PRIMITIVE_TYPES.get(DECIMAL_NAME)));
-			builtinTypes.put(NONPOSITIVEINTEGER_NAME, create(doc, NONPOSITIVEINTEGER_NAME, builtinTypes.get(INTEGER_NAME)));
-			builtinTypes.put(NEGATIVEINTEGER_NAME, create(doc, NEGATIVEINTEGER_NAME, builtinTypes.get(NONPOSITIVEINTEGER_NAME)));
-			builtinTypes.put(LONG_NAME, create(doc, LONG_NAME, builtinTypes.get(INTEGER_NAME)));
-			builtinTypes.put(INT_NAME, create(doc, INT_NAME, builtinTypes.get(LONG_NAME)));
-			builtinTypes.put(SHORT_NAME, create(doc, SHORT_NAME, builtinTypes.get(INT_NAME)));
-			builtinTypes.put(BYTE_NAME, create(doc, BYTE_NAME, builtinTypes.get(SHORT_NAME)));
-			builtinTypes.put(NONNEGATIVEINTEGER_NAME, create(doc, NONNEGATIVEINTEGER_NAME, builtinTypes.get(INTEGER_NAME)));
-			builtinTypes.put(UNSIGNEDLONG_NAME, create(doc, UNSIGNEDLONG_NAME, builtinTypes.get(NONNEGATIVEINTEGER_NAME)));
-			builtinTypes.put(UNSIGNEDINT_NAME, create(doc, UNSIGNEDINT_NAME, builtinTypes.get(UNSIGNEDLONG_NAME)));
-			builtinTypes.put(UNSIGNEDSHORT_NAME, create(doc, UNSIGNEDSHORT_NAME, builtinTypes.get(UNSIGNEDINT_NAME)));
-			builtinTypes.put(UNSIGNEDBYTE_NAME, create(doc, UNSIGNEDBYTE_NAME, builtinTypes.get(UNSIGNEDINT_NAME)));
-			builtinTypes.put(POSITIVEINTEGER_NAME, create(doc, POSITIVEINTEGER_NAME, builtinTypes.get(NONNEGATIVEINTEGER_NAME)));
-			builtinTypes.put(YEARMONTHDURATION_NAME, create(doc, YEARMONTHDURATION_NAME, PRIMITIVE_TYPES.get(DURATION_NAME)));
-			builtinTypes.put(DAYTIMEDURATION_NAME, create(doc, DAYTIMEDURATION_NAME, PRIMITIVE_TYPES.get(DURATION_NAME)));
-			builtinTypes.put(DATETIMESTAMP_NAME, create(doc, DATETIMESTAMP_NAME, PRIMITIVE_TYPES.get(DATETIME_NAME)));
-			assert builtinTypes.size() == 28;
-			BUILTIN_TYPES = Collections.unmodifiableMap(builtinTypes);
-		}
+		final Map<String, SimpleType> primitiveTypes = new HashMap<>();
+		primitiveTypes.put(STRING_NAME, create(doc, STRING_NAME, xsAnyAtomicType));
+		primitiveTypes.put(BOOLEAN_NAME, create(doc, BOOLEAN_NAME, xsAnyAtomicType));
+		primitiveTypes.put(DECIMAL_NAME, create(doc, DECIMAL_NAME, xsAnyAtomicType));
+		primitiveTypes.put(FLOAT_NAME, create(doc, FLOAT_NAME, xsAnyAtomicType));
+		primitiveTypes.put(DOUBLE_NAME, create(doc, DOUBLE_NAME, xsAnyAtomicType));
+		primitiveTypes.put(DURATION_NAME, create(doc, DURATION_NAME, xsAnyAtomicType));
+		primitiveTypes.put(DATETIME_NAME, create(doc, DATETIME_NAME, xsAnyAtomicType));
+		primitiveTypes.put(DATE_NAME, create(doc, DATE_NAME, xsAnyAtomicType));
+		primitiveTypes.put(TIME_NAME, create(doc, TIME_NAME, xsAnyAtomicType));
+		primitiveTypes.put(GYEARMONTH_NAME, create(doc, GYEARMONTH_NAME, xsAnyAtomicType));
+		primitiveTypes.put(GYEAR_NAME, create(doc, GYEAR_NAME, xsAnyAtomicType));
+		primitiveTypes.put(GMONTHDAY_NAME, create(doc, GMONTHDAY_NAME, xsAnyAtomicType));
+		primitiveTypes.put(GDAY_NAME, create(doc, GDAY_NAME, xsAnyAtomicType));
+		primitiveTypes.put(GMONTH_NAME, create(doc, GMONTH_NAME, xsAnyAtomicType));
+		primitiveTypes.put(HEXBINARY_NAME, create(doc, HEXBINARY_NAME, xsAnyAtomicType));
+		primitiveTypes.put(BASE64BINARY_NAME, create(doc, BASE64BINARY_NAME, xsAnyAtomicType));
+		primitiveTypes.put(ANYURI_NAME, create(doc, ANYURI_NAME, xsAnyAtomicType));
+		primitiveTypes.put(QNAME_NAME, create(doc, QNAME_NAME, xsAnyAtomicType));
+		primitiveTypes.put(NOTATION_NAME, create(doc, NOTATION_NAME, xsAnyAtomicType));
+		assert primitiveTypes.size() == 19 : primitiveTypes.size() + ", " + primitiveTypes;
+		PRIMITIVE_TYPES = Collections.unmodifiableMap(primitiveTypes);
+		final Map<String, SimpleType> builtinTypes = new HashMap<>();
+		builtinTypes.put(NORMALIZEDSTRING_NAME, create(doc, NORMALIZEDSTRING_NAME, PRIMITIVE_TYPES.get(STRING_NAME)));
+		builtinTypes.put(TOKEN_NAME, create(doc, TOKEN_NAME, builtinTypes.get(NORMALIZEDSTRING_NAME)));
+		builtinTypes.put(LANGUAGE_NAME, create(doc, LANGUAGE_NAME, builtinTypes.get(TOKEN_NAME)));
+		builtinTypes.put(NMTOKEN_NAME, create(doc, NMTOKEN_NAME, builtinTypes.get(TOKEN_NAME)));
+		builtinTypes.put(NMTOKENS_NAME, create(doc, NMTOKENS_NAME, xsAnySimpleType));
+		builtinTypes.put(NAME_NAME, create(doc, NAME_NAME, builtinTypes.get(TOKEN_NAME)));
+		builtinTypes.put(NCNAME_NAME, create(doc, NCNAME_NAME, builtinTypes.get(NAME_NAME)));
+		builtinTypes.put(ID_NAME, create(doc, ID_NAME, builtinTypes.get(NCNAME_NAME)));
+		builtinTypes.put(IDREF_NAME, create(doc, IDREF_NAME, builtinTypes.get(NCNAME_NAME)));
+		builtinTypes.put(IDREFS_NAME, create(doc, IDREFS_NAME, xsAnySimpleType));
+		builtinTypes.put(ENTITY_NAME, create(doc, ENTITY_NAME, builtinTypes.get(NCNAME_NAME)));
+		builtinTypes.put(ENTITIES_NAME, create(doc, ENTITIES_NAME, xsAnySimpleType));
+		builtinTypes.put(INTEGER_NAME, create(doc, INTEGER_NAME, PRIMITIVE_TYPES.get(DECIMAL_NAME)));
+		builtinTypes.put(NONPOSITIVEINTEGER_NAME, create(doc, NONPOSITIVEINTEGER_NAME, builtinTypes.get(INTEGER_NAME)));
+		builtinTypes.put(NEGATIVEINTEGER_NAME, create(doc, NEGATIVEINTEGER_NAME, builtinTypes.get(NONPOSITIVEINTEGER_NAME)));
+		builtinTypes.put(LONG_NAME, create(doc, LONG_NAME, builtinTypes.get(INTEGER_NAME)));
+		builtinTypes.put(INT_NAME, create(doc, INT_NAME, builtinTypes.get(LONG_NAME)));
+		builtinTypes.put(SHORT_NAME, create(doc, SHORT_NAME, builtinTypes.get(INT_NAME)));
+		builtinTypes.put(BYTE_NAME, create(doc, BYTE_NAME, builtinTypes.get(SHORT_NAME)));
+		builtinTypes.put(NONNEGATIVEINTEGER_NAME, create(doc, NONNEGATIVEINTEGER_NAME, builtinTypes.get(INTEGER_NAME)));
+		builtinTypes.put(UNSIGNEDLONG_NAME, create(doc, UNSIGNEDLONG_NAME, builtinTypes.get(NONNEGATIVEINTEGER_NAME)));
+		builtinTypes.put(UNSIGNEDINT_NAME, create(doc, UNSIGNEDINT_NAME, builtinTypes.get(UNSIGNEDLONG_NAME)));
+		builtinTypes.put(UNSIGNEDSHORT_NAME, create(doc, UNSIGNEDSHORT_NAME, builtinTypes.get(UNSIGNEDINT_NAME)));
+		builtinTypes.put(UNSIGNEDBYTE_NAME, create(doc, UNSIGNEDBYTE_NAME, builtinTypes.get(UNSIGNEDINT_NAME)));
+		builtinTypes.put(POSITIVEINTEGER_NAME, create(doc, POSITIVEINTEGER_NAME, builtinTypes.get(NONNEGATIVEINTEGER_NAME)));
+		builtinTypes.put(YEARMONTHDURATION_NAME, create(doc, YEARMONTHDURATION_NAME, PRIMITIVE_TYPES.get(DURATION_NAME)));
+		builtinTypes.put(DAYTIMEDURATION_NAME, create(doc, DAYTIMEDURATION_NAME, PRIMITIVE_TYPES.get(DURATION_NAME)));
+		builtinTypes.put(DATETIMESTAMP_NAME, create(doc, DATETIMESTAMP_NAME, PRIMITIVE_TYPES.get(DATETIME_NAME)));
+		assert builtinTypes.size() == 28;
+		BUILTIN_TYPES = Collections.unmodifiableMap(builtinTypes);
 	}
 
 	private final Node node;
@@ -235,13 +382,13 @@ public class SimpleType implements TypeDefinition {
 	private final Node context;
 	private final Deferred<Variety> variety;
 	private final Deferred<Deque<Object>> facets;
-	private final Deferred<Deque<ConstrainingFacet<?>>> facetValues;
-	private final Deferred<Deque<FundamentalFacet<?>>> fundamentalFacets;
+	private final Deferred<Deque<ConstrainingFacet>> facetValues;
+	private final Deferred<Deque<FundamentalFacet>> fundamentalFacets;
 	private final Deferred<SimpleType> primitiveType;
 	private final Deferred<SimpleType> itemType;
 	private final Deferred<Deque<SimpleType>> memberTypes;
 
-	SimpleType(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Node context, final Deferred<? extends TypeDefinition> baseType, final Deferred<Variety> variety, final Deferred<Deque<Object>> facets, final SimpleRestriction restriction, final SimpleList list, final SimpleUnion union) {
+	SimpleType(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Node context, final Deferred<? extends TypeDefinition> baseType, final Deferred<Variety> variety, final Deferred<Deque<Object>> facets, final Restriction restriction, final List list, final Union union) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -251,9 +398,9 @@ public class SimpleType implements TypeDefinition {
 		this.context = context;
 		this.variety = Objects.requireNonNull(variety);
 		this.facets = Objects.requireNonNull(facets);
-		this.facetValues = facets.map(f -> f.stream().filter(ConstrainingFacet.class::isInstance).map(c -> (ConstrainingFacet<?>) c).collect(Collectors.toCollection(ArrayDeque::new)));
+		this.facetValues = facets.map(f -> f.stream().filter(ConstrainingFacet.class::isInstance).map(ConstrainingFacet.class::cast).collect(Collectors.toCollection(ArrayDeque::new)));
 		this.fundamentalFacets = Deferred.of(() -> {
-			final Deque<FundamentalFacet<?>> f = FundamentalFacet.find(this);
+			final Deque<FundamentalFacet> f = FundamentalFacet.find(this);
 			if (f != null) {
 				return f;
 			}
@@ -261,10 +408,10 @@ public class SimpleType implements TypeDefinition {
 			if (base instanceof ComplexType) {
 				return Deques.emptyDeque();
 			}
-			return ((SimpleType) baseType.get()).fundamentalFacets();
+			return ((SimpleType) base).fundamentalFacets();
 		});
 		this.primitiveType = variety.map(v -> {
-			if (Variety.ATOMIC.equals(v) && !equals(SimpleType.xsAnyAtomicType)) {
+			if (Variety.ATOMIC.equals(v) && this != xsAnyAtomicType) {
 				if (PRIMITIVE_TYPES.containsValue(this)) {
 					return this;
 				}
@@ -276,11 +423,11 @@ public class SimpleType implements TypeDefinition {
 		this.itemType = variety.map(v -> {
 			if (Variety.LIST.equals(v)) {
 				assert restriction != null || list != null;
-				final SimpleType itemType = restriction != null
+				final SimpleType itemSimpleType = restriction != null
 						? restriction.base().get().itemType()
 						: list.itemType().get();
-				assert Variety.ATOMIC.equals(itemType.variety()) || (Variety.UNION.equals(itemType.variety()) && itemType.memberTypes().stream().allMatch(s -> Variety.ATOMIC.equals(s.variety())));
-				return itemType;
+				assert Variety.ATOMIC.equals(itemSimpleType.variety()) || (Variety.UNION.equals(itemSimpleType.variety()) && itemSimpleType.memberTypes().stream().allMatch(s -> Variety.ATOMIC.equals(s.variety())));
+				return itemSimpleType;
 			}
 			return null;
 		});
@@ -298,21 +445,21 @@ public class SimpleType implements TypeDefinition {
 	private static SimpleType create(final Document doc, final String name, final TypeDefinition base) {
 		Objects.requireNonNull(name);
 		Objects.requireNonNull(base);
-		final Deque<Object> facets = SimpleType.ANYATOMICTYPE_NAME.equals(name) ? Deques.emptyDeque() : ConstrainingFacet.find(name);
+		final Deque<Object> facets = ANYATOMICTYPE_NAME.equals(name) ? Deques.emptyDeque() : ConstrainingFacet.find(name);
 		Objects.requireNonNull(facets);
 		final Variety variety;
-		final SimpleList list;
+		final List list;
 		switch (name) {
 		case ENTITIES_NAME:
-			list = new SimpleList(Deques.emptyDeque(), Deferred.of(SimpleType::xsENTITY));
+			list = new List(Deques.emptyDeque(), SimpleType::xsENTITY);
 			variety = Variety.LIST;
 			break;
 		case IDREFS_NAME:
-			list = new SimpleList(Deques.emptyDeque(), Deferred.of(SimpleType::xsIDREF));
+			list = new List(Deques.emptyDeque(), SimpleType::xsIDREF);
 			variety = Variety.LIST;
 			break;
 		case NMTOKENS_NAME:
-			list = new SimpleList(Deques.emptyDeque(), Deferred.of(SimpleType::xsNMTOKEN));
+			list = new List(Deques.emptyDeque(), SimpleType::xsNMTOKEN);
 			variety = Variety.LIST;
 			break;
 		default:
@@ -320,10 +467,10 @@ public class SimpleType implements TypeDefinition {
 			variety = Variety.ATOMIC;
 		}
 		final Node node = NodeHelper.newNode(doc, ElementValue.SIMPLETYPE, "xs", XMLConstants.W3C_XML_SCHEMA_NS_URI, name);
-		return new SimpleType(node, Deques.emptyDeque(), name, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, Deferred.value(base), Deferred.value(variety), Deferred.value(facets), null, list, null);
+		return new SimpleType(node, Deques.emptyDeque(), name, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, () -> base, () -> variety, () -> facets, null, list, null);
 	}
 
-	protected static SimpleType findPrimitiveOrBuiltinType(final String localName) {
+	static SimpleType findPrimitiveOrBuiltinType(final String localName) {
 		SimpleType s = PRIMITIVE_TYPES.get(localName);
 		if (s != null) {
 			return s;
@@ -335,20 +482,20 @@ public class SimpleType implements TypeDefinition {
 		throw new IllegalArgumentException("No primitive or built-in simpleType for name " + localName);
 	}
 
-	protected static SimpleType parse(final Result result) {
+	static SimpleType parse(final Result result) {
 		final String name = result.value(AttributeValue.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
 		Deque<Final> finals = result.value(AttributeValue.FINAL);
 		if (finals.isEmpty()) {
 			finals = Deques.singletonDeque(result.schema().finalDefault());
 		}
-		final SimpleRestriction restriction = result.parse(ElementValue.SIMPLE_RESTRICTION);
-		final SimpleList list = result.parse(ElementValue.LIST);
-		final SimpleUnion union = result.parse(ElementValue.UNION);
-		final Deferred<Variety> variety = list != null ? Deferred.value(Variety.LIST)
-				: union != null ? Deferred.value(Variety.UNION)
+		final Restriction restriction = result.parse(ElementValue.SIMPLETYPE_RESTRICTION);
+		final List list = result.parse(ElementValue.SIMPLETYPE_LIST);
+		final Union union = result.parse(ElementValue.SIMPLETYPE_UNION);
+		final Deferred<Variety> variety = list != null ? () -> Variety.LIST
+				: union != null ? () -> Variety.UNION
 				: restriction.base().map(SimpleType::variety);
-		final Deferred<SimpleType> baseType = variety.map(v -> Variety.LIST.equals(v) || Variety.UNION.equals(v) ? SimpleType.xsAnySimpleType : restriction.base().get());
+		final Deferred<SimpleType> baseType = variety.map(v -> Variety.LIST.equals(v) || Variety.UNION.equals(v) ? xsAnySimpleType : restriction.base().get());
 		final Node context;
 		final Node parentNode = result.node().getParentNode();
 		if (name != null || parentNode == null) {
@@ -382,9 +529,9 @@ public class SimpleType implements TypeDefinition {
 		return new SimpleType(result.node(), result.annotations(), name, targetNamespace, finals, context, baseType, variety, facets, restriction, list, union);
 	}
 
-	protected static SimpleType wrap(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Node context, final SimpleType baseSimpleType, final Deque<ConstrainingFacet<?>> declaredFacets) {
+	static SimpleType wrap(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Node context, final SimpleType baseSimpleType, final Deque<ConstrainingFacet> declaredFacets) {
 		final Deferred<Deque<Object>> facets = baseSimpleType.facets.map(f -> ConstrainingFacet.combineLikeFacets(baseSimpleType, f, declaredFacets));
-		return new SimpleType(node, annotations, name, targetNamespace, finals, context, Deferred.value(baseSimpleType), baseSimpleType.variety, facets, null, null, null) {
+		return new SimpleType(node, annotations, name, targetNamespace, finals, context, () -> baseSimpleType, baseSimpleType.variety, facets, null, null, null) {
 
 			@Override
 			public SimpleType primitiveType() {
@@ -647,16 +794,16 @@ public class SimpleType implements TypeDefinition {
 		return Objects.requireNonNull(BUILTIN_TYPES.get(DATETIMESTAMP_NAME));
 	}
 
-	protected String lexicalMapping(final String value) {
-		if (SimpleType.xsAnySimpleType() == this) {
+	String lexicalMapping(final String value) {
+		if (this == xsAnySimpleType) {
 			return value;
 		}
 		final WhiteSpace.Value whiteSpaceValue;
 		switch (variety()) {
 		case ATOMIC:
-			if (SimpleType.xsString() == this) {
+			if (this == xsString()) {
 				whiteSpaceValue = WhiteSpace.Value.PRESERVE;
-			} else if (SimpleType.xsString() == primitiveType()) {
+			} else if (primitiveType() == xsString()) {
 				whiteSpaceValue = facets().stream().filter(WhiteSpace.class::isInstance).map(WhiteSpace.class::cast).map(WhiteSpace::value).findAny().orElse(WhiteSpace.Value.PRESERVE);
 			} else {
 				whiteSpaceValue = WhiteSpace.Value.COLLAPSE;
@@ -692,12 +839,12 @@ public class SimpleType implements TypeDefinition {
 	 * <br>2 If the &lt;restriction&gt; alternative is chosen and the children of the &lt;restriction&gt; element include at least one element of which the processor has no prior knowledge (i.e. not a &lt;simpleType&gt; element, an &lt;annotation&gt; element, or an element denoting a constraining facet known to and supported by the processor), then the &lt;simpleType&gt; element maps to no component at all (but is not in error solely on account of the presence of the unknown element).
 	 * <br>3 If the &lt;list&gt; alternative is chosen, then a set with one member, a whiteSpace facet with {value} = collapse and {fixed} = true.
 	 * <br>4 otherwise the empty set */
-	public Deque<ConstrainingFacet<?>> facets() {
+	public Deque<ConstrainingFacet> facets() {
 		return Deques.unmodifiableDeque(facetValues.get());
 	}
 
 	/** @return Based on {variety}, {facets}, {base type definition} and {member type definitions}, a set of Fundamental Facet components, one each as specified in The ordered Schema Component, The bounded Schema Component, The cardinality Schema Component and The numeric Schema Component . */
-	public Deque<FundamentalFacet<?>> fundamentalFacets() {
+	public Deque<FundamentalFacet> fundamentalFacets() {
 		return Deques.unmodifiableDeque(fundamentalFacets.get());
 	}
 

@@ -10,9 +10,8 @@ import org.junit.runner.*;
 import org.junit.runners.*;
 import org.junit.runners.Parameterized.*;
 import xs.parser.Attribute.*;
-import xs.parser.ComplexType.*;
 import xs.parser.Schema.*;
-import xs.parser.internal.*;
+import xs.parser.internal.util.*;
 
 @RunWith(Parameterized.class)
 public class OtherXsdTests {
@@ -223,7 +222,7 @@ public class OtherXsdTests {
 		}
 	}
 
-	private void visitConstrainingFacet(final ConstrainingFacet<?> f) {
+	private void visitConstrainingFacet(final ConstrainingFacet f) {
 		visitAnnotatedComponent(f);
 		f.fixed();
 		f.value();
@@ -261,7 +260,7 @@ public class OtherXsdTests {
 		Assert.assertTrue(c.name(), c.baseType() instanceof ComplexType || c.baseType() instanceof SimpleType);
 	}
 
-	private void visitContentType(final ContentType c) {
+	private void visitContentType(final ComplexType.ContentType c) {
 		switch (c.variety()) {
 		case EMPTY:
 			Assert.assertNull(c.particle());
@@ -286,7 +285,7 @@ public class OtherXsdTests {
 		}
 	}
 
-	private void visitOpenContent(final OpenContent o) {
+	private void visitOpenContent(final ComplexType.OpenContent o) {
 		assertNotNull(o, o.mode());
 		visitParticle(o.wildcard());
 	}
@@ -303,13 +302,13 @@ public class OtherXsdTests {
 		if (g.modelGroup() != g) {
 			visitGroup(g.modelGroup());
 		}
-		for (final Particle<Term> p : g.particles()) {
+		for (final Particle p : g.particles()) {
 			assertNotNull(g, p);
 			visitParticle(p);
 		}
 	}
 
-	private void visitParticle(final Particle<?> p) {
+	private void visitParticle(final Particle p) {
 		if (!visited.add(p)) {
 			return;
 		}

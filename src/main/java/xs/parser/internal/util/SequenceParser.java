@@ -1,4 +1,4 @@
-package xs.parser.internal;
+package xs.parser.internal.util;
 
 import java.util.*;
 import java.util.AbstractMap.*;
@@ -7,6 +7,7 @@ import javax.xml.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.*;
+import xs.parser.internal.*;
 
 public final class SequenceParser {
 

@@ -5,7 +5,8 @@ import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.Assertion.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -50,7 +51,7 @@ public class IdentityConstraint implements AnnotatedComponent {
 
 	}
 
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.NAME, AttributeValue.REF, AttributeValue.REFER)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, 1, ElementValue.SELECTOR)
@@ -76,7 +77,7 @@ public class IdentityConstraint implements AnnotatedComponent {
 		this.referencedKey = referencedKey;
 	}
 
-	protected static IdentityConstraint parse(final Result result) {
+	static IdentityConstraint parse(final Result result) {
 		final String name = result.value(AttributeValue.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
 		final Category category = Category.fromNode(result.node());

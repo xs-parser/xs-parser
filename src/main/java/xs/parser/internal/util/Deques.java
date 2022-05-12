@@ -1,4 +1,4 @@
-package xs.parser.internal;
+package xs.parser.internal.util;
 
 import java.util.*;
 
@@ -257,11 +257,7 @@ public final class Deques {
 
 	@SafeVarargs
 	public static <E> Deque<E> asDeque(final E... e) {
-		final Deque<E> d = new ArrayDeque<>(e.length);
-		for (final E x : e) {
-			d.add(x);
-		}
-		return new UnmodifiableDeque<>(d);
+		return new UnmodifiableDeque<>(new ArrayDeque<>(Arrays.asList(e)));
 	}
 
 	public static <E> Deque<E> singletonDeque(final E e) {

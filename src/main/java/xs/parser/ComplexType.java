@@ -3,12 +3,14 @@ package xs.parser;
 import java.util.*;
 import java.util.function.*;
 import javax.xml.*;
+import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.Annotation.*;
 import xs.parser.ModelGroup.*;
 import xs.parser.Schema.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -105,6 +107,13 @@ import xs.parser.internal.SequenceParser.*;
  */
 public class ComplexType implements TypeDefinition {
 
+	public enum DerivationMethod {
+
+		EXTENSION,
+		RESTRICTION;
+
+	}
+
 	public enum Variety {
 
 		EMPTY,
@@ -118,10 +127,207 @@ public class ComplexType implements TypeDefinition {
 
 	}
 
-	public enum DerivationMethod {
+	/**
+	 * &lt;assert
+	 *   id = ID
+	 *   test = an XPath expression
+	 *   xpathDefaultNamespace = (anyURI | (##defaultNamespace | ##targetNamespace | ##local))
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?)
+	 * &lt;/assert&gt;
+	 */
+	public static class Assert extends Assertion {
 
-		EXTENSION,
-		RESTRICTION;
+		static final SequenceParser parser = new SequenceParser()
+				.requiredAttributes(AttributeValue.TEST)
+				.optionalAttributes(AttributeValue.ID, AttributeValue.XPATHDEFAULTNAMESPACE)
+				.elements(0, 1, ElementValue.ANNOTATION);
+
+		Assert(final Node node, final Deque<Annotation> annotations, final XPathExpression test) {
+			super(node, annotations, test);
+		}
+
+		static Assert parse(final Result result) {
+			final XPathExpression test = XPathExpression.parse(result);
+			return new Assert(result.node(), result.annotations(), test);
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;complexContent
+	 *   id = ID
+	 *   mixed = boolean
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?, (restriction | extension))
+	 * &lt;/complexContent&gt;
+	 * </pre>
+	 */
+	public static class ComplexContent {
+
+		/**
+		 * <pre>
+		 * &lt;restriction
+		 *   base = QName
+		 *   id = ID
+		 *   {any attributes with non-schema namespace . . .}&gt;
+		 *   Content: (annotation?, openContent?, (group | all | choice | sequence)?, ((attribute | attributeGroup)*, anyAttribute?), assert*)
+		 * &lt;/restriction&gt;
+		 *
+		 * &lt;extension
+		 *   base = QName
+		 *   id = ID
+		 *   {any attributes with non-schema namespace . . .}&gt;
+		 *   Content: (annotation?, openContent?, ((group | all | choice | sequence)?, ((attribute | attributeGroup)*, anyAttribute?), assert*))
+		 * &lt;/extension&gt;
+		 * </pre>
+		 */
+		public static class Derivation {
+
+			static final SequenceParser parser = new SequenceParser()
+					.requiredAttributes(AttributeValue.BASE)
+					.optionalAttributes(AttributeValue.ID)
+					.elements(0, 1, ElementValue.ANNOTATION)
+					.elements(0, 1, ElementValue.OPENCONTENT)
+					.elements(0, 1, ElementValue.GROUP, ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE)
+					.elements(0, Integer.MAX_VALUE, ElementValue.ATTRIBUTE, ElementValue.ATTRIBUTEGROUP)
+					.elements(0, 1, ElementValue.ANYATTRIBUTE)
+					.elements(0, Integer.MAX_VALUE, ElementValue.ASSERT);
+
+			private final Deque<Annotation> annotations;
+			private final Deferred<ComplexType> base;
+			private final OpenContent openContent;
+			private final Particle group;
+			private final Particle all;
+			private final Particle choice;
+			private final Particle sequence;
+			private final Deferred<Deque<AttributeUse>> attributeUses;
+			private final Wildcard attributeWildcard;
+			private final Deque<Assertion> asserts;
+
+			Derivation(final Deque<Annotation> annotations, final Deferred<ComplexType> base, final Particle group, final Particle all, final Particle 	choice, final Particle sequence, final OpenContent openContent, final Deferred<Deque<AttributeUse>> attributeUses, final Wildcard attributeWildcard, final 	Deque<Assertion> asserts) {
+				this.annotations = Objects.requireNonNull(annotations);
+				this.base = Objects.requireNonNull(base);
+				this.group = group;
+				this.all = all;
+				this.choice = choice;
+				this.sequence = sequence;
+				this.openContent = openContent;
+				this.attributeUses = Objects.requireNonNull(attributeUses);
+				this.attributeWildcard = attributeWildcard;
+				this.asserts = Objects.requireNonNull(asserts);
+			}
+
+			static Derivation parse(final Result result) {
+				final QName baseType = result.value(AttributeValue.BASE);
+				final Deferred<ComplexType> base = result.schema().find(baseType, ComplexType.class);
+				final Particle group = result.parse(ElementValue.GROUP);
+				final Particle all = result.parse(ElementValue.ALL);
+				final Particle choice = result.parse(ElementValue.CHOICE);
+				final Particle sequence = result.parse(ElementValue.SEQUENCE);
+				final OpenContent openContent = result.parse(ElementValue.OPENCONTENT);
+				final Deque<AttributeGroup> attributeGroups = result.parseAll(ElementValue.ATTRIBUTEGROUP);
+				final Deferred<Deque<AttributeUse>> attributeUses = AttributeGroup.findAttributeUses(result.parseAll(ElementValue.ATTRIBUTE), attributeGroups);
+				final AnnotationsBuilder annotations = new AnnotationsBuilder(result).add(attributeGroups);
+				if (openContent != null) {
+					annotations.add(openContent::annotations);
+				}
+				final Wildcard attributeWildcard = result.parse(ElementValue.ANYATTRIBUTE);
+				final Deque<Assertion> asserts = result.parseAll(ElementValue.ASSERT);
+				return new Derivation(annotations.build(), base, group, all, choice, sequence, openContent, attributeUses, attributeWildcard, asserts);
+			}
+
+			Deque<Annotation> annotations() {
+				return annotations;
+			}
+
+			ComplexType base() {
+				return base.get();
+			}
+
+			OpenContent openContent() {
+				return openContent;
+			}
+
+			Particle group() {
+				return group;
+			}
+
+			Particle all() {
+				return all;
+			}
+
+			Particle choice() {
+				return choice;
+			}
+
+			Particle sequence() {
+				return sequence;
+			}
+
+			Deferred<Deque<AttributeUse>> attributeUses() {
+				return attributeUses;
+			}
+
+			Wildcard attributeWildcard() {
+				return attributeWildcard;
+			}
+
+			Deque<Assertion> asserts() {
+				return asserts;
+			}
+
+		}
+
+		static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttributeValue.ID, AttributeValue.MIXED)
+				.elements(0, 1, ElementValue.ANNOTATION)
+				.elements(1, 1, ElementValue.COMPLEXCONTENT_RESTRICTION, ElementValue.COMPLEXCONTENT_EXTENSION);
+
+		private final Deque<Annotation> annotations;
+		private final Boolean mixed;
+		private final DerivationMethod derivationMethod;
+		private final Derivation derivation;
+
+		ComplexContent(final Deque<Annotation> annotations, final Boolean mixed, final DerivationMethod derivationMethod, final Derivation derivation) {
+			this.annotations = Objects.requireNonNull(annotations);
+			this.mixed = mixed;
+			this.derivationMethod = derivationMethod;
+			this.derivation = derivation;
+		}
+
+		static ComplexContent parse(final Result result) {
+			final Boolean mixed = result.value(AttributeValue.MIXED);
+			final Derivation restriction = result.parse(ElementValue.COMPLEXCONTENT_RESTRICTION);
+			final Derivation extension = result.parse(ElementValue.COMPLEXCONTENT_EXTENSION);
+			final DerivationMethod derivationMethod;
+			final Deque<Annotation> annotations;
+			if (restriction != null) {
+				derivationMethod = DerivationMethod.RESTRICTION;
+				annotations = new AnnotationsBuilder(result).add(restriction::annotations).build();
+			} else {
+				derivationMethod = DerivationMethod.EXTENSION;
+				annotations = new AnnotationsBuilder(result).add(extension::annotations).build();
+			}
+			return new ComplexContent(annotations, mixed, derivationMethod, restriction != null ? restriction : extension);
+		}
+
+		Deque<Annotation> annotations() {
+			return annotations;
+		}
+
+		Derivation derivation() {
+			return derivation;
+		}
+
+		Boolean mixed() {
+			return mixed;
+		}
+
+		DerivationMethod derivationMethod() {
+			return derivationMethod;
+		}
 
 	}
 
@@ -162,11 +368,11 @@ public class ComplexType implements TypeDefinition {
 	public static class ContentType {
 
 		private final Variety variety;
-		private final Particle<Term> particle;
+		private final Particle particle;
 		private final OpenContent openContent;
 		private final SimpleType simpleType;
 
-		private ContentType(final DefaultOpenContent defaultOpenContent, final Variety variety, final Particle<Term> particle, final OpenContent openContent, final SimpleType simpleType) {
+		private ContentType(final DefaultOpenContent defaultOpenContent, final Variety variety, final Particle particle, final OpenContent openContent, final SimpleType simpleType) {
 			this.variety = Objects.requireNonNull(variety);
 			this.particle = particle;
 			if (openContent != null) {
@@ -183,7 +389,7 @@ public class ComplexType implements TypeDefinition {
 			return variety;
 		}
 
-		public Particle<Term> particle() {
+		public Particle particle() {
 			return particle;
 		}
 
@@ -197,9 +403,349 @@ public class ComplexType implements TypeDefinition {
 
 	}
 
+	/**
+	 * <pre>
+	 * &lt;openContent
+	 *   id = ID
+	 *   mode = (none | interleave | suffix) : interleave
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?, any?)
+	 * &lt;/openContent&gt;
+	 * </pre>
+	 *
+	 * <table>
+	 *   <caption style="font-size: large; text-align: left">Property Record: Open Content</caption>
+	 *   <thead>
+	 *     <tr>
+	 *       <th style="text-align: left">Method</th>
+	 *       <th style="text-align: left">Property</th>
+	 *       <th style="text-align: left">Representation</th>
+	 *     </tr>
+	 *   </thead>
+	 *   <tbody>
+	 *     <tr>
+	 *       <td>{@link OpenContent#mode()}</td>
+	 *       <td>{mode}</td>
+	 *       <td>One of {interleave, suffix}. Required.</td>
+	 *     </tr>
+	 *     <tr>
+	 *       <td>{@link OpenContent#wildcard()}</td>
+	 *       <td>{wildcard}</td>
+	 *       <td>A Wildcard component. Required.</td>
+	 *     </tr>
+	 *   </tbody>
+	 * </table>
+	 */
+	public static class OpenContent {
+
+		public enum Mode {
+
+			NONE("none"),
+			INTERLEAVE("interleave"),
+			SUFFIX("suffix");
+
+			private final String name;
+
+			private Mode(final String value) {
+				this.name = value;
+			}
+
+			public static Mode getByName(final Node node) {
+				final String name = node.getNodeValue();
+				for (final Mode m : values()) {
+					if (m.getName().equals(name)) {
+						return m;
+					}
+				}
+				throw new IllegalArgumentException(name);
+			}
+
+			public String getName() {
+				return name;
+			}
+
+			@Override
+			public String toString() {
+				return getName();
+			}
+
+		}
+
+		static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttributeValue.ID, AttributeValue.MODE)
+				.elements(0, 1, ElementValue.ANNOTATION)
+				.elements(0, 1, ElementValue.ANY);
+
+		private final Deque<Annotation> annotations;
+		private final Mode mode;
+		private final Particle wildcard;
+
+		OpenContent(final Deque<Annotation> annotations, final Mode mode, final Particle wildcard) {
+			this.annotations = Objects.requireNonNull(annotations);
+			this.mode = mode;
+			this.wildcard = wildcard;
+		}
+
+		static OpenContent parse(final Result result) {
+			final Mode mode = result.value(AttributeValue.MODE);
+			final Particle wildcard = result.parse(ElementValue.ANY);
+			return new OpenContent(result.annotations(), mode, wildcard);
+		}
+
+		private Deque<Annotation> annotations() {
+			return annotations;
+		}
+
+		/** @return The ·actual value· of the mode [attribute] of the ·wildcard element·, if present, otherwise interleave. */
+		public Mode mode() {
+			return mode;
+		}
+
+		/** @return Let W be the wildcard corresponding to the &lt;any&gt; [child] of the ·wildcard element·. If the {open content} of the ·explicit content type· is ·absent·, then W; otherwise a wildcard whose {process contents} and {annotations} are those of W, and whose {namespace constraint} is the wildcard union of the {namespace constraint} of W and of {open content}.{wildcard} of the ·explicit content type·, as defined in Attribute Wildcard Union (§3.10.6.3). */
+		public Particle wildcard() {
+			return wildcard;
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;simpleContent
+	 *   id = ID
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?, (restriction | extension))
+	 * &lt;/simpleContent&gt;
+	 * </pre>
+	 */
+	public static class SimpleContent {
+
+		/**
+		 * <pre>
+		 * &lt;extension
+		 *   base = QName
+		 *   id = ID
+		 *   {any attributes with non-schema namespace . . .}&gt;
+		 *   Content: (annotation?, ((attribute | attributeGroup)*, anyAttribute?), assert*)
+		 * &lt;/extension&gt;
+		 * </pre>
+		 */
+		public static class Extension {
+
+			static final SequenceParser parser = new SequenceParser()
+					.requiredAttributes(AttributeValue.BASE)
+					.optionalAttributes(AttributeValue.ID)
+					.elements(0, 1, ElementValue.ANNOTATION)
+					.elements(0, Integer.MAX_VALUE, ElementValue.ATTRIBUTE, ElementValue.ATTRIBUTEGROUP)
+					.elements(0, 1, ElementValue.ANYATTRIBUTE)
+					.elements(0, Integer.MAX_VALUE, ElementValue.ASSERT);
+
+			private final Deque<Annotation> annotations;
+			private final Deferred<? extends TypeDefinition> base;
+			private final Deferred<Deque<AttributeUse>> attributeUses;
+			private final Wildcard attributeWildcard;
+			private final Deque<Assertion> asserts;
+
+			Extension(final Deque<Annotation> annotations, final Deferred<? extends TypeDefinition> base, final Deferred<Deque<AttributeUse>> attributeUses, final Wildcard attributeWildcard, final Deque<Assertion> asserts) {
+				this.annotations = Objects.requireNonNull(annotations);
+				this.base = Objects.requireNonNull(base);
+				this.attributeUses = Objects.requireNonNull(attributeUses);
+				this.attributeWildcard = attributeWildcard;
+				this.asserts = Objects.requireNonNull(asserts);
+			}
+
+			static Extension parse(final Result result) {
+				final QName baseType = result.value(AttributeValue.BASE);
+				final Deferred<? extends TypeDefinition> base = result.schema().find(baseType, TypeDefinition.class);
+				final Deque<AttributeGroup> attributeGroups = result.parseAll(ElementValue.ATTRIBUTEGROUP);
+				final Deferred<Deque<AttributeUse>> attributeUses = AttributeGroup.findAttributeUses(result.parseAll(ElementValue.ATTRIBUTE), attributeGroups);
+				final Deque<Annotation> annotations = new AnnotationsBuilder(result).add(attributeGroups).build();
+				final Wildcard attributeWildcard = result.parse(ElementValue.ANYATTRIBUTE);
+				final Deque<Assertion> asserts = result.parseAll(ElementValue.ASSERT);
+				return new Extension(annotations, base, attributeUses, attributeWildcard, asserts);
+			}
+
+			Deque<Annotation> annotations() {
+				return annotations;
+			}
+
+			TypeDefinition base() {
+				return base.get();
+			}
+
+			Deferred<Deque<AttributeUse>> attributeUses() {
+				return attributeUses;
+			}
+
+			Wildcard attributeWildcard() {
+				return attributeWildcard;
+			}
+
+			Deque<Assertion> asserts() {
+				return asserts;
+			}
+
+		}
+
+		/**
+		 * <pre>
+		 * &lt;restriction
+		 *   base = QName
+		 *   id = ID
+		 *   {any attributes with non-schema namespace . . .}&gt;
+		 *   Content: (annotation?, (simpleType?, (minExclusive | minInclusive | maxExclusive | maxInclusive | totalDigits | fractionDigits | length | minLength | maxLength | enumeration | whiteSpace | pattern | assertion | {any with namespace: ##other})*)?, ((attribute | attributeGroup)*, anyAttribute?), assert*)
+		 * &lt;/restriction&gt;
+		 * </pre>
+		 */
+		public static class Restriction {
+
+			static final SequenceParser parser = new SequenceParser()
+					.requiredAttributes(AttributeValue.BASE)
+					.optionalAttributes(AttributeValue.ID)
+					.elements(0, 1, ElementValue.ANNOTATION)
+					.elements(0, 1, ElementValue.SIMPLETYPE)
+					.elements(0, Integer.MAX_VALUE, ElementValue.MINEXCLUSIVE, ElementValue.MININCLUSIVE, ElementValue.MAXEXCLUSIVE, ElementValue.MAXINCLUSIVE, ElementValue.TOTALDIGITS, ElementValue.FRACTIONDIGITS, ElementValue.LENGTH, ElementValue.MINLENGTH, ElementValue.MAXLENGTH, ElementValue.ENUMERATION, ElementValue.WHITESPACE, ElementValue.PATTERN, ElementValue.ASSERTION, ElementValue.ANY)
+					.elements(0, Integer.MAX_VALUE, ElementValue.ATTRIBUTE, ElementValue.ATTRIBUTEGROUP)
+					.elements(0, 1, ElementValue.ANYATTRIBUTE)
+					.elements(0, Integer.MAX_VALUE, ElementValue.ASSERT);
+
+			private final Deque<Annotation> annotations;
+			private final Deferred<ComplexType> base;
+			private final Deque<ConstrainingFacet> facets;
+			private final Deque<Particle> wildcard;
+			private final SimpleType simpleType;
+			private final Deferred<Deque<AttributeUse>> attributeUses;
+			private final Wildcard attributeWildcard;
+			private final Deque<Assertion> asserts;
+
+			private Restriction(final Deque<Annotation> annotations, final Deferred<ComplexType> base, final Deque<ConstrainingFacet> facets, final Deque<Particle> wildcard, final SimpleType simpleType, final Deferred<Deque<AttributeUse>> attributeUses, final Wildcard attributeWildcard, final Deque<Assertion> asserts) {
+				this.annotations = Objects.requireNonNull(annotations);
+				this.base = Objects.requireNonNull(base);
+				this.facets = Objects.requireNonNull(facets);
+				this.wildcard = Objects.requireNonNull(wildcard);
+				this.simpleType = simpleType;
+				this.attributeUses = Objects.requireNonNull(attributeUses);
+				this.attributeWildcard = attributeWildcard;
+				this.asserts = Objects.requireNonNull(asserts);
+			}
+
+			static Restriction parse(final Result result) {
+				final QName baseType = result.value(AttributeValue.BASE);
+				final Deferred<ComplexType> base = result.schema().find(baseType, ComplexType.class);
+				final SimpleType simpleType = result.parse(ElementValue.SIMPLETYPE);
+				final Deque<ConstrainingFacet> facets = result.parseAll(ElementValue.MINEXCLUSIVE, ElementValue.MININCLUSIVE, ElementValue.MAXEXCLUSIVE, ElementValue.MAXINCLUSIVE, ElementValue.TOTALDIGITS, ElementValue.FRACTIONDIGITS, ElementValue.LENGTH, ElementValue.MINLENGTH, ElementValue.MAXLENGTH, ElementValue.ENUMERATION, ElementValue.WHITESPACE, ElementValue.PATTERN, ElementValue.ASSERTION);
+				final Deque<Particle> wildcard = result.parseAll(ElementValue.ANY);
+				final Deque<AttributeGroup> attributeGroups = result.parseAll(ElementValue.ATTRIBUTEGROUP);
+				final Deferred<Deque<AttributeUse>> attributeUses = AttributeGroup.findAttributeUses(result.parseAll(ElementValue.ATTRIBUTE), attributeGroups);
+				final Deque<Annotation> annotations = new AnnotationsBuilder(result).add(attributeGroups).build();
+				final Wildcard attributeWildcard = result.parse(ElementValue.ANYATTRIBUTE);
+				final Deque<Assertion> asserts = result.parseAll(ElementValue.ASSERT);
+				return new Restriction(annotations, base, facets, wildcard, simpleType, attributeUses, attributeWildcard, asserts);
+			}
+
+			Deque<Annotation> annotations() {
+				return annotations;
+			}
+
+			Deferred<ComplexType> base() {
+				return base;
+			}
+
+			Deque<ConstrainingFacet> facets() {
+				return facets;
+			}
+
+			// TODO: wildcard unused
+			Deque<Particle> wildcard() {
+				return wildcard;
+			}
+
+			SimpleType simpleType() {
+				return simpleType;
+			}
+
+			Deferred<Deque<AttributeUse>> attributeUses() {
+				return attributeUses;
+			}
+
+			Wildcard attributeWildcard() {
+				return attributeWildcard;
+			}
+
+			Deque<Assertion> asserts() {
+				return asserts;
+			}
+
+		}
+
+		static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttributeValue.ID)
+				.elements(0, 1, ElementValue.ANNOTATION)
+				.elements(1, 1, ElementValue.SIMPLECONTENT_RESTRICTION, ElementValue.SIMPLECONTENT_EXTENSION);
+
+		private final Deque<Annotation> annotations;
+		private final DerivationMethod derivationMethod;
+		private final Restriction restriction;
+		private final Extension extension;
+
+		private SimpleContent(final Deque<Annotation> annotations, final DerivationMethod derivationMethod, final Restriction restriction, final Extension extension) {
+			this.annotations = Objects.requireNonNull(annotations);
+			this.derivationMethod = derivationMethod;
+			this.restriction = restriction;
+			this.extension = extension;
+		}
+
+		static SimpleContent parse(final Result result) {
+			final Restriction restriction = result.parse(ElementValue.SIMPLECONTENT_RESTRICTION);
+			final Extension extension = result.parse(ElementValue.SIMPLECONTENT_EXTENSION);
+			final DerivationMethod derivationMethod;
+			final Deque<Annotation> annotations;
+			if (restriction != null) {
+				derivationMethod = DerivationMethod.RESTRICTION;
+				annotations = new AnnotationsBuilder(result).add(restriction::annotations).build();
+			} else {
+				derivationMethod = DerivationMethod.EXTENSION;
+				annotations = new AnnotationsBuilder(result).add(extension::annotations).build();
+			}
+			return new SimpleContent(annotations, derivationMethod, restriction, extension);
+		}
+
+		Deque<Annotation> annotations() {
+			return annotations;
+		}
+
+		DerivationMethod derivationMethod() {
+			return derivationMethod;
+		}
+
+		TypeDefinition base() {
+			return DerivationMethod.RESTRICTION.equals(derivationMethod) ? restriction().base().get() : extension().base();
+		}
+
+		Deferred<Deque<AttributeUse>> attributeUses() {
+			return DerivationMethod.RESTRICTION.equals(derivationMethod) ? restriction().attributeUses() : extension().attributeUses();
+		}
+
+		Wildcard attributeWildcard() {
+			return DerivationMethod.RESTRICTION.equals(derivationMethod) ? restriction().attributeWildcard() : extension().attributeWildcard();
+		}
+
+		Deque<Assertion> asserts() {
+			return DerivationMethod.RESTRICTION.equals(derivationMethod) ? restriction().asserts() : extension().asserts();
+		}
+
+		Restriction restriction() {
+			return restriction;
+		}
+
+		Extension extension() {
+			return extension;
+		}
+
+	}
+
 	private static final ComplexType xsAnyType;
 	static final String ANYTYPE_NAME = "anyType";
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.ABSTRACT, AttributeValue.BLOCK, AttributeValue.FINAL, AttributeValue.MIXED, AttributeValue.NAME, AttributeValue.DEFAULTATTRIBUTESAPPLY)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, 1, ElementValue.COMPLEXCONTENT, ElementValue.SIMPLECONTENT, ElementValue.OPENCONTENT)
@@ -210,12 +756,15 @@ public class ComplexType implements TypeDefinition {
 
 	static {
 		final Document xsAnyTypeDoc = NodeHelper.newDocument();
+		final ContentType xsAnyTypeContentType = new ContentType(null, Variety.EMPTY, null, null, null);
 		final Node xsAnyTypeNode = NodeHelper.newNode(xsAnyTypeDoc, ElementValue.COMPLEXTYPE, "xs", XMLConstants.W3C_XML_SCHEMA_NS_URI, ANYTYPE_NAME);
-		xsAnyType = new ComplexType(xsAnyTypeNode, Deques.emptyDeque(), ANYTYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), Deferred.none(), Deferred.value(Deques.emptyDeque()), null, null, false, DerivationMethod.RESTRICTION, Deferred.value(new ContentType(null, Variety.EMPTY, null, null, null)), Deques.emptyDeque(), Deques.emptyDeque()) {
+		xsAnyType = new ComplexType(xsAnyTypeNode, Deques.emptyDeque(), ANYTYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), Deferred.none(), Deques::emptyDeque, null, null, false, DerivationMethod.RESTRICTION, () -> xsAnyTypeContentType, Deques.emptyDeque(), Deques.emptyDeque()) {
+
 			@Override
 			public TypeDefinition baseType() {
 				return this;
 			}
+
 		};
 	}
 
@@ -251,8 +800,7 @@ public class ComplexType implements TypeDefinition {
 		this.assertions = Objects.requireNonNull(assertions);
 	}
 
-	@SuppressWarnings("unchecked")
-	protected static ComplexType parse(final Result result) {
+	static ComplexType parse(final Result result) {
 		final boolean isAbstract = result.value(AttributeValue.ABSTRACT);
 		Deque<Block> block = result.value(AttributeValue.BLOCK);
 		if (block.isEmpty()) {
@@ -310,10 +858,10 @@ public class ComplexType implements TypeDefinition {
 			explicitContentType = Deferred.of(() -> new ContentType(result.schema().defaultOpenContent(), Variety.SIMPLE, null, null, simpleBase.get()));
 		} else {
 			final OpenContent openContent;
-			final Particle<ModelGroup> group;
-			final Particle<ModelGroup> all;
-			final Particle<ModelGroup> choice;
-			final Particle<ModelGroup> sequence;
+			final Particle group;
+			final Particle all;
+			final Particle choice;
+			final Particle sequence;
 			if (complexContent != null) {
 				annotations.add(complexContent::annotations);
 				openContent = complexContent.derivation().openContent();
@@ -322,7 +870,7 @@ public class ComplexType implements TypeDefinition {
 				choice = complexContent.derivation().choice();
 				sequence = complexContent.derivation().sequence();
 				assertions = complexContent.derivation().asserts();
-				baseType = Deferred.of(complexContent.derivation()::base);
+				baseType = complexContent.derivation()::base;
 				attributeUses = complexContent.derivation().attributeUses();
 				attributeWildcard = complexContent.derivation().attributeWildcard();
 				derivationMethod = complexContent.derivationMethod();
@@ -333,22 +881,22 @@ public class ComplexType implements TypeDefinition {
 				choice = result.parse(ElementValue.CHOICE);
 				sequence = result.parse(ElementValue.SEQUENCE);
 				assertions = result.parseAll(ElementValue.ASSERT);
-				baseType = Deferred.value(xsAnyType);
+				baseType = () -> xsAnyType;
 				final Deque<AttributeGroup> attributeGroups = result.parseAll(ElementValue.ATTRIBUTEGROUP);
 				annotations.add(attributeGroups);
 				attributeUses = AttributeGroup.findAttributeUses(result.parseAll(ElementValue.ATTRIBUTE), attributeGroups);
 				attributeWildcard = result.parse(ElementValue.ANYATTRIBUTE);
 				derivationMethod = DerivationMethod.RESTRICTION;
 			}
-			final Particle<ModelGroup> particle = group != null ? group : all != null ? all : choice != null ? choice : sequence != null ? sequence : null;
-			final Particle<?> explicitContent;
+			final Particle particle = group != null ? group : all != null ? all : choice != null ? choice : sequence != null ? sequence : null;
+			final Particle explicitContent;
 			if (particle == null) {
 				explicitContent = null;
 			} else {
-				if ((all != null && all.term().particles().isEmpty()) || (sequence != null && sequence.term().particles().isEmpty())) {
+				if ((all != null && ((ModelGroup) all.term()).particles().isEmpty()) || (sequence != null && ((ModelGroup) sequence.term()).particles().isEmpty())) {
 					explicitContent = null;
 				} else {
-					final boolean choiceMinOccurs0 = choice != null && "0".equals(choice.minOccurs()) && (choice.term() == null || choice.term().particles().isEmpty());
+					final boolean choiceMinOccurs0 = choice != null && "0".equals(choice.minOccurs()) && (choice.term() == null || ((ModelGroup) choice.term()).particles().isEmpty());
 					if (choiceMinOccurs0) {
 						explicitContent = null;
 					} else {
@@ -361,10 +909,10 @@ public class ComplexType implements TypeDefinition {
 					}
 				}
 			}
-			final Particle<?> effectiveContent;
+			final Particle effectiveContent;
 			if (explicitContent == null) {
 				if (effectiveMixed) {
-					effectiveContent = new Particle<>(result.node(), result.annotations(), AttributeValue.MAXOCCURS.defaultValue(), AttributeValue.MINOCCURS.defaultValue(), ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, Deques.emptyDeque()));
+					effectiveContent = new Particle(result.node(), result.annotations(), AttributeValue.MAXOCCURS.defaultValue(), AttributeValue.MINOCCURS.defaultValue(), ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, Deques.emptyDeque()));
 				} else {
 					effectiveContent = null;
 				}
@@ -376,7 +924,7 @@ public class ComplexType implements TypeDefinition {
 					if (effectiveContent == null) { // 4.1.1
 						return new ContentType(result.schema().defaultOpenContent(), Variety.EMPTY, null, openContent, null);
 					} else { // 4.1.2
-						return new ContentType(result.schema().defaultOpenContent(), effectiveMixed ? Variety.MIXED : Variety.ELEMENT_ONLY, (Particle<Term>) effectiveContent, openContent, null);
+						return new ContentType(result.schema().defaultOpenContent(), effectiveMixed ? Variety.MIXED : Variety.ELEMENT_ONLY, effectiveContent, openContent, null);
 					}
 				};
 				switch (derivationMethod) {
@@ -392,23 +940,23 @@ public class ComplexType implements TypeDefinition {
 						} else if (!complexBase.contentType().variety().isMixedOrElementOnly()) {
 							return handleRestriction.get(); // 4.2.1
 						} else { // 4.2.3
-							final Particle<Term> baseParticle = complexBase.contentType().particle();
-							final Particle<Term> effectiveParticle;
+							final Particle baseParticle = complexBase.contentType().particle();
+							final Particle effectiveParticle;
 							if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && effectiveContent == null) { // 4.2.3.1
 								effectiveParticle = baseParticle;
 							} else if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && effectiveContent != null && effectiveContent.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) effectiveContent.term()).compositor())) { // 4.2.3.2
-								final Deque<Particle<Term>> particles = new ArrayDeque<>(((ModelGroup) baseParticle.term()).particles());
+								final Deque<Particle> particles = new ArrayDeque<>(((ModelGroup) baseParticle.term()).particles());
 								particles.addAll(((ModelGroup) effectiveContent.term()).particles());
-								effectiveParticle = new Particle<>(result.node(), result.annotations(), "1", baseParticle.minOccurs(), ModelGroup.synthetic(result.node(), result.annotations(), Compositor.ALL, particles));
+								effectiveParticle = new Particle(result.node(), result.annotations(), "1", baseParticle.minOccurs(), ModelGroup.synthetic(result.node(), result.annotations(), Compositor.ALL, particles));
 							} else { // 4.2.3.3
-								final Deque<Particle<Term>> particles = new ArrayDeque<>();
+								final Deque<Particle> particles = new ArrayDeque<>();
 								if (baseParticle != null) {
 									particles.add(baseParticle);
 								}
 								if (effectiveContent != null) {
-									particles.add((Particle<Term>) effectiveContent);
+									particles.add(effectiveContent);
 								}
-								effectiveParticle = new Particle<>(result.node(), result.annotations(), "1", "1", ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, particles));
+								effectiveParticle = new Particle(result.node(), result.annotations(), "1", "1", ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, particles));
 							}
 							return new ContentType(result.schema().defaultOpenContent(), effectiveMixed ? Variety.MIXED : Variety.ELEMENT_ONLY, effectiveParticle, complexBase.contentType().openContent(), null);
 						}

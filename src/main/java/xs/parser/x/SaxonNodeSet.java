@@ -13,6 +13,7 @@ import net.sf.saxon.trans.*;
 import org.w3c.dom.*;
 import xs.parser.*;
 import xs.parser.internal.*;
+import xs.parser.internal.util.*;
 
 final class SaxonNodeSet extends NodeSet {
 

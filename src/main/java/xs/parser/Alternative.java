@@ -5,7 +5,8 @@ import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.Assertion.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -49,7 +50,7 @@ import xs.parser.internal.SequenceParser.*;
  */
 public class Alternative implements AnnotatedComponent {
 
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.TEST, AttributeValue.TYPE, AttributeValue.XPATHDEFAULTNAMESPACE)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, 1, ElementValue.COMPLEXTYPE, ElementValue.SIMPLETYPE);
@@ -66,7 +67,7 @@ public class Alternative implements AnnotatedComponent {
 		this.type = Objects.requireNonNull(type);
 	}
 
-	protected static Alternative parse(final Result result) {
+	static Alternative parse(final Result result) {
 		final String expression = result.value(AttributeValue.TEST);
 		final String xpathDefaultNamespace = result.value(AttributeValue.XPATHDEFAULTNAMESPACE);
 		final XPathExpression test = expression != null ? new XPathExpression(result, xpathDefaultNamespace, expression) : null;
@@ -75,13 +76,11 @@ public class Alternative implements AnnotatedComponent {
 		if (typeName != null) {
 			type = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final ComplexType complexType = result.parse(ElementValue.COMPLEXTYPE);
-			if (complexType != null) {
-				type = Deferred.value(complexType);
-			} else {
-				final SimpleType simpleType = result.parse(ElementValue.SIMPLETYPE);
-				type = Deferred.value(Objects.requireNonNull(simpleType));
+			final TypeDefinition typeDefinition = result.parse(ElementValue.COMPLEXTYPE, ElementValue.SIMPLETYPE);
+			if (typeDefinition == null) {
+				throw new SchemaParseException(result.node(), "Type definition not found");
 			}
+			type = () -> typeDefinition;
 		}
 		return new Alternative(result.node(), result.annotations(), test, type);
 	}

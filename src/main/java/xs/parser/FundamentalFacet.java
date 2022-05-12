@@ -2,19 +2,19 @@ package xs.parser;
 
 import java.util.*;
 import org.w3c.dom.*;
-import xs.parser.internal.*;
+import xs.parser.internal.util.*;
 
-public abstract class FundamentalFacet<T> implements SchemaComponent {
+public abstract class FundamentalFacet implements SchemaComponent {
 
 	private static final Document fundamentalFacetsDocument;
 	/** Derived from the table https://www.w3.org/TR/2012/REC-xmlschema11-2-20120405/datatypes.html#app-fundamental-facets */
-	private static final Map<SimpleType, Deque<FundamentalFacet<?>>> fundamentalFacets;
+	private static final Map<SimpleType, Deque<FundamentalFacet>> fundamentalFacets;
 
 	private final Node node;
 
 	static {
 		fundamentalFacetsDocument = NodeHelper.newDocument();
-		final Map<SimpleType, Deque<FundamentalFacet<?>>> f = new HashMap<>();
+		final Map<SimpleType, Deque<FundamentalFacet>> f = new HashMap<>();
 		// Primitive
 		f.put(SimpleType.xsString(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
 		f.put(SimpleType.xsBoolean(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.FINITE, false));
@@ -90,7 +90,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class Ordered extends FundamentalFacet<Ordered.Value> {
+	public static class Ordered extends FundamentalFacet {
 
 		public enum Value {
 
@@ -125,6 +125,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 		}
 
 		private static final String NAME = "ordered";
+
 		private final Value value;
 
 		private Ordered(final Node node, final Value value) {
@@ -158,9 +159,10 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class Bounded extends FundamentalFacet<Boolean> {
+	public static class Bounded extends FundamentalFacet {
 
 		private static final String NAME = "bounded";
+
 		private final boolean value;
 
 		private Bounded(final Node node, final boolean value) {
@@ -194,7 +196,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class Cardinality extends FundamentalFacet<Cardinality.Value> {
+	public static class Cardinality extends FundamentalFacet {
 
 		public enum Value {
 
@@ -228,6 +230,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 		}
 
 		private static final String NAME = "cardinality";
+
 		private final Value value;
 
 		private Cardinality(final Node node, final Value value) {
@@ -261,9 +264,10 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class Numeric extends FundamentalFacet<Boolean> {
+	public static class Numeric extends FundamentalFacet {
 
 		private static final String NAME = "numeric";
+
 		private final boolean value;
 
 		private Numeric(final Node node, final boolean value) {
@@ -286,7 +290,7 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 		return elem;
 	}
 
-	private static Deque<FundamentalFacet<?>> fundamentalFacets(final Ordered.Value ordered, final boolean bounded, final Cardinality.Value cardinality, final boolean numeric) {
+	private static Deque<FundamentalFacet> fundamentalFacets(final Ordered.Value ordered, final boolean bounded, final Cardinality.Value cardinality, final boolean numeric) {
 		final Node orderedNode = createElementNS(Ordered.NAME, ordered.getName());
 		final Node boundedNode = createElementNS(Bounded.NAME, Boolean.toString(bounded));
 		final Node cardinalityNode = createElementNS(Cardinality.NAME, cardinality.getName());
@@ -294,11 +298,11 @@ public abstract class FundamentalFacet<T> implements SchemaComponent {
 		return Deques.asDeque(new Ordered(orderedNode, ordered), new Bounded(boundedNode, bounded), new Cardinality(cardinalityNode, cardinality), new Numeric(numericNode, numeric));
 	}
 
-	protected static Deque<FundamentalFacet<?>> find(final SimpleType simpleType) {
+	static Deque<FundamentalFacet> find(final SimpleType simpleType) {
 		return fundamentalFacets.get(simpleType);
 	}
 
-	public abstract T value();
+	public abstract Object value();
 
 	@Override
 	public Node node() {

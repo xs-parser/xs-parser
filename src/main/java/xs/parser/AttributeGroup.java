@@ -4,7 +4,8 @@ import java.util.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -57,7 +58,7 @@ import xs.parser.internal.SequenceParser.*;
  */
 public class AttributeGroup implements AnnotatedComponent {
 
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.REF, AttributeValue.NAME)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, Integer.MAX_VALUE, ElementValue.ATTRIBUTE, ElementValue.ATTRIBUTEGROUP)
@@ -79,25 +80,25 @@ public class AttributeGroup implements AnnotatedComponent {
 		this.attributeWildcard = attributeWildcard;
 	}
 
-	static Deferred<Deque<AttributeUse>> findAttributeUses(final Deque<AttributeUse> attributes, final Deque<AttributeGroup> attributeGroups) {
+	static Deferred<Deque<AttributeUse>> findAttributeUses(final Deque<AttributeUse> attributeUses, final Deque<AttributeGroup> attributeGroups) {
 		if (attributeGroups.isEmpty()) {
-			return Deferred.value(attributes);
+			return () -> attributeUses;
 		}
 		return Deferred.of(() -> {
-			int size = attributes.size();
+			int size = attributeUses.size();
 			for (final AttributeGroup a : attributeGroups) {
 				size += a.attributeUses().size();
 			}
-			final DeferredArrayDeque<AttributeUse> attributeUses = new DeferredArrayDeque<>(size);
-			attributeUses.addAll(attributes);
+			final Deque<AttributeUse> attrUses = new DeferredArrayDeque<>(size);
+			attrUses.addAll(attributeUses);
 			for (final AttributeGroup a : attributeGroups) {
-				attributeUses.addAll(a.attributeUses());
+				attrUses.addAll(a.attributeUses());
 			}
-			return attributeUses;
+			return attrUses;
 		});
 	}
 
-	protected static AttributeGroup parse(final Result result) {
+	static AttributeGroup parse(final Result result) {
 		final String targetNamespace = result.schema().targetNamespace();
 		final QName refAttr = result.value(AttributeValue.REF);
 		if (refAttr != null) {

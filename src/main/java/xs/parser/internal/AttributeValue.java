@@ -8,10 +8,11 @@ import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.*;
 import xs.parser.Attribute.*;
-import xs.parser.OpenContent.*;
+import xs.parser.ComplexType.OpenContent.*;
 import xs.parser.Schema.*;
 import xs.parser.TypeDefinition.*;
 import xs.parser.Wildcard.*;
+import xs.parser.internal.util.*;
 
 public final class AttributeValue<T> {
 
@@ -49,8 +50,8 @@ public final class AttributeValue<T> {
 	private static final Function<Node, Deque<QName>> qnamesParser = n -> {
 		final String[] names = n.getNodeValue().split(LIST_SEP);
 		final Deque<QName> qnames = new ArrayDeque<>(names.length);
-		for (final String name : names) {
-			qnames.add(NodeHelper.qname(n, name));
+		for (final String nm : names) {
+			qnames.add(NodeHelper.qname(n, nm));
 		}
 		return Deques.unmodifiableDeque(qnames);
 	};

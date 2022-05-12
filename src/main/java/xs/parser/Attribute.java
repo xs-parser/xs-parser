@@ -6,7 +6,8 @@ import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.Schema.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -234,7 +235,7 @@ public class Attribute implements AnnotatedComponent {
 	private static final Attribute xsiNil;
 	private static final Attribute xsiSchemaLocation;
 	private static final Attribute xsiNoNamespaceSchemaLocation;
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ID, AttributeValue.DEFAULT, AttributeValue.FIXED, AttributeValue.FORM, AttributeValue.NAME, AttributeValue.TARGETNAMESPACE, AttributeValue.TYPE, AttributeValue.INHERITABLE)
 			.elements(0, 1, ElementValue.ANNOTATION)
 			.elements(0, 1, ElementValue.SIMPLETYPE);
@@ -242,14 +243,14 @@ public class Attribute implements AnnotatedComponent {
 	static {
 		final Document doc = NodeHelper.newDocument();
 		final Node xsiTypeNode = NodeHelper.newNode(doc, ElementValue.ATTRIBUTE, "xsi", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, "type");
-		xsiType = new Attribute(xsiTypeNode, Deques.emptyDeque(), "type", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(SimpleType::xsQName), new Scope(Scope.Variety.GLOBAL, null), null, null);
+		xsiType = new Attribute(xsiTypeNode, Deques.emptyDeque(), "type", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsQName, new Scope(Scope.Variety.GLOBAL, null), null, null);
 		final Node xsiNilNode = NodeHelper.newNode(doc, ElementValue.ATTRIBUTE, "xsi", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, "nil");
-		xsiNil = new Attribute(xsiNilNode, Deques.emptyDeque(), "nil", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(SimpleType::xsBoolean), new Scope(Scope.Variety.GLOBAL, null), null, null);
+		xsiNil = new Attribute(xsiNilNode, Deques.emptyDeque(), "nil", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsBoolean, new Scope(Scope.Variety.GLOBAL, null), null, null);
 		final Node xsiSchemaLocationNode = NodeHelper.newNode(doc, ElementValue.ATTRIBUTE, "xsi", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, "schemaLocation");
 		final Node xsiSchemaLocationTypeNode = NodeHelper.newNode(doc, ElementValue.SIMPLETYPE, "xs", XMLConstants.W3C_XML_SCHEMA_NS_URI, null);
-		xsiSchemaLocation = new Attribute(xsiSchemaLocationNode, Deques.emptyDeque(), "schemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(() -> new SimpleType(xsiSchemaLocationTypeNode, Deques.emptyDeque(), null, XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deques.emptyDeque(), null, Deferred.of(SimpleType::xsAnySimpleType), Deferred.value(SimpleType.Variety.LIST), Deferred.value(Deques.emptyDeque()), null, new SimpleList(null, Deferred.of(SimpleType::xsAnyURI)), null)), new Scope(Scope.Variety.GLOBAL, null), null, null);
+		xsiSchemaLocation = new Attribute(xsiSchemaLocationNode, Deques.emptyDeque(), "schemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(() -> new SimpleType(xsiSchemaLocationTypeNode, Deques.emptyDeque(), null, XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deques.emptyDeque(), null, SimpleType::xsAnySimpleType, () -> SimpleType.Variety.LIST, Deques::emptyDeque, null, new SimpleType.List(null, SimpleType::xsAnyURI), null)), new Scope(Scope.Variety.GLOBAL, null), null, null);
 		final Node xsiNoNamespaceSchemaLocationNode = NodeHelper.newNode(doc, ElementValue.ATTRIBUTE, "xsi", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, "noNamespaceSchemaLocation");
-		xsiNoNamespaceSchemaLocation = new Attribute(xsiNoNamespaceSchemaLocationNode, Deques.emptyDeque(), "noNamespaceSchemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(SimpleType::xsAnyURI), new Scope(Scope.Variety.GLOBAL, null), null, null);
+		xsiNoNamespaceSchemaLocation = new Attribute(xsiNoNamespaceSchemaLocationNode, Deques.emptyDeque(), "noNamespaceSchemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsAnyURI, new Scope(Scope.Variety.GLOBAL, null), null, null);
 	}
 
 	private final Node node;
@@ -272,7 +273,7 @@ public class Attribute implements AnnotatedComponent {
 		this.inheritable = inheritable != null && inheritable.booleanValue();
 	}
 
-	protected static Attribute parse(final Result result) {
+	static Attribute parse(final Result result) {
 		final String defaultValue = result.value(AttributeValue.DEFAULT);
 		final String fixedValue = result.value(AttributeValue.FIXED);
 		final boolean isGlobal = NodeHelper.isParentSchemaElement(result);
@@ -299,7 +300,7 @@ public class Attribute implements AnnotatedComponent {
 		final SimpleType simpleTypeChild = result.parse(ElementValue.SIMPLETYPE);
 		final Deferred<SimpleType> simpleType = typeName != null
 				? result.schema().find(typeName, SimpleType.class)
-				: Deferred.value(simpleTypeChild != null ? simpleTypeChild : SimpleType.xsAnySimpleType());
+				: simpleTypeChild != null ? () -> simpleTypeChild : SimpleType::xsAnySimpleType;
 		final ValueConstraint valueConstraint = defaultValue != null ? new ValueConstraint(simpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
 				: fixedValue != null ? new ValueConstraint(simpleType, ValueConstraint.Variety.FIXED, fixedValue)
 				: null;

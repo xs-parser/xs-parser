@@ -8,11 +8,13 @@ import java.util.AbstractMap.*;
 import java.util.function.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
+import javax.xml.transform.stream.*;
 import org.w3c.dom.*;
 import org.xml.sax.*;
 import xs.parser.TypeDefinition.*;
 import xs.parser.internal.*;
-import xs.parser.internal.SequenceParser.*;
+import xs.parser.internal.util.*;
+import xs.parser.internal.util.SequenceParser.*;
 
 /**
  * <pre>
@@ -125,44 +127,6 @@ public class Schema implements AnnotatedComponent {
 
 	}
 
-	/**
-	 * <pre>
-	 * &lt;defaultOpenContent
-	 *   appliesToEmpty = boolean : false
-	 *   id = ID
-	 *   mode = (interleave | suffix) : interleave
-	 *   {any attributes with non-schema namespace . . .}&gt;
-	 *   Content: (annotation?, any)
-	 * &lt;/defaultOpenContent&gt;
-	 * </pre>
-	 */
-	public static class DefaultOpenContent extends OpenContent {
-
-		protected static final SequenceParser parser = new SequenceParser()
-				.optionalAttributes(AttributeValue.APPLIESTOEMPTY, AttributeValue.ID, AttributeValue.MODE)
-				.elements(0, 1, ElementValue.ANNOTATION)
-				.elements(1, 1, ElementValue.ANY);
-
-		private final boolean appliesToEmpty;
-
-		private DefaultOpenContent(final Deque<Annotation> annotations, final boolean appliesToEmpty, final Mode mode, final Particle<Wildcard> wildcard) {
-			super(annotations, mode, wildcard);
-			this.appliesToEmpty = appliesToEmpty;
-		}
-
-		protected static DefaultOpenContent parse(final Result result) {
-			final boolean appliesToEmpty = result.value(AttributeValue.APPLIESTOEMPTY);
-			final Mode mode = result.value(AttributeValue.MODE);
-			final Particle<Wildcard> wildcard = result.parse(ElementValue.ANY);
-			return new DefaultOpenContent(result.annotations(), appliesToEmpty, mode, wildcard);
-		}
-
-		public boolean appliesToEmpty() {
-			return appliesToEmpty;
-		}
-
-	}
-
 	public enum Form {
 
 		UNQUALIFIED("unqualified"),
@@ -191,6 +155,366 @@ public class Schema implements AnnotatedComponent {
 		@Override
 		public String toString() {
 			return getName();
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;defaultOpenContent
+	 *   appliesToEmpty = boolean : false
+	 *   id = ID
+	 *   mode = (interleave | suffix) : interleave
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?, any)
+	 * &lt;/defaultOpenContent&gt;
+	 * </pre>
+	 */
+	public static class DefaultOpenContent extends ComplexType.OpenContent {
+
+		static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttributeValue.APPLIESTOEMPTY, AttributeValue.ID, AttributeValue.MODE)
+				.elements(0, 1, ElementValue.ANNOTATION)
+				.elements(1, 1, ElementValue.ANY);
+
+		private final boolean appliesToEmpty;
+
+		private DefaultOpenContent(final Deque<Annotation> annotations, final boolean appliesToEmpty, final Mode mode, final Particle wildcard) {
+			super(annotations, mode, wildcard);
+			this.appliesToEmpty = appliesToEmpty;
+		}
+
+		static DefaultOpenContent parse(final Result result) {
+			final boolean appliesToEmpty = result.value(AttributeValue.APPLIESTOEMPTY);
+			final Mode mode = result.value(AttributeValue.MODE);
+			final Particle wildcard = result.parse(ElementValue.ANY);
+			return new DefaultOpenContent(result.annotations(), appliesToEmpty, mode, wildcard);
+		}
+
+		public boolean appliesToEmpty() {
+			return appliesToEmpty;
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;import
+	 *   id = ID
+	 *   namespace = anyURI
+	 *   schemaLocation = anyURI
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?)
+	 * &lt;/import&gt;
+	 * </pre>
+	 */
+	public static class Import {
+
+		static final String RESOURCE_PATH = "xs/parser/";
+		static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttributeValue.ID, AttributeValue.NAMESPACE, AttributeValue.SCHEMALOCATION)
+				.elements(0, 1, ElementValue.ANNOTATION);
+
+		private final Schema schema;
+		private final Node node;
+		private final Deque<Annotation> annotations;
+		private final String namespace;
+		private final String schemaLocation;
+		private final Deferred<Schema> importedSchema = Deferred.of(this::importSchema);
+
+		private Import(final Schema schema, final Node node, final Deque<Annotation> annotations, final String namespace, final String schemaLocation) {
+			this.schema = schema;
+			this.node = Objects.requireNonNull(node);
+			this.annotations = Objects.requireNonNull(annotations);
+			if (schema.targetNamespace() != null && schema.targetNamespace().equals(namespace)) {
+				throw new SchemaParseException(node, "namespace " + NodeHelper.toStringNamespace(namespace) + " must not match the targetNamespace " + NodeHelper.toStringNamespace(schema.targetNamespace()) + " of the current schema");
+			}
+			if (XMLConstants.NULL_NS_URI.equals(namespace)) {
+				throw new SchemaParseException(node, "@namespace must be absent or non-empty");
+			}
+			this.namespace = namespace;
+			this.schemaLocation = schemaLocation;
+		}
+
+		static Import parse(final Result result) {
+			final String namespace = result.value(AttributeValue.NAMESPACE);
+			final String schemaLocation = result.value(AttributeValue.SCHEMALOCATION);
+			return new Import(result.schema(), result.node(), result.annotations(), namespace, schemaLocation);
+		}
+
+		private Schema importSchema() {
+			try {
+				final Schema resultSchema = schema.findSchema(schema.documentResolver(), true, namespace, schemaLocation);
+				if (Objects.equals(namespace, resultSchema.targetNamespace())) {
+					return resultSchema;
+				}
+				throw new SchemaParseException(node, "namespace " + NodeHelper.toStringNamespace(namespace) + " must match the targetNamespace " + NodeHelper.toStringNamespace(resultSchema.targetNamespace()) + " of the imported schema");
+			} catch (final SchemaParseException e) {
+				throw e;
+			} catch (final Exception e) {
+				Reporting.report("Could not resolve xs:import, caused by " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+			}
+			return Schema.EMPTY;
+		}
+
+		private Deque<Annotation> annotations() {
+			return annotations;
+		}
+
+		private String namespace() {
+			return namespace;
+		}
+
+		private Schema importedSchema() {
+			return importedSchema.get();
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;include
+	 *   id = ID
+	 *   schemaLocation = anyURI
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation?)
+	 * &lt;/include&gt;
+	 * </pre>
+	 */
+	public static class Include {
+
+		static final String RESOURCE_PATH = Import.RESOURCE_PATH;
+		static final SequenceParser parser = new SequenceParser()
+				.requiredAttributes(AttributeValue.SCHEMALOCATION)
+				.optionalAttributes(AttributeValue.ID)
+				.elements(0, 1, ElementValue.ANNOTATION);
+		// Stylesheet for Chameleon Inclusion (F.1)
+		static final Object f1Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "F-1.xsl")));
+
+		private final Schema schema;
+		private final Node node;
+		private final Deque<Annotation> annotations;
+		private final String schemaLocation;
+		private final Deferred<Schema> includedSchema = Deferred.of(this::includeSchema);
+		private final boolean shouldCache;
+
+		private Include(final Schema schema, final Node node, final Deque<Annotation> annotations, final String schemaLocation, final boolean shouldCache) {
+			this.schema = schema;
+			this.node = Objects.requireNonNull(node);
+			this.annotations = Objects.requireNonNull(annotations);
+			this.schemaLocation = schemaLocation;
+			this.shouldCache = shouldCache;
+		}
+
+		static Include parse(final Result result) {
+			final String schemaLocation = result.value(AttributeValue.SCHEMALOCATION);
+			return new Include(result.schema(), result.node(), result.annotations(), schemaLocation, true);
+		}
+
+		private Schema includeSchema() {
+			try {
+				final String expectedTargetNamespace = schema.targetNamespace();
+				final Schema resultSchema = schema.findSchema(new DocumentResolver() {
+
+					@Override
+					public URI resolveUri(final String baseUri, final String namespace, final String schemaLocation) {
+						return schema.documentResolver().resolveUri(baseUri, namespace, schemaLocation);
+					}
+
+					@Override
+					public Document resolve(final URI resourceUri) throws Exception {
+						final Document resolvedDocument = schema.documentResolver().resolve(resourceUri);
+						if (resolvedDocument != null) {
+							final Document transformed = transformDocument(resolveDocument(resolvedDocument));
+							if (transformed.getDocumentURI() == null) {
+								transformed.setDocumentURI(resolvedDocument.getDocumentURI());
+							}
+							return transformed;
+						}
+						return null;
+					}
+
+				}, shouldCache, expectedTargetNamespace, schemaLocation);
+				if (Objects.equals(expectedTargetNamespace, resultSchema.targetNamespace())) {
+					return resultSchema;
+				} else {
+					throw new SchemaParseException(node, "targetNamespace " + NodeHelper.toStringNamespace(resultSchema.targetNamespace()) + " of the included schema must match the targetNamespace " + NodeHelper.toStringNamespace(expectedTargetNamespace) + " of the current schema");
+				}
+			} catch (final SchemaParseException e) {
+				throw e;
+			} catch (final Exception e) {
+				Reporting.report("Could not resolve " + node.getNodeName() + ", caused by " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+			}
+			return Schema.EMPTY;
+		}
+
+		Document resolveDocument(final Document resolvedDocument) {
+			final Node childTargetNamespace = resolvedDocument.getDocumentElement().getAttributes().getNamedItemNS(null, AttributeValue.TARGETNAMESPACE.getName().getLocalPart());
+			final String parentTargetNamespace = schema.targetNamespace();
+			if (childTargetNamespace == null && parentTargetNamespace != null) {
+				final Map<String, Object> params = new HashMap<>();
+				final String prefixForTargetNamespace = node.lookupPrefix(parentTargetNamespace);
+				if (prefixForTargetNamespace != null) {
+					params.put("prefixForTargetNamespace", prefixForTargetNamespace);
+				}
+				try {
+					params.put("newTargetNamespace", new URI(parentTargetNamespace));
+				} catch (final URISyntaxException e) {
+					throw new SchemaParseException(node, e);
+				}
+				return SaxonProcessor.transform(f1Xslt, resolvedDocument, params, null);
+			}
+			return resolvedDocument;
+		}
+
+		Document transformDocument(final Document doc) {
+			// Overridden by xs:override & xs:redefine
+			return doc;
+		}
+
+		private Deque<Annotation> annotations() {
+			return annotations;
+		}
+
+		Node node() {
+			return node;
+		}
+
+		Schema includedSchema() {
+			return includedSchema.get();
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;override
+	 *   id = ID
+	 *   schemaLocation = anyURI
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation | (simpleType | complexType | group | attributeGroup | element | attribute | notation))*
+	 * &lt;/override&gt;
+	 * </pre>
+	 */
+	public static class Overrides extends Redefine {
+
+		static final SequenceParser parser = new SequenceParser()
+				.requiredAttributes(AttributeValue.SCHEMALOCATION)
+				.optionalAttributes(AttributeValue.ID)
+				.elements(0, Integer.MAX_VALUE, ElementValue.ANNOTATION, ElementValue.SIMPLETYPE, ElementValue.COMPLEXTYPE, ElementValue.GROUP_DECL, ElementValue.ATTRIBUTEGROUP, ElementValue.ELEMENT_DECL, ElementValue.ATTRIBUTE_DECL, ElementValue.NOTATION);
+		// Stylesheet for xs:override (F.2)
+		static final Object f2Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "F-2.xsl")));
+
+		private Overrides(final Schema schema, final Node node, final Deque<Annotation> annotations, final String schemaLocation) {
+			super(schema, node, annotations, schemaLocation);
+		}
+
+		static Overrides parse(final Result result) {
+			final String schemaLocation = result.value(AttributeValue.SCHEMALOCATION);
+			return new Overrides(result.schema(), result.node(), result.annotations(), schemaLocation);
+		}
+
+		@Override
+		Document transformDocument(final Document doc) {
+			final Map<String, Object> params = new HashMap<>();
+			params.put("overrideElement", node());
+			params.put("overriddenSchema", doc.getDocumentElement());
+			return SaxonProcessor.transform(f2Xslt, doc, params, "perform-override");
+		}
+
+	}
+
+	/**
+	 * <pre>
+	 * &lt;redefine
+	 *   id = ID
+	 *   schemaLocation = anyURI
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: (annotation | (simpleType | complexType | group | attributeGroup))*
+	 * &lt;/redefine&gt;
+	 * </pre>
+	 */
+	public static class Redefine extends Include {
+
+		static final SequenceParser parser = new SequenceParser()
+				.requiredAttributes(AttributeValue.SCHEMALOCATION)
+				.optionalAttributes(AttributeValue.ID)
+				.elements(0, Integer.MAX_VALUE, ElementValue.ANNOTATION, ElementValue.SIMPLETYPE, ElementValue.COMPLEXTYPE, ElementValue.GROUP_DECL, ElementValue.ATTRIBUTEGROUP);
+		// Stylesheet for xs:redefine
+		static final Object redefineXslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "xs-redefine.xsl")));
+
+		private Redefine(final Schema schema, final Node node, final Deque<Annotation> annotations, final String schemaLocation) {
+			super(schema, node, annotations, schemaLocation, false);
+		}
+
+		static Redefine parse(final Result result) {
+			final String schemaLocation = result.value(AttributeValue.SCHEMALOCATION);
+			return new Redefine(result.schema(), result.node(), result.annotations(), schemaLocation);
+		}
+
+		@Override
+		Document transformDocument(final Document doc) {
+			final Map<String, Object> params = new HashMap<>();
+			params.put("redefineElement", node());
+			params.put("redefinedSchema", doc.getDocumentElement());
+			return SaxonProcessor.transform(redefineXslt, doc, params, "perform-redefine");
+		}
+
+	}
+
+	private class Def<T extends SchemaComponent> {
+
+		private final Deferred<Deque<T>> declared;
+		private final Deferred<Deque<T>> constituents;
+		private final Deferred<Deque<T>> all;
+
+		Def(final Supplier<Deque<T>> supplier, final Function<Schema, Def<T>> mapper) {
+			this(supplier, mapper, x -> { });
+		}
+
+		Def(final Supplier<Deque<T>> supplier, final Function<Schema, Def<T>> mapper, final Consumer<Deque<T>> after) {
+			this.declared = Deferred.of(supplier);
+			final Set<Schema> schemas = new LinkedHashSet<>();
+			schemas.add(Schema.this);
+			this.constituents = findAll(schemas, mapper);
+			this.all = constituents.map(c -> {
+				final Deque<T> deque = declared.get();
+				final Deque<T> allDeque = new DeferredArrayDeque<>(deque.size(), c);
+				allDeque.addAll(deque);
+				after.accept(allDeque);
+				return allDeque;
+			});
+		}
+
+		Def() {
+			this.declared = Deques::emptyDeque;
+			this.constituents = Deques::emptyDeque;
+			this.all = Deques::emptyDeque;
+		}
+
+		private <U extends SchemaComponent> Deferred<Deque<U>> findAll(final Set<Schema> schemas, final Function<Schema, Def<U>> mapper) {
+			return constituentSchemas.map(c -> {
+				if (c.isEmpty()) {
+					return Deques.emptyDeque();
+				}
+				int size = 0;
+				final Deque<Deque<U>> values = new ArrayDeque<>();
+				for (final Schema s : c) {
+					if (schemas.add(s)) {
+						final Def<U> def = mapper.apply(s);
+						final Deque<U> decls = def.declared.get();
+						final Deque<U> combine = new DeferredArrayDeque<>(decls.size(), def.findAll(schemas, mapper).get());
+						combine.addAll(decls);
+						values.add(combine);
+						size += combine.size();
+					}
+				}
+				final Deque<U> ls = new DeferredArrayDeque<>(size);
+				for (final Deque<U> value : values) {
+					ls.addAll(value);
+				}
+				return ls;
+			});
 		}
 
 	}
@@ -235,67 +559,10 @@ public class Schema implements AnnotatedComponent {
 
 	}
 
-	private class Def<T extends SchemaComponent> {
-
-		private final Deferred<Deque<T>> declared;
-		private final Deferred<Deque<T>> constituents;
-		private final Deferred<Deque<T>> all;
-
-		Def(final Supplier<Deque<T>> supplier, final Function<Schema, Def<T>> mapper) {
-			this(supplier, mapper, x -> { });
-		}
-
-		Def(final Supplier<Deque<T>> supplier, final Function<Schema, Def<T>> mapper, final Consumer<Deque<T>> after) {
-			this.declared = Deferred.of(supplier);
-			final Set<Schema> schemas = new LinkedHashSet<>();
-			schemas.add(Schema.this);
-			this.constituents = findAll(schemas, mapper);
-			this.all = constituents.map(c -> {
-				final Deque<T> deque = declared.get();
-				final Deque<T> allDeque = new DeferredArrayDeque<>(deque.size(), c);
-				allDeque.addAll(deque);
-				after.accept(allDeque);
-				return allDeque;
-			});
-		}
-
-		Def() {
-			this.declared = Deferred.value(Deques.emptyDeque());
-			this.constituents = Deferred.value(Deques.emptyDeque());
-			this.all = Deferred.value(Deques.emptyDeque());
-		}
-
-		private <U extends SchemaComponent> Deferred<Deque<U>> findAll(final Set<Schema> schemas, final Function<Schema, Def<U>> mapper) {
-			return constituentSchemas.map(c -> {
-				if (c.isEmpty()) {
-					return Deques.emptyDeque();
-				}
-				int size = 0;
-				final Deque<Deque<U>> values = new ArrayDeque<>();
-				for (final Schema s : c) {
-					if (schemas.add(s)) {
-						final Def<U> def = mapper.apply(s);
-						final Deque<U> decls = def.declared.get();
-						final Deque<U> combine = new DeferredArrayDeque<>(decls.size(), def.findAll(schemas, mapper).get());
-						combine.addAll(decls);
-						values.add(combine);
-						size += combine.size();
-					}
-				}
-				final Deque<U> ls = new DeferredArrayDeque<>(size);
-				for (final Deque<U> value : values) {
-					ls.addAll(value);
-				}
-				return ls;
-			});
-		}
-
-	}
-
 	private static final DocumentResolver DEFAULT_DOCUMENT_RESOLVER = new DocumentResolver();
 	private static final Map<Class<? extends SchemaComponent>, BiFunction<Schema, QName, Deferred<? extends SchemaComponent>>> FINDERS;
 	static final Schema EMPTY = new Schema();
-	protected static final SequenceParser parser = new SequenceParser()
+	static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttributeValue.ATTRIBUTEFORMDEFAULT, AttributeValue.BLOCKDEFAULT, AttributeValue.DEFAULTATTRIBUTES, AttributeValue.XPATHDEFAULTNAMESPACE, AttributeValue.ELEMENTFORMDEFAULT, AttributeValue.FINALDEFAULT, AttributeValue.ID, AttributeValue.TARGETNAMESPACE, AttributeValue.VERSION, AttributeValue.XML_LANG)
 			.elements(0, Integer.MAX_VALUE, ElementValue.IMPORT, ElementValue.INCLUDE, ElementValue.OVERRIDE, ElementValue.REDEFINE, ElementValue.ANNOTATION)
 			.elements(0, 1, ElementValue.DEFAULTOPENCONTENT)
@@ -357,7 +624,7 @@ public class Schema implements AnnotatedComponent {
 		this.attributeGroupDefinitions = new Def<>();
 		this.elementDeclarations = new Def<>();
 		this.notationDeclarations = new Def<>();
-		this.identityConstraintDefinitions = Deferred.value(Deques.emptyDeque());
+		this.identityConstraintDefinitions = Deques::emptyDeque;
 		this.annotations = new Def<>();
 		this.attributeFormDefault = AttributeValue.ATTRIBUTEFORMDEFAULT.defaultValue();
 		this.blockDefault = AttributeValue.BLOCKDEFAULT.defaultValue();
@@ -406,7 +673,7 @@ public class Schema implements AnnotatedComponent {
 			this.elementDeclarations().forEach(e -> id.addAll(e.identityConstraints()));
 			this.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
 				if (c.contentType() != null && c.contentType().particle() != null) {
-					final Particle<Term> p = c.contentType().particle();
+					final Particle p = c.contentType().particle();
 					if (p.term() instanceof Element) {
 						id.addAll(((Element) p.term()).identityConstraints());
 					} else if (p.term() instanceof ModelGroup) {
@@ -472,6 +739,10 @@ public class Schema implements AnnotatedComponent {
 		this(documentResolver, namespaceContext, document, document.getDocumentURI(), new HashMap<>(), new HashMap<>());
 	}
 
+	private static <T> Deferred<T> deferred(final Optional<T> opt) {
+		return opt.map(t -> (Deferred<T>) () -> t).orElseGet(Deferred::none);
+	}
+
 	private static <T extends SchemaComponent> void checkIfUnique(final Deque<T> ls, final Function<T, String> name, final Function<T, String> targetNamespace) {
 		final Map<QName, T> names = new HashMap<>(ls.size());
 		for (final T t : ls) {
@@ -493,12 +764,12 @@ public class Schema implements AnnotatedComponent {
 	}
 
 	private Set<Schema> getConstituentSchemas() {
-		final Set<Schema> constituentSchemas = new LinkedHashSet<>();
-		imports.forEach(i -> constituentSchemas.add(i.importedSchema()));
-		includes.forEach(i -> constituentSchemas.add(i.includedSchema()));
-		overrides.forEach(o -> constituentSchemas.add(o.includedSchema()));
-		redefines.forEach(r -> constituentSchemas.add(r.includedSchema()));
-		return constituentSchemas;
+		final Set<Schema> schemas = new LinkedHashSet<>();
+		imports.forEach(i -> schemas.add(i.importedSchema()));
+		includes.forEach(i -> schemas.add(i.includedSchema()));
+		overrides.forEach(o -> schemas.add(o.includedSchema()));
+		redefines.forEach(r -> schemas.add(r.includedSchema()));
+		return schemas;
 	}
 
 	// Used by XPathEvaluator via reflection
@@ -518,7 +789,7 @@ public class Schema implements AnnotatedComponent {
 			if (localName.equals(SimpleType.xsAnyAtomicType().name())) {
 				throw new SchemaParseException(SimpleType.xsAnyAtomicType().name() + " may not be used as a simpleType");
 			} else if (localName.equals(SimpleType.xsAnySimpleType().name())) {
-				return Deferred.of(SimpleType::xsAnySimpleType);
+				return SimpleType::xsAnySimpleType;
 			} else {
 				return Deferred.of(() -> SimpleType.findPrimitiveOrBuiltinType(name.getLocalPart()));
 			}
@@ -528,26 +799,26 @@ public class Schema implements AnnotatedComponent {
 			if (XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(name.getNamespaceURI())) {
 				return findIntrinsicSimpleType.apply(schema, name);
 			}
-			return schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).filter(s -> NodeHelper.equalsName(name, s)).findAny().map(Deferred::value).orElseGet(Deferred::none);
+			return deferred(schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).filter(s -> NodeHelper.equalsName(name, s)).findAny());
 		});
 		finders.put(ComplexType.class, (schema, name) -> {
 			if (XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(name.getNamespaceURI()) && ComplexType.ANYTYPE_NAME.equals(name.getLocalPart())) {
-				return Deferred.of(ComplexType::xsAnyType);
+				return ComplexType::xsAnyType;
 			}
-			return schema.typeDefinitions().stream().filter(ComplexType.class::isInstance).filter(c -> NodeHelper.equalsName(name, c)).findAny().map(Deferred::value).orElseGet(Deferred::none);
+			return deferred(schema.typeDefinitions().stream().filter(ComplexType.class::isInstance).filter(c -> NodeHelper.equalsName(name, c)).findAny());
 		});
 		finders.put(TypeDefinition.class, (schema, name) -> {
 			if (XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(name.getNamespaceURI()) && ComplexType.ANYTYPE_NAME.equals(name.getLocalPart())) {
-				return Deferred.of(ComplexType::xsAnyType);
+				return ComplexType::xsAnyType;
 			} else if (XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(name.getNamespaceURI())) {
 				return findIntrinsicSimpleType.apply(schema, name);
 			}
-			return schema.typeDefinitions().stream().filter(t -> NodeHelper.equalsName(name, t)).map(Deferred::<TypeDefinition>value).findAny().orElseThrow(() -> new SchemaParseException("Type definition with name " + name + " not found"));
+			return schema.typeDefinitions().stream().filter(t -> NodeHelper.equalsName(name, t)).map(t -> (Deferred<TypeDefinition>) () -> t).findAny().orElseThrow(() -> new SchemaParseException("Type definition with name " + name + " not found"));
 		});
-		finders.put(AttributeGroup.class, (schema, name) -> schema.attributeGroupDefinitions().stream().filter(a -> NodeHelper.equalsName(name, a)).findAny().map(Deferred::value).orElseGet(Deferred::none));
-		finders.put(Attribute.class, (schema, name) -> schema.attributeDeclarations().stream().filter(a -> NodeHelper.equalsName(name, a)).findAny().map(Deferred::value).orElseGet(Deferred::none));
-		finders.put(ModelGroup.class, (schema, name) -> schema.modelGroupDefinitions().stream().filter(m -> NodeHelper.equalsName(name, m)).findAny().map(Deferred::value).orElseGet(Deferred::none));
-		finders.put(Element.class, (schema, name) -> schema.elementDeclarations().stream().filter(e -> NodeHelper.equalsName(name, e)).findAny().map(Deferred::value).orElseGet(Deferred::none));
+		finders.put(AttributeGroup.class, (schema, name) -> deferred(schema.attributeGroupDefinitions().stream().filter(a -> NodeHelper.equalsName(name, a)).findAny()));
+		finders.put(Attribute.class, (schema, name) -> deferred(schema.attributeDeclarations().stream().filter(a -> NodeHelper.equalsName(name, a)).findAny()));
+		finders.put(ModelGroup.class, (schema, name) -> deferred(schema.modelGroupDefinitions().stream().filter(m -> NodeHelper.equalsName(name, m)).findAny()));
+		finders.put(Element.class, (schema, name) -> deferred(schema.elementDeclarations().stream().filter(e -> NodeHelper.equalsName(name, e)).findAny()));
 		FINDERS = Collections.unmodifiableMap(finders);
 	}
 
@@ -566,7 +837,7 @@ public class Schema implements AnnotatedComponent {
 		});
 	}
 
-	protected Schema findSchema(final DocumentResolver resolver, final boolean cache, final String namespace, final String schemaLocation) throws Exception {
+	Schema findSchema(final DocumentResolver resolver, final boolean cache, final String namespace, final String schemaLocation) throws Exception {
 		final URI resourceUri = resolver.resolveUri(document.getDocumentURI(), namespace, schemaLocation);
 		final URI normalizedResourceUri = resourceUri != null ? resourceUri.normalize() : null;
 		final Map.Entry<String, URI> key = new SimpleImmutableEntry<>(namespace, normalizedResourceUri);
@@ -607,56 +878,56 @@ public class Schema implements AnnotatedComponent {
 		}
 	}
 
-	protected DocumentResolver documentResolver() {
+	DocumentResolver documentResolver() {
 		return documentResolver;
 	}
 
-	protected NamespaceContext namespaceContext() {
+	NamespaceContext namespaceContext() {
 		return namespaceContext;
 	}
 
-	protected String location() {
+	String location() {
 		return location;
 	}
 
-	protected DefaultOpenContent defaultOpenContent() {
+	DefaultOpenContent defaultOpenContent() {
 		return defaultOpenContent;
 	}
 
-	protected Form attributeFormDefault() {
+	Form attributeFormDefault() {
 		return attributeFormDefault;
 	}
 
-	protected Block blockDefault() {
+	Block blockDefault() {
 		return blockDefault;
 	}
 
-	protected AttributeGroup defaultAttributes() {
+	AttributeGroup defaultAttributes() {
 		return defaultAttributes.get();
 	}
 
-	protected String xpathDefaultNamespace() {
+	String xpathDefaultNamespace() {
 		return xpathDefaultNamespace;
 	}
 
-	protected Form elementFormDefault() {
+	Form elementFormDefault() {
 		return elementFormDefault;
 	}
 
-	protected Final finalDefault() {
+	Final finalDefault() {
 		return finalDefault;
 	}
 
-	protected String version() {
+	String version() {
 		return version;
 	}
 
-	protected String targetNamespace() {
+	String targetNamespace() {
 		return targetNamespace;
 	}
 
 	/** @return The simple and complex type definitions corresponding to all the &lt;simpleType&gt; and &lt;complexType&gt; element information items in the [children], if any, plus any definitions brought in via &lt;include&gt; (see Assembling a schema for a single target namespace from multiple schema definition documents (&lt;include&gt;) (§4.2.3)), &lt;override&gt; (see Overriding component definitions (&lt;override&gt;) (§4.2.5)), &lt;redefine&gt; (see Including modified component definitions (&lt;redefine&gt;) (§4.2.4)), and &lt;import&gt; (see References to schema components across namespaces (&lt;import&gt;) (§4.2.6)). */
-	public Deque<? extends TypeDefinition> typeDefinitions() {
+	public Deque<TypeDefinition> typeDefinitions() {
 		return Deques.unmodifiableDeque(typeDefinitions.all.get());
 	}
 

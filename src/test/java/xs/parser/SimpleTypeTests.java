@@ -50,7 +50,7 @@ public class SimpleTypeTests {
 				+ "</xs:schema>");
 	}
 
-	public static <T> ConstrainingFacet<T> facetOf(final SimpleType s, final Class<? extends ConstrainingFacet<T>> cls) {
+	public static <T extends ConstrainingFacet> T facetOf(final SimpleType s, final Class<T> cls) {
 		Assert.assertTrue(s.facets().stream().map(c -> c.getClass().getSimpleName() + ' ' + c.value()).collect(Collectors.joining(", ")).toString(), s.facets().stream().filter(cls::isInstance).count() <= 1);
 		return s.facets().stream().filter(cls::isInstance).map(cls::cast).findAny().orElse(null);
 	}
@@ -83,7 +83,7 @@ public class SimpleTypeTests {
 		Assert.assertEquals("-2147483648", facetOf(intType, ConstrainingFacet.MinInclusive.class).value());
 		Assert.assertEquals("2147483647", facetOf(intType, ConstrainingFacet.MaxInclusive.class).value());
 		Assert.assertTrue(facetOf(intType, ConstrainingFacet.Pattern.class).value().contains("[\\-+]?[0-9]+"));
-		final ConstrainingFacet<String> fractionDigits = facetOf(intType, ConstrainingFacet.FractionDigits.class);
+		final ConstrainingFacet.FractionDigits fractionDigits = facetOf(intType, ConstrainingFacet.FractionDigits.class);
 		Assert.assertEquals(true, fractionDigits.fixed());
 		Assert.assertEquals("0", fractionDigits.value());
 		final SimpleType testA = (SimpleType) schema.typeDefinitions().stream().filter(s -> s.name().equals("TestA")).findAny().get();

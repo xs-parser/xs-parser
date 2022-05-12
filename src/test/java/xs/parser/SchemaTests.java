@@ -10,7 +10,7 @@ import org.junit.*;
 import org.w3c.dom.*;
 import xs.parser.ConstrainingFacet.*;
 import xs.parser.Schema.*;
-import xs.parser.internal.*;
+import xs.parser.internal.util.*;
 import xs.parser.x.*;
 
 public class SchemaTests {
@@ -63,9 +63,9 @@ public class SchemaTests {
 				if (m.particles().getFirst().term() instanceof ModelGroup) {
 					Assert.assertEquals(ModelGroup.Compositor.SEQUENCE, m.compositor());
 					Assert.assertTrue("" + m.particles().size(), m.particles().size() == 1 || m.particles().size() == 2);
-					final Deque<Particle<Term>> particles = new ArrayDeque<>(m.particles());
+					final Deque<Particle> particles = new ArrayDeque<>(m.particles());
 					while (!particles.isEmpty()) {
-						final Particle<Term> p = particles.poll();
+						final Particle p = particles.poll();
 						Assert.assertNotNull(p.term());
 						if (p.term() instanceof ModelGroup) {
 							particles.addAll(((ModelGroup) p.term()).particles());
@@ -74,7 +74,7 @@ public class SchemaTests {
 						}
 					}
 				} else {
-					for (final Particle<Term> p : m.particles()) {
+					for (final Particle p : m.particles()) {
 						Assert.assertNotNull(p.toString(), p.term());
 					}
 				}
@@ -84,12 +84,12 @@ public class SchemaTests {
 		// Test particle term
 		schema.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
 			if (c.contentType() != null) { // It is legal for contentType to be null
-				final Particle<Term> root = c.contentType().particle();
+				final Particle root = c.contentType().particle();
 				if (root != null) { // It is also legal for the particle to be null (TODO: is it?)
-					final Deque<Particle<Term>> d = new ArrayDeque<>();
+					final Deque<Particle> d = new ArrayDeque<>();
 					d.add(root);
 					while (!d.isEmpty()) {
-						final Particle<Term> p = d.removeFirst();
+						final Particle p = d.removeFirst();
 						Assert.assertNotNull("{" + c.targetNamespace() + "}" + c.name(), p.term());
 						if (p.term() instanceof ModelGroup) {
 							d.addAll(((ModelGroup) p.term()).particles());
@@ -251,10 +251,10 @@ public class SchemaTests {
 		{
 			final ComplexType c1 = (ComplexType) schema.typeDefinitions().stream().filter(t -> "c1".equals(t.name())).findFirst().get();
 			Assert.assertEquals(ComplexType.Variety.ELEMENT_ONLY, c1.contentType().variety());
-			final Particle<Term> p = (Particle<Term>) c1.contentType().particle();
+			final Particle p = c1.contentType().particle();
 			final ModelGroup grp = (ModelGroup) p.term();
 			Assert.assertEquals(1, grp.particles().size());
-			final Particle<Term> pElem = grp.particles().getFirst();
+			final Particle pElem = grp.particles().getFirst();
 			final Element elem = (Element) pElem.term();
 			Assert.assertNotEquals(c1, elem.type());
 			Assert.assertEquals("e2", elem.name());

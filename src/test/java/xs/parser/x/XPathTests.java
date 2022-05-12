@@ -10,7 +10,7 @@ import org.junit.runner.*;
 import org.junit.runners.*;
 import org.junit.runners.Parameterized.*;
 import xs.parser.*;
-import xs.parser.internal.*;
+import xs.parser.internal.util.*;
 
 @RunWith(Parameterized.class)
 public class XPathTests {
