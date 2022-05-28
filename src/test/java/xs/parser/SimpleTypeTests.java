@@ -66,26 +66,26 @@ public class SimpleTypeTests {
 		Assert.assertEquals("[\\-+]?[0-9]+", patterns.next());
 		Assert.assertEquals("[A-Z]", patterns.next());
 		Assert.assertEquals("[a-z]|[y-z]", patterns.next());
-		Assert.assertEquals("12", facetOf(testA, ConstrainingFacet.MaxInclusive.class).value());
-		Assert.assertEquals("2", facetOf(testA, ConstrainingFacet.MinInclusive.class).value());
+		Assert.assertEquals(12, facetOf(testA, ConstrainingFacet.MaxInclusive.class).value().intValue());
+		Assert.assertEquals(2, facetOf(testA, ConstrainingFacet.MinInclusive.class).value().intValue());
 		final SimpleType testB = (SimpleType) schema.typeDefinitions().stream().filter(s -> s.name().equals("TestB")).findAny().get();
 		Assert.assertEquals(4, testB.fundamentalFacets().size());
 		Assert.assertNotNull(testB.facets());
 		Assert.assertEquals(facetOf(testA, ConstrainingFacet.Pattern.class).value(), facetOf(testB, ConstrainingFacet.Pattern.class).value());
-		Assert.assertEquals("12", facetOf(testB, ConstrainingFacet.MaxInclusive.class).value());
-		Assert.assertEquals("1", facetOf(testB, ConstrainingFacet.MinInclusive.class).value());
-		Assert.assertEquals("123", facetOf(testB, ConstrainingFacet.TotalDigits.class).value());
+		Assert.assertEquals(12, facetOf(testB, ConstrainingFacet.MaxInclusive.class).value().intValue());
+		Assert.assertEquals(1, facetOf(testB, ConstrainingFacet.MinInclusive.class).value().intValue());
+		Assert.assertEquals(123, facetOf(testB, ConstrainingFacet.TotalDigits.class).value().intValue());
 	}
 
 	@Test
 	public void testSimpleTypeDerived() {
 		final SimpleType intType = SimpleType.xsInt();
-		Assert.assertEquals("-2147483648", facetOf(intType, ConstrainingFacet.MinInclusive.class).value());
-		Assert.assertEquals("2147483647", facetOf(intType, ConstrainingFacet.MaxInclusive.class).value());
+		Assert.assertEquals(-2147483648, facetOf(intType, ConstrainingFacet.MinInclusive.class).value().intValue());
+		Assert.assertEquals(2147483647, facetOf(intType, ConstrainingFacet.MaxInclusive.class).value().intValue());
 		Assert.assertTrue(facetOf(intType, ConstrainingFacet.Pattern.class).value().contains("[\\-+]?[0-9]+"));
 		final ConstrainingFacet.FractionDigits fractionDigits = facetOf(intType, ConstrainingFacet.FractionDigits.class);
 		Assert.assertEquals(true, fractionDigits.fixed());
-		Assert.assertEquals("0", fractionDigits.value());
+		Assert.assertEquals(0, fractionDigits.value().intValue());
 		final SimpleType testA = (SimpleType) schema.typeDefinitions().stream().filter(s -> s.name().equals("TestA")).findAny().get();
 		Assert.assertEquals(intType, testA.baseType().baseType());
 		final SimpleType decimalType = SimpleType.xsDecimal();

@@ -1,6 +1,5 @@
 package xs.parser.x;
 
-import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
@@ -9,6 +8,7 @@ import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.*;
 import xs.parser.internal.*;
+import xs.parser.internal.util.*;
 
 public abstract class NodeSet implements Iterable<NodeSet> {
 
@@ -132,7 +132,6 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	}
 
-	private static final Method SCHEMA_CONSTITUENTSCHEMAS;
 	protected static final Supplier<IllegalStateException> IS_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + false + " to invoke this method");
 	protected static final Supplier<IllegalStateException> IS_NOT_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + true + " to invoke this method");
 	/**
@@ -173,15 +172,6 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	 */
 	public static final NamespaceContext DEFAULT_NAMESPACE_CONTEXT = new Namespaces();
 
-	static {
-		try {
-			SCHEMA_CONSTITUENTSCHEMAS = Schema.class.getDeclaredMethod("findAllConstituentSchemas", Set.class);
-			SCHEMA_CONSTITUENTSCHEMAS.setAccessible(true);
-		} catch (final ReflectiveOperationException e) {
-			throw new ExceptionInInitializerError(e);
-		}
-	}
-
 	protected final Map<Query, NodeSet> queryResultCache;
 	protected final NamespaceContext namespaceContext;
 	protected final String expr;
@@ -198,15 +188,10 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 		this.underlyingValue = Objects.requireNonNull(underlyingValue);
 	}
 
-	@SuppressWarnings("unchecked")
-	protected static <X extends Throwable> Set<Schema> constituentSchemas(final Schema schema) throws X {
-		try {
-			final Set<Schema> schemas = new LinkedHashSet<>();
-			SCHEMA_CONSTITUENTSCHEMAS.invoke(schema, schemas);
-			return schemas;
-		} catch (final ReflectiveOperationException e) {
-			throw (X) e;
-		}
+	protected static Set<Schema> constituentSchemas(final Schema schema) {
+		final Set<Schema> schemas = new LinkedHashSet<>();
+		NodeHelper.findAllConstituentSchemas(schema, schemas);
+		return schemas;
 	}
 
 	/**

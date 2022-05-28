@@ -1,6 +1,7 @@
 package xs.parser.internal.util;
 
 import java.io.*;
+import java.math.*;
 import java.net.*;
 import java.util.*;
 import java.util.function.*;
@@ -22,12 +23,12 @@ public final class NodeHelper {
 	private static final String XML_NAME_CHARS = "-.0-9A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD"; // Any subsequent character of an XML name, see below regular expressions
 	private static final Pattern LANGUAGE_PATTERN = Pattern.compile("[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*+");
 	private static final Pattern NCNAME_PATTERN = Pattern.compile("^[" + XML_NAME_FIRST_CHAR + "][" + XML_NAME_CHARS + "]*$");
-	private static final Pattern NON_NEGATIVE_INTEGER_PATTERN = Pattern.compile("^((-0+)|([+]?[0-9]+))$");
-	private static final Pattern POSITIVE_INTEGER_PATTERN = Pattern.compile("^[+]?0*[1-9][0-9]*$");
+	private static final Pattern NON_NEGATIVE_INTEGER_PATTERN = Pattern.compile("^((-0+)|([+]?\\d+))$");
+	private static final Pattern POSITIVE_INTEGER_PATTERN = Pattern.compile("^[+]?0*[1-9]\\d*$");
 	private static final Pattern QNAME_PATTERN = Pattern.compile("^(([" + XML_NAME_FIRST_CHAR + "][" + XML_NAME_CHARS + "]*):)?([" + XML_NAME_FIRST_CHAR + "][" + XML_NAME_CHARS + "]*)$");
-	private static final Pattern ZERO_PATTERN = Pattern.compile("^[+-]?0+$");
 	private static final DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 	private static BiFunction<Node, String, Schema.ParseException> newParseExceptionNodeString;
+	private static BiConsumer<Schema, Set<Schema>> schemaFindAllConstituentSchemas;
 	public static final String LIST_SEP = " ";
 
 	static {
@@ -82,7 +83,7 @@ public final class NodeHelper {
 		case Node.COMMENT_NODE:
 		case Node.TEXT_NODE:
 		case Node.PROCESSING_INSTRUCTION_NODE:
-			return requireNodeValue(node);
+			return Objects.requireNonNull(node.getNodeValue());
 		default:
 			return toString0(node, new StringWriter()).toString();
 		}
@@ -140,6 +141,17 @@ public final class NodeHelper {
 		return newParseException(node, '\'' + value + "' is not a valid value for '" + typeName + '\'');
 	}
 
+	public static void setSchemaFindAllConstituentSchemas(final BiConsumer<Schema, Set<Schema>> fn) {
+		if (schemaFindAllConstituentSchemas != null) {
+			throw new IllegalStateException("schemaFindAllConstituentSchemas already set");
+		}
+		schemaFindAllConstituentSchemas = fn;
+	}
+
+	public static void findAllConstituentSchemas(final Schema schema, final Set<Schema> schemas) {
+		schemaFindAllConstituentSchemas.accept(schema, schemas);
+	}
+
 	public static String namespaceUri(final Node node) {
 		final String nsUri = node.getNamespaceURI();
 		return nsUri == null ? XMLConstants.NULL_NS_URI : nsUri;
@@ -168,31 +180,28 @@ public final class NodeHelper {
 	}
 
 	public static String collapseWhitespace(final String value) {
-		final StringBuilder builder = new StringBuilder();
+		final StringBuilder builder = new StringBuilder(value.length());
 		int lastIndexOfWhitespace = -1;
 		int lastIndexOfNonWhitespace = -1;
-		for (int i = 0; i < value.length(); ++i) {
+		int charCount;
+		for (int i = 0; i < value.length(); i += charCount) {
 			final int codePoint = value.codePointAt(i);
-			final boolean isWhitespace;
 			switch (codePoint) {
 			case ' ':
 			case '\r':
 			case '\n':
 			case '\t':
-				isWhitespace = true;
-				break;
-			default:
-				isWhitespace = false;
-				break;
-			}
-			if (isWhitespace) {
 				if (lastIndexOfWhitespace != i - 1) {
-					builder.appendCodePoint(' ');
+					builder.append(' ');
 				}
 				lastIndexOfWhitespace = i;
-			} else {
+				charCount = 1;
+				break;
+			default:
 				builder.appendCodePoint(codePoint);
 				lastIndexOfNonWhitespace = builder.length();
+				charCount = Character.charCount(codePoint);
+				break;
 			}
 		}
 		if (builder.length() > 0 && lastIndexOfNonWhitespace < builder.length()) {
@@ -201,28 +210,28 @@ public final class NodeHelper {
 		return builder.toString();
 	}
 
-	public static String validateTargetNamespace(final Node ownerNode, final String targetNamespace) {
+	public static String requireNonEmpty(final Node ownerNode, final String targetNamespace) {
 		if (XMLConstants.NULL_NS_URI.equals(targetNamespace)) {
 			throw newParseException(ownerNode, "targetNamespace must either be absent or a non-empty string");
 		}
 		return targetNamespace;
 	}
 
-	public static String getNodeValueAsAnyUri(final Node node) {
-		return getNodeValueAsAnyUri(node, requireNodeValue(node));
+	public static String getAttrValueAsAnyUri(final Attr attr) {
+		return getAttrValueAsAnyUri(attr, collapseWhitespace(attr.getValue()));
 	}
 
-	public static String getNodeValueAsAnyUri(final Node node, final String value) {
+	public static String getAttrValueAsAnyUri(final Attr attr, final String value) {
 		try {
-			new URI(value);
+			new URI(value); // TODO: parse as IRI, RFC3987
 			return value;
 		} catch (final URISyntaxException e) {
-			throw newFacetException(node, value, SimpleType.xsAnyURI().name());
+			throw newFacetException(attr, value, SimpleType.xsAnyURI().name());
 		}
 	}
 
-	public static boolean getNodeValueAsBoolean(final Node node) {
-		final String value = requireNodeValue(node);
+	public static boolean getAttrValueAsBoolean(final Attr attr) {
+		final String value = collapseWhitespace(attr.getValue());
 		switch (value) {
 		case "true":
 		case "1":
@@ -231,95 +240,86 @@ public final class NodeHelper {
 		case "0":
 			return false;
 		default:
-			throw newFacetException(node, value, SimpleType.xsBoolean().name());
+			throw newFacetException(attr, value, SimpleType.xsBoolean().name());
 		}
 	}
 
-	public static String getNodeValueAsLanguage(final Node node) {
-		final String value = requireNodeValue(node);
+	public static String getAttrValueAsLanguage(final Attr attr) {
+		final String value = collapseWhitespace(attr.getValue());
 		if (LANGUAGE_PATTERN.matcher(value).matches()) {
 			return value;
 		}
-		throw newFacetException(node, value, SimpleType.xsLanguage().name());
+		throw newFacetException(attr, value, SimpleType.xsLanguage().name());
 	}
 
-	public static String getNodeValueAsNCName(final Node node) {
-		final String value = requireNodeValue(node);
+	public static String getAttrValueAsNCName(final Attr attr) {
+		final String value = collapseWhitespace(attr.getValue());
 		if (NCNAME_PATTERN.matcher(value).matches()) {
 			return value;
 		}
-		throw newFacetException(node, value, SimpleType.xsNCName().name());
+		throw newFacetException(attr, value, SimpleType.xsNCName().name());
 	}
 
-	public static QName getNodeValueAsQName(final Node node) {
-		return getNodeValueAsQName(node, requireNodeValue(node));
+	public static QName getAttrValueAsQName(final Attr attr) {
+		return getAttrValueAsQName(attr, collapseWhitespace(attr.getValue()));
 	}
 
-	public static QName getNodeValueAsQName(final Node node, final String value) {
+	public static QName getAttrValueAsQName(final Attr attr, final String value) {
 		final Matcher m = QNAME_PATTERN.matcher(value);
 		if (m.find()) {
 			final String prefix = m.group(2);
 			final String localName = m.group(3);
-			String uri = node.lookupNamespaceURI(prefix);
+			String uri = attr.lookupNamespaceURI(prefix);
 			if (XMLConstants.XML_NS_PREFIX.equals(prefix)) {
 				// "xml" must always be bound to its usual namespace, or is otherwise implicitly declared
 				if (uri != null && !XMLConstants.XML_NS_URI.equals(uri)) {
-					throw newParseException(node, "'xml' prefix must be bound to its usual namespace, '" + XMLConstants.XML_NS_URI + "', but was bound to '" + uri + '\'');
+					throw newParseException(attr, "'xml' prefix must be bound to its usual namespace, '" + XMLConstants.XML_NS_URI + "', but was bound to '" + uri + '\'');
 				}
 				uri = XMLConstants.XML_NS_URI;
 			} else if (uri == null && prefix != null) {
-				throw newParseException(node, '\'' + value + "' does not name a valid namespace URI for prefix '" + prefix + '\'');
+				throw newParseException(attr, '\'' + value + "' does not name a valid namespace URI for prefix '" + prefix + '\'');
 			}
 			return new QName(uri == null ? XMLConstants.NULL_NS_URI : uri,
 					localName,
 					prefix == null ? XMLConstants.DEFAULT_NS_PREFIX : prefix);
 		} else {
-			throw newFacetException(node, value, SimpleType.xsQName().name());
+			throw newFacetException(attr, value, SimpleType.xsQName().name());
 		}
 	}
 
-	public static Deque<QName> getNodeValueAsQNames(final Node node) {
-		final String[] values = requireNodeValue(node).split(LIST_SEP);
+	public static Deque<QName> getAttrValueAsQNames(final Attr attr) {
+		final String[] values = collapseWhitespace(attr.getValue()).split(LIST_SEP);
 		final Deque<QName> names = Stream.of(values)
-				.map(name -> NodeHelper.getNodeValueAsQName(node, name))
+				.map(name -> NodeHelper.getAttrValueAsQName(attr, name))
 				.collect(Collectors.toCollection(ArrayDeque::new));
 		return Deques.unmodifiableDeque(names);
 	}
 
-	public static String getNodeValueAsPositiveInteger(final Node node) {
-		final String value = requireNodeValue(node);
+	public static BigInteger getAttrValueAsPositiveInteger(final Attr attr) {
+		final String value = collapseWhitespace(attr.getValue());
 		if (POSITIVE_INTEGER_PATTERN.matcher(value).matches()) {
-			return value;
+			return new BigInteger(value);
 		}
-		throw newFacetException(node, value, SimpleType.xsPositiveInteger().name());
+		throw newFacetException(attr, value, SimpleType.xsPositiveInteger().name());
 	}
 
-	public static String getNodeValueAsNonNegativeInteger(final Node node) {
-		final String value = requireNodeValue(node);
+	public static BigInteger getAttrValueAsNonNegativeInteger(final Attr attr, final String value) {
 		if (NON_NEGATIVE_INTEGER_PATTERN.matcher(value).matches()) {
-			return value;
+			return new BigInteger(value);
 		}
-		throw newFacetException(node, value, SimpleType.xsNonNegativeInteger().name());
+		throw newFacetException(attr, value, SimpleType.xsNonNegativeInteger().name());
 	}
 
-	public static String getNodeValueAsString(final Node node) {
-		return requireNodeValue(node);
+	public static BigInteger getAttrValueAsNonNegativeInteger(final Attr attr) {
+		return getAttrValueAsNonNegativeInteger(attr, collapseWhitespace(attr.getValue()));
 	}
 
-	public static String getNodeValueAsToken(final Node node) {
-		return collapseWhitespace(requireNodeValue(node));
+	public static String getAttrValueAsString(final Attr attr) {
+		return attr.getValue();
 	}
 
-	public static String requireNodeValue(final Node node) {
-		final String value = node.getNodeValue();
-		if (value == null) {
-			throw newParseException(node, "value is absent");
-		}
-		return value;
-	}
-
-	public static boolean isZero(final String value) {
-		return ZERO_PATTERN.matcher(value).matches();
+	public static String getAttrValueAsToken(final Attr attr) {
+		return collapseWhitespace(attr.getValue());
 	}
 
 }

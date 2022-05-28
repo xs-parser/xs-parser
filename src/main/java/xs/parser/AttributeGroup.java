@@ -75,7 +75,7 @@ public class AttributeGroup implements AnnotatedComponent {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
+		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.attributeUses = Objects.requireNonNull(attributeUses);
 		this.attributeWildcard = attributeWildcard;
 	}

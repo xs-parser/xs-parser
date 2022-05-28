@@ -151,9 +151,9 @@ public class SchemaTests {
 		final WhiteSpace whiteSpace = aSimpleList.facets().stream().filter(WhiteSpace.class::isInstance).findAny().map(WhiteSpace.class::cast).orElseThrow(() -> new AssertionError(aSimpleList.facets().toString()));
 		Assert.assertEquals(WhiteSpace.Value.COLLAPSE, whiteSpace.value());
 		final MaxLength maxLength = aSimpleList.facets().stream().filter(MaxLength.class::isInstance).findAny().map(MaxLength.class::cast).orElseThrow(() -> new AssertionError(aSimpleList.facets().toString()));
-		Assert.assertEquals("10", maxLength.value());
+		Assert.assertEquals(10, maxLength.value().intValue());
 		final MinLength minLength = aSimpleList.facets().stream().filter(MinLength.class::isInstance).findAny().map(MinLength.class::cast).orElseThrow(() -> new AssertionError(aSimpleList.facets().toString()));
-		Assert.assertEquals("2", minLength.value());
+		Assert.assertEquals(2, minLength.value().intValue());
 	}
 
 	@Test
@@ -240,7 +240,7 @@ public class SchemaTests {
 					.findAny()
 					.get();
 			Assert.assertEquals("xs:pattern", Collections.singleton("123"), SimpleTypeTests.facetOf(mySimpleType2, ConstrainingFacet.Pattern.class).value());
-			Assert.assertEquals("xs:maxLength", "222", SimpleTypeTests.facetOf(mySimpleType2, ConstrainingFacet.MaxLength.class).value());
+			Assert.assertEquals("xs:maxLength", 222, SimpleTypeTests.facetOf(mySimpleType2, ConstrainingFacet.MaxLength.class).value().intValue());
 			final SimpleType anotherSimpleType = (SimpleType) schema.typeDefinitions().stream().filter(s -> "anotherSimpleType".equals(s.name()) && "https://my.test".equals(s.targetNamespace())).findAny().get();
 			Assert.assertEquals(SimpleType.Variety.ATOMIC, anotherSimpleType.variety());
 			Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, anotherSimpleType.baseType().targetNamespace());

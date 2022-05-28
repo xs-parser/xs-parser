@@ -21,8 +21,8 @@ public interface TypeDefinition extends AnnotatedComponent {
 			this.name = name;
 		}
 
-		static Deque<Final> getNodeValueAsFinals(final Node node) {
-			final String value = NodeHelper.requireNodeValue(node);
+		static Deque<Final> getAttrValueAsFinals(final Attr attr) {
+			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			if ("#all".equals(value)) {
 				return Deques.singletonDeque(Final.ALL);
 			}
@@ -31,18 +31,18 @@ public interface TypeDefinition extends AnnotatedComponent {
 			for (final String v : values) {
 				final Final b = Final.getByName(v);
 				if (Final.ALL.equals(b)) {
-					throw NodeHelper.newParseException(node, Final.ALL + " cannot be present in List");
+					throw NodeHelper.newParseException(attr, Final.ALL + " cannot be present in List");
 				}
 				ls.add(b);
 			}
 			return Deques.unmodifiableDeque(ls);
 		}
 
-		static Final getNodeValueAsFinal(final Node node) {
-			return getByName(NodeHelper.requireNodeValue(node));
+		static Final getAttrValueAsFinal(final Attr attr) {
+			return getByName(NodeHelper.collapseWhitespace(attr.getValue()));
 		}
 
-		public static Final getByName(final String name) {
+		static Final getByName(final String name) {
 			for (final Final f : values()) {
 				if (f.getName().equals(name)) {
 					return f;

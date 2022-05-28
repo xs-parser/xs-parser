@@ -17,9 +17,9 @@ public class AttrParser<T> {
 	private static class Value<T> {
 
 		private final AttrValue<T> defaultValue;
-		private final Function<Node, T> parseMethod;
+		private final Function<Attr, T> parseMethod;
 
-		Value(final QName name, final T defaultValue, final Function<Node, T> parseMethod) {
+		Value(final QName name, final T defaultValue, final Function<Attr, T> parseMethod) {
 			final Attr defaultValueAttr;
 			if (defaultValue != null) {
 				defaultValueAttr = NodeHelper.newDocument().createAttributeNS(name.getNamespaceURI(), name.getLocalPart());
@@ -104,9 +104,9 @@ public class AttrParser<T> {
 	public static final AttrParser<String> ID = defer(Names.ID, String.class);
 	public static final AttrParser<Boolean> INHERITABLE = defer(Names.INHERITABLE, Boolean.class);
 	public static final AttrParser<QName> ITEM_TYPE = defer(Names.ITEM_TYPE, QName.class);
-	public static final AttrParser<String> MAX_OCCURS = defer(Names.MAX_OCCURS, String.class);
+	public static final AttrParser<Number> MAX_OCCURS = defer(Names.MAX_OCCURS, Number.class);
 	public static final AttrParser<Deque<QName>> MEMBER_TYPES = defer(Names.MEMBER_TYPES, Deque.class, QName.class);
-	public static final AttrParser<String> MIN_OCCURS = defer(Names.MIN_OCCURS, String.class);
+	public static final AttrParser<Number> MIN_OCCURS = defer(Names.MIN_OCCURS, Number.class);
 	public static final AttrParser<Boolean> MIXED = defer(Names.MIXED, Boolean.class);
 	public static final AttrParser<ComplexType.OpenContent.Mode> MODE = defer(Names.MODE, ComplexType.OpenContent.Mode.class);
 	public static final AttrParser<String> NAME = defer(Names.NAME, String.class);
@@ -160,39 +160,39 @@ public class AttrParser<T> {
 		return (AttrParser<T>) defer(name, new Key(name, cls));
 	}
 
-	private static <T> void register(final QName name, final Key key, final T defaultValue, final Function<Node, T> parseMethod) {
+	private static <T> void register(final QName name, final Key key, final T defaultValue, final Function<Attr, T> parseMethod) {
 		final Value<T> value = new Value<>(name, defaultValue, parseMethod);
 		if (values.putIfAbsent(key, value) != null) {
 			throw new IllegalStateException(name + " is already registered");
 		}
 	}
 
-	public static <T> void register(final QName name, final Class<T> cls, final Function<Node, T> parseMethod) {
+	public static <T> void register(final QName name, final Class<T> cls, final Function<Attr, T> parseMethod) {
 		register(name, new Key(name, cls), null, parseMethod);
 	}
 
-	public static <T> void register(final QName name, final Class<Deque> dequeClass, final Class<T> cls, final Function<Node, Deque<T>> parseMethod) {
+	public static <T> void register(final QName name, final Class<Deque> dequeClass, final Class<T> cls, final Function<Attr, Deque<T>> parseMethod) {
 		register(name, dequeClass, cls, Deques.emptyDeque(), parseMethod);
 	}
 
-	public static <T> void register(final QName name, final Class<Deque> dequeClass, final Class<T> cls, final Deque<T> defaultValue, final Function<Node, Deque<T>> parseMethod) {
+	public static <T> void register(final QName name, final Class<Deque> dequeClass, final Class<T> cls, final Deque<T> defaultValue, final Function<Attr, Deque<T>> parseMethod) {
 		register(name, new Key(name, Objects.requireNonNull(dequeClass), cls), defaultValue, parseMethod);
 	}
 
 	public static void register(final QName name, final Boolean defaultValue) {
-		register(name, new Key(name, Boolean.class), defaultValue, NodeHelper::getNodeValueAsBoolean);
+		register(name, new Key(name, Boolean.class), defaultValue, NodeHelper::getAttrValueAsBoolean);
 	}
 
-	public static void register(final QName name, final Function<Node, String> parseMethod) {
+	public static void register(final QName name, final Function<Attr, String> parseMethod) {
 		register(name, new Key(name, String.class), null, parseMethod);
 	}
 
-	public static <T> void register(final QName name, final Class<T> cls, final T defaultValue, final Function<Node, T> parseMethod) {
+	public static <T> void register(final QName name, final Class<T> cls, final T defaultValue, final Function<Attr, T> parseMethod) {
 		register(name, new Key(name, cls), defaultValue, parseMethod);
 	}
 
-	public T parse(final Node node) {
-		return value.get().parseMethod.apply(node);
+	public T parse(final Attr attr) {
+		return value.get().parseMethod.apply(attr);
 	}
 
 	public T getDefaultValue() {

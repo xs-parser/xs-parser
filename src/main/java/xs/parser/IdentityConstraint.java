@@ -70,7 +70,7 @@ public class IdentityConstraint implements AnnotatedComponent {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
+		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.category = category;
 		this.selector = selector;
 		this.fields = Objects.requireNonNull(fields);
@@ -117,7 +117,7 @@ public class IdentityConstraint implements AnnotatedComponent {
 	}
 
 	static void register() {
-		AttrParser.register(AttrParser.Names.REFER, QName.class, NodeHelper::getNodeValueAsQName);
+		AttrParser.register(AttrParser.Names.REFER, QName.class, NodeHelper::getAttrValueAsQName);
 		TagParser.register(new String[] { TagParser.Names.KEY, TagParser.Names.KEYREF, TagParser.Names.UNIQUE }, parser, IdentityConstraint.class, IdentityConstraint::parse);
 	}
 

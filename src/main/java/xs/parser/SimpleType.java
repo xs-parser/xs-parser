@@ -390,7 +390,7 @@ public class SimpleType implements TypeDefinition {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
+		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.baseType = Objects.requireNonNull(baseType);
 		this.finals = Objects.requireNonNull(finals);
 		this.context = context;
@@ -440,55 +440,6 @@ public class SimpleType implements TypeDefinition {
 		});
 	}
 
-	private static SimpleType create(final Document doc, final String name, final TypeDefinition base) {
-		Objects.requireNonNull(name);
-		Objects.requireNonNull(base);
-		final Deque<Object> facets = ANYATOMICTYPE_NAME.equals(name) ? Deques.emptyDeque() : ConstrainingFacet.find(name);
-		Objects.requireNonNull(facets);
-		final Variety variety;
-		final List list;
-		switch (name) {
-		case ENTITIES_NAME:
-			list = new List(Deques.emptyDeque(), SimpleType::xsENTITY);
-			variety = Variety.LIST;
-			break;
-		case IDREFS_NAME:
-			list = new List(Deques.emptyDeque(), SimpleType::xsIDREF);
-			variety = Variety.LIST;
-			break;
-		case NMTOKENS_NAME:
-			list = new List(Deques.emptyDeque(), SimpleType::xsNMTOKEN);
-			variety = Variety.LIST;
-			break;
-		default:
-			list = null;
-			variety = Variety.ATOMIC;
-		}
-		final Node node = NodeHelper.newSchemaNode(doc, TagParser.Names.SIMPLE_TYPE, name);
-		return new SimpleType(node, Deques.emptyDeque(), name, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, () -> base, () -> variety, () -> facets, null, list, null);
-	}
-
-	static void register() {
-		AttrParser.register(AttrParser.Names.ITEM_TYPE, QName.class, NodeHelper::getNodeValueAsQName);
-		AttrParser.register(AttrParser.Names.MEMBER_TYPES, Deque.class, QName.class, null, NodeHelper::getNodeValueAsQNames);
-		TagParser.register(TagParser.Names.RESTRICTION, Restriction.parser, Restriction.class, Restriction::parse);
-		TagParser.register(TagParser.Names.LIST, List.parser, List.class, List::parse);
-		TagParser.register(TagParser.Names.UNION, Union.parser, Union.class, Union::parse);
-		TagParser.register(TagParser.Names.SIMPLE_TYPE, SimpleType.parser, SimpleType.class, SimpleType::parse);
-	}
-
-	static SimpleType findPrimitiveOrBuiltinType(final String localName) {
-		SimpleType s = PRIMITIVE_TYPES.get(localName);
-		if (s != null) {
-			return s;
-		}
-		s = BUILTIN_TYPES.get(localName);
-		if (s != null) {
-			return s;
-		}
-		throw new IllegalArgumentException("No primitive or built-in simpleType for name " + localName);
-	}
-
 	private static SimpleType parse(final Result result) {
 		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
@@ -522,7 +473,7 @@ public class SimpleType implements TypeDefinition {
 		final Deferred<Deque<Object>> facets = variety.map(v -> {
 			switch (v) {
 			case UNION:
-				return Deques.emptyDeque();
+				return Deques.asDeque(Pattern.class, ConstrainingFacet.Enumeration.class, Assertions.class);
 			case LIST:
 				return restriction != null // standalone xs:list vs xs:restriction of xs:list
 						? ConstrainingFacet.combineLikeFacets(restriction.base().get(), restriction.base().get().facets.get(), restriction.facets())
@@ -534,6 +485,55 @@ public class SimpleType implements TypeDefinition {
 			}
 		});
 		return new SimpleType(result.node(), result.annotations(), name, targetNamespace, finals, context, baseType, variety, facets, restriction, list, union);
+	}
+
+	private static SimpleType create(final Document doc, final String name, final TypeDefinition base) {
+		Objects.requireNonNull(name);
+		Objects.requireNonNull(base);
+		final Deque<Object> facets = ANYATOMICTYPE_NAME.equals(name) ? Deques.emptyDeque() : ConstrainingFacet.find(name);
+		Objects.requireNonNull(facets);
+		final Variety variety;
+		final List list;
+		switch (name) {
+		case ENTITIES_NAME:
+			list = new List(Deques.emptyDeque(), SimpleType::xsENTITY);
+			variety = Variety.LIST;
+			break;
+		case IDREFS_NAME:
+			list = new List(Deques.emptyDeque(), SimpleType::xsIDREF);
+			variety = Variety.LIST;
+			break;
+		case NMTOKENS_NAME:
+			list = new List(Deques.emptyDeque(), SimpleType::xsNMTOKEN);
+			variety = Variety.LIST;
+			break;
+		default:
+			list = null;
+			variety = Variety.ATOMIC;
+		}
+		final Node node = NodeHelper.newSchemaNode(doc, TagParser.Names.SIMPLE_TYPE, name);
+		return new SimpleType(node, Deques.emptyDeque(), name, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, () -> base, () -> variety, () -> facets, null, list, null);
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.ITEM_TYPE, QName.class, NodeHelper::getAttrValueAsQName);
+		AttrParser.register(AttrParser.Names.MEMBER_TYPES, Deque.class, QName.class, null, NodeHelper::getAttrValueAsQNames);
+		TagParser.register(TagParser.Names.RESTRICTION, Restriction.parser, Restriction.class, Restriction::parse);
+		TagParser.register(TagParser.Names.LIST, List.parser, List.class, List::parse);
+		TagParser.register(TagParser.Names.UNION, Union.parser, Union.class, Union::parse);
+		TagParser.register(TagParser.Names.SIMPLE_TYPE, SimpleType.parser, SimpleType.class, SimpleType::parse);
+	}
+
+	static SimpleType findPrimitiveOrBuiltinType(final String localName) {
+		SimpleType s = PRIMITIVE_TYPES.get(localName);
+		if (s != null) {
+			return s;
+		}
+		s = BUILTIN_TYPES.get(localName);
+		if (s != null) {
+			return s;
+		}
+		throw new IllegalArgumentException("No primitive or built-in simpleType for name " + localName);
 	}
 
 	static SimpleType wrap(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Node context, final SimpleType baseSimpleType, final Deque<ConstrainingFacet> declaredFacets) {

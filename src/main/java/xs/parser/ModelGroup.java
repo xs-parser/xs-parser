@@ -47,15 +47,15 @@ public class ModelGroup implements Term {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
+		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.modelGroup = modelGroup;
 		this.compositor = compositor;
 		this.particles = Objects.requireNonNull(particles);
 	}
 
 	private static Particle parse(final Result result) {
-		final String maxOccurs = result.value(AttrParser.MAX_OCCURS);
-		final String minOccurs = result.value(AttrParser.MIN_OCCURS);
+		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
+		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final QName refName = result.value(AttrParser.REF);
 		final ModelGroup term;
 		if (refName != null) {

@@ -104,15 +104,6 @@ public abstract class FundamentalFacet implements SchemaComponent {
 				this.name = name;
 			}
 
-			public static Value getByName(final String name) {
-				for (final Value e : values()) {
-					if (e.getName().equals(name)) {
-						return e;
-					}
-				}
-				throw new IllegalArgumentException(name);
-			}
-
 			public String getName() {
 				return name;
 			}
@@ -207,15 +198,6 @@ public abstract class FundamentalFacet implements SchemaComponent {
 
 			Value(final String name) {
 				this.name = name;
-			}
-
-			public static Value getByName(final String name) {
-				for (final Value e : values()) {
-					if (e.getName().equals(name)) {
-						return e;
-					}
-				}
-				throw new IllegalArgumentException(name);
 			}
 
 			public String getName() {

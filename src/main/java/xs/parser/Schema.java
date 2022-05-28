@@ -99,12 +99,12 @@ public class Schema implements AnnotatedComponent {
 
 		private final String name;
 
-		private Block(final String value) {
-			this.name = value;
+		private Block(final String name) {
+			this.name = name;
 		}
 
-		private static Deque<Block> getNodeValueAsBlocks(final Node node) {
-			final String value = NodeHelper.requireNodeValue(node);
+		private static Deque<Block> getAttrValueAsBlocks(final Attr attr) {
+			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			if ("#all".equals(value)) {
 				return Deques.singletonDeque(Block.ALL);
 			}
@@ -113,18 +113,18 @@ public class Schema implements AnnotatedComponent {
 			for (final String v : values) {
 				final Block b = Block.getByName(v);
 				if (Block.ALL.equals(b)) {
-					throw NodeHelper.newParseException(node, Block.ALL + " cannot be present");
+					throw NodeHelper.newParseException(attr, Block.ALL + " cannot be present in List");
 				}
 				ls.add(b);
 			}
 			return Deques.unmodifiableDeque(ls);
 		}
 
-		private static Block getNodeValueAsBlock(final Node node) {
-			return getByName(NodeHelper.requireNodeValue(node));
+		private static Block getAttrValueAsBlock(final Attr attr) {
+			return getByName(NodeHelper.collapseWhitespace(attr.getValue()));
 		}
 
-		public static Block getByName(final String name) {
+		static Block getByName(final String name) {
 			for (final Block b : values()) {
 				if (b.getName().equals(name)) {
 					return b;
@@ -151,21 +151,18 @@ public class Schema implements AnnotatedComponent {
 
 		private final String name;
 
-		private Form(final String value) {
-			this.name = value;
+		private Form(final String name) {
+			this.name = name;
 		}
 
-		static Form getNodeValueAsForm(final Node node) {
-			return getByName(NodeHelper.requireNodeValue(node));
-		}
-
-		public static Form getByName(final String name) {
+		static Form getAttrValueAsForm(final Attr attr) {
+			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			for (final Form f : values()) {
-				if (f.getName().equals(name)) {
+				if (f.getName().equals(value)) {
 					return f;
 				}
 			}
-			throw new IllegalArgumentException(name);
+			throw new IllegalArgumentException(value);
 		}
 
 		public String getName() {
@@ -233,7 +230,6 @@ public class Schema implements AnnotatedComponent {
 		private static final SequenceParser parser = new SequenceParser()
 				.optionalAttributes(AttrParser.ID, AttrParser.NAMESPACE, AttrParser.SCHEMA_LOCATION)
 				.elements(0, 1, TagParser.ANNOTATION);
-		private static final String RESOURCE_PATH = "xs/parser/";
 
 		private final Schema schema;
 		private final Node node;
@@ -303,7 +299,7 @@ public class Schema implements AnnotatedComponent {
 				.requiredAttributes(AttrParser.SCHEMA_LOCATION)
 				.optionalAttributes(AttrParser.ID)
 				.elements(0, 1, TagParser.ANNOTATION);
-		private static final String RESOURCE_PATH = Import.RESOURCE_PATH;
+		private static final String RESOURCE_PATH = "xs/parser/";
 		// Stylesheet for Chameleon Inclusion (F.1)
 		private static final Object f1Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "F-1.xsl")));
 
@@ -634,18 +630,32 @@ public class Schema implements AnnotatedComponent {
 
 		private static String formMessage(final Node node, final String message) {
 			final String nodeTypeName;
+			final String nodeString;
 			switch (node.getNodeType()) {
 			case Node.ATTRIBUTE_NODE:
 				nodeTypeName = "attribute";
+				nodeString = node.getNodeName() + "=\"" + ((Attr) node).getValue() + '"';
 				break;
 			case Node.ELEMENT_NODE:
 				nodeTypeName = "element";
+				final StringBuilder builder = new StringBuilder();
+				final NamedNodeMap attrs = node.getAttributes();
+				for (int i = 0; i < attrs.getLength(); ++i) {
+					final Attr attr = (Attr) attrs.item(i);
+					builder.append(' ');
+					builder.append(attr.getNodeName());
+					builder.append("=\"");
+					builder.append(attr.getValue());
+					builder.append('"');
+				}
+				nodeString = '<' + node.getNodeName() + builder.toString() + '>';
 				break;
 			default:
 				nodeTypeName = "node";
+				nodeString = node.getNodeName();
 				break;
 			}
-			return message + " of " + nodeTypeName + " '" + node.getNodeName() + "' in " + node.getOwnerDocument().getDocumentURI();
+			return message + " of " + nodeTypeName + " '" + nodeString + "' in " + node.getOwnerDocument().getDocumentURI();
 		}
 
 		public Node node() {
@@ -656,6 +666,7 @@ public class Schema implements AnnotatedComponent {
 
 	static {
 		NodeHelper.setNewParseException(ParseException::new);
+		NodeHelper.setSchemaFindAllConstituentSchemas(Schema::findAllConstituentSchemas);
 		Alternative.register();
 		Annotation.register();
 		Assertion.register();
@@ -672,20 +683,20 @@ public class Schema implements AnnotatedComponent {
 		SimpleType.register();
 		Wildcard.register();
 		AttrParser.register(AttrParser.Names.APPLIES_TO_EMPTY, false);
-		AttrParser.register(AttrParser.Names.ATTRIBUTE_FORM_DEFAULT, Form.class, Form.UNQUALIFIED, Form::getNodeValueAsForm);
-		AttrParser.register(AttrParser.Names.BLOCK, Deque.class, Block.class, Block::getNodeValueAsBlocks);
-		AttrParser.register(AttrParser.Names.BLOCK_DEFAULT, Block.class, Block.DEFAULT, Block::getNodeValueAsBlock);
-		AttrParser.register(AttrParser.Names.DEFAULT_ATTRIBUTES, QName.class, NodeHelper::getNodeValueAsQName);
-		AttrParser.register(AttrParser.Names.ELEMENT_FORM_DEFAULT, Form.class, Form.UNQUALIFIED, Form::getNodeValueAsForm);
-		AttrParser.register(AttrParser.Names.FINAL, Deque.class, Final.class, Final::getNodeValueAsFinals);
-		AttrParser.register(AttrParser.Names.FINAL_DEFAULT, Final.class, Final.DEFAULT, Final::getNodeValueAsFinal);
-		AttrParser.register(AttrParser.Names.FORM, Form.class, null, Form::getNodeValueAsForm);
-		AttrParser.register(AttrParser.Names.ID, NodeHelper::getNodeValueAsNCName);
-		AttrParser.register(AttrParser.Names.NAMESPACE, NodeHelper::getNodeValueAsAnyUri);
-		AttrParser.register(AttrParser.Names.SCHEMA_LOCATION, NodeHelper::getNodeValueAsAnyUri);
-		AttrParser.register(AttrParser.Names.TARGET_NAMESPACE, NodeHelper::getNodeValueAsAnyUri);
-		AttrParser.register(AttrParser.Names.VERSION, NodeHelper::getNodeValueAsToken);
-		AttrParser.register(AttrParser.Names.XPATH_DEFAULT_NAMESPACE, Schema::getNodeValueAsXPathDefaultNamespace);
+		AttrParser.register(AttrParser.Names.ATTRIBUTE_FORM_DEFAULT, Form.class, Form.UNQUALIFIED, Form::getAttrValueAsForm);
+		AttrParser.register(AttrParser.Names.BLOCK, Deque.class, Block.class, Block::getAttrValueAsBlocks);
+		AttrParser.register(AttrParser.Names.BLOCK_DEFAULT, Block.class, Block.DEFAULT, Block::getAttrValueAsBlock);
+		AttrParser.register(AttrParser.Names.DEFAULT_ATTRIBUTES, QName.class, NodeHelper::getAttrValueAsQName);
+		AttrParser.register(AttrParser.Names.ELEMENT_FORM_DEFAULT, Form.class, Form.UNQUALIFIED, Form::getAttrValueAsForm);
+		AttrParser.register(AttrParser.Names.FINAL, Deque.class, Final.class, Final::getAttrValueAsFinals);
+		AttrParser.register(AttrParser.Names.FINAL_DEFAULT, Final.class, Final.DEFAULT, Final::getAttrValueAsFinal);
+		AttrParser.register(AttrParser.Names.FORM, Form.class, null, Form::getAttrValueAsForm);
+		AttrParser.register(AttrParser.Names.ID, NodeHelper::getAttrValueAsNCName);
+		AttrParser.register(AttrParser.Names.NAMESPACE, NodeHelper::getAttrValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.SCHEMA_LOCATION, NodeHelper::getAttrValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.TARGET_NAMESPACE, NodeHelper::getAttrValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.VERSION, NodeHelper::getAttrValueAsToken);
+		AttrParser.register(AttrParser.Names.XPATH_DEFAULT_NAMESPACE, Schema::getAttrValueAsXPathDefaultNamespace);
 		TagParser.register(TagParser.Names.IMPORT, Import.parser, Import.class, Import::parse);
 		TagParser.register(TagParser.Names.INCLUDE, Include.parser, Include.class, Include::parse);
 		TagParser.register(TagParser.Names.OVERRIDE, Overrides.parser, Overrides.class, Overrides::parse);
@@ -839,7 +850,7 @@ public class Schema implements AnnotatedComponent {
 		this.elementFormDefault = result.value(AttrParser.ELEMENT_FORM_DEFAULT);
 		this.finalDefault = result.value(AttrParser.FINAL_DEFAULT);
 		this.version = result.value(AttrParser.VERSION);
-		this.targetNamespace = NodeHelper.validateTargetNamespace(document.getDocumentElement(), result.value(AttrParser.TARGET_NAMESPACE));
+		this.targetNamespace = NodeHelper.requireNonEmpty(document.getDocumentElement(), result.value(AttrParser.TARGET_NAMESPACE));
 		if (this.targetNamespace != null && this.targetNamespace.isEmpty()) {
 			throw new IllegalArgumentException("@targetNamespace may not be empty string - must be null or non-empty");
 		}
@@ -894,15 +905,15 @@ public class Schema implements AnnotatedComponent {
 		}
 	}
 
-	private static String getNodeValueAsXPathDefaultNamespace(final Node node) {
-		final String value = NodeHelper.requireNodeValue(node);
+	private static String getAttrValueAsXPathDefaultNamespace(final Attr attr) {
+		final String value = NodeHelper.collapseWhitespace(attr.getValue());
 		switch (value) {
 		case XPATH_DEFAULT_NAMESPACE_SCHEMA_DEFAULT:
 		case "##defaultNamespace":
 		case "##targetNamespace":
 			return value;
 		default:
-			return NodeHelper.getNodeValueAsAnyUri(node, value);
+			return NodeHelper.getAttrValueAsAnyUri(attr, value);
 		}
 	}
 
@@ -915,8 +926,6 @@ public class Schema implements AnnotatedComponent {
 		return schemas;
 	}
 
-	// Used by XPathEvaluator via reflection
-	@SuppressWarnings("unused")
 	private void findAllConstituentSchemas(final Set<Schema> set) {
 		if (set.add(this)) {
 			imports.forEach(i -> i.importedSchema().findAllConstituentSchemas(set));

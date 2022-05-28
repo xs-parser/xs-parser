@@ -192,7 +192,7 @@ public class Element implements Term {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
+		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.type = Objects.requireNonNull(type);
 		this.typeTable = alternatives.isEmpty() ? null : new TypeTable(alternatives, this);
 		this.scope = scope;
@@ -304,8 +304,8 @@ public class Element implements Term {
 	}
 
 	private static Particle parse(final Result result) {
-		final String maxOccurs = result.value(AttrParser.MAX_OCCURS);
-		final String minOccurs = result.value(AttrParser.MIN_OCCURS);
+		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
+		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final QName refName = result.value(AttrParser.REF);
 		final Deferred<Element> decl;
 		if (refName != null) {
@@ -318,11 +318,11 @@ public class Element implements Term {
 	}
 
 	static void register() {
-		AttrParser.register(AttrParser.Names.NAME, NodeHelper::getNodeValueAsNCName);
+		AttrParser.register(AttrParser.Names.NAME, NodeHelper::getAttrValueAsNCName);
 		AttrParser.register(AttrParser.Names.NILLABLE, false);
-		AttrParser.register(AttrParser.Names.REF, QName.class, NodeHelper::getNodeValueAsQName);
-		AttrParser.register(AttrParser.Names.SUBSTITUTION_GROUP, Deque.class, QName.class, null, NodeHelper::getNodeValueAsQNames);
-		AttrParser.register(AttrParser.Names.TYPE, QName.class, NodeHelper::getNodeValueAsQName);
+		AttrParser.register(AttrParser.Names.REF, QName.class, NodeHelper::getAttrValueAsQName);
+		AttrParser.register(AttrParser.Names.SUBSTITUTION_GROUP, Deque.class, QName.class, null, NodeHelper::getAttrValueAsQNames);
+		AttrParser.register(AttrParser.Names.TYPE, QName.class, NodeHelper::getAttrValueAsQName);
 		TagParser.register(TagParser.Names.ELEMENT, parser, Element.class, Element::parseDecl);
 		TagParser.register(TagParser.Names.ELEMENT, parser, Particle.class, Element::parse);
 	}

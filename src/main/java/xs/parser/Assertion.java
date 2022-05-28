@@ -170,7 +170,7 @@ public class Assertion implements AnnotatedComponent {
 				final String key = XMLConstants.XMLNS_ATTRIBUTE.equals(attr.getNodeName())
 						? XMLConstants.DEFAULT_NS_PREFIX
 						: attr.getNodeName().substring(XMLConstants.XMLNS_ATTRIBUTE.length() + 1);
-				xmlns.put(key, NodeHelper.requireNodeValue(attr));
+				xmlns.put(key, ((Attr) attr).getValue());
 			}
 			this.namespaceBindings = new LinkedHashSet<>();
 			xmlns.forEach((prefix, namespace) -> this.namespaceBindings.add(new NamespaceBinding(prefix, namespace)));
@@ -198,9 +198,9 @@ public class Assertion implements AnnotatedComponent {
 			return new XPathExpression(result, xpathDefaultNamespace, expression);
 		}
 
-		private static String getNodeValueAsXPath(final Node node) {
+		private static String getAttrValueAsXPath(final Attr attr) {
 			// TODO: Parse and validate XPath
-			return NodeHelper.requireNodeValue(node);
+			return NodeHelper.collapseWhitespace(attr.getValue());
 		}
 
 		/** @return A set of Namespace Binding property records. Each member corresponds to an entry in the [in-scope namespaces] of the host element, with {prefix} being the [prefix] and {namespace} the [namespace name]. */
@@ -257,8 +257,8 @@ public class Assertion implements AnnotatedComponent {
 	}
 
 	static void register() {
-		AttrParser.register(AttrParser.Names.TEST, XPathExpression::getNodeValueAsXPath);
-		AttrParser.register(AttrParser.Names.XPATH, XPathExpression::getNodeValueAsXPath);
+		AttrParser.register(AttrParser.Names.TEST, XPathExpression::getAttrValueAsXPath);
+		AttrParser.register(AttrParser.Names.XPATH, XPathExpression::getAttrValueAsXPath);
 		TagParser.register(new String[] { TagParser.Names.FIELD, TagParser.Names.SELECTOR }, XPathExpression.parser, XPathExpression.class, XPathExpression::parse);
 		TagParser.register(TagParser.Names.ASSERTION, Assertion.parser, Assertion.class, Assertion::parse);
 	}

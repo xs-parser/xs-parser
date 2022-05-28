@@ -158,8 +158,8 @@ public class Annotation implements SchemaComponent {
 	}
 
 	static void register() {
-		AttrParser.register(AttrParser.Names.SOURCE, NodeHelper::getNodeValueAsAnyUri);
-		AttrParser.register(AttrParser.Names.XML_LANG, NodeHelper::getNodeValueAsLanguage);
+		AttrParser.register(AttrParser.Names.SOURCE, NodeHelper::getAttrValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.XML_LANG, NodeHelper::getAttrValueAsLanguage);
 		TagParser.register(TagParser.Names.APPINFO, Appinfo.parser, Appinfo.class, Appinfo::parse);
 		TagParser.register(TagParser.Names.DOCUMENTATION, Documentation.parser, Documentation.class, Documentation::parse);
 		TagParser.register(TagParser.Names.ANNOTATION, Annotation.parser, Annotation.class, Annotation::parse);

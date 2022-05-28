@@ -36,7 +36,7 @@ public class Notation implements AnnotatedComponent {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
+		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.publicIdentiifer = publicId;
 		this.systemIdentifier = systemId;
 	}
@@ -50,8 +50,8 @@ public class Notation implements AnnotatedComponent {
 	}
 
 	static void register() {
-		AttrParser.register(AttrParser.Names.PUBLIC, NodeHelper::getNodeValueAsToken);
-		AttrParser.register(AttrParser.Names.SYSTEM, NodeHelper::getNodeValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.PUBLIC, NodeHelper::getAttrValueAsToken);
+		AttrParser.register(AttrParser.Names.SYSTEM, NodeHelper::getAttrValueAsAnyUri);
 		TagParser.register(TagParser.Names.NOTATION, parser, Notation.class, Notation::parse);
 	}
 

@@ -70,18 +70,18 @@ public class Wildcard implements Term {
 
 		private final String name;
 
-		private ProcessContents(final String value) {
-			this.name = value;
+		private ProcessContents(final String name) {
+			this.name = name;
 		}
 
-		public static ProcessContents getNodeValueAsProcessContents(final Node node) {
-			final String name = NodeHelper.requireNodeValue(node);
+		public static ProcessContents getAttrValueAsProcessContents(final Attr attr) {
+			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			for (final ProcessContents p : values()) {
-				if (p.getName().equals(name)) {
+				if (p.getName().equals(value)) {
 					return p;
 				}
 			}
-			throw new IllegalArgumentException(name);
+			throw new IllegalArgumentException(value);
 		}
 
 		public String getName() {
@@ -232,8 +232,8 @@ public class Wildcard implements Term {
 		final Deque<String> notNamespace = result.value(AttrParser.NOT_NAMESPACE);
 		final Deque<String> notQName = result.value(AttrParser.NOT_QNAME);
 		final ProcessContents processContents = result.value(AttrParser.PROCESS_CONTENTS);
-		final String maxOccurs = result.value(AttrParser.MAX_OCCURS);
-		final String minOccurs = result.value(AttrParser.MIN_OCCURS);
+		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
+		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final Wildcard wildcard = new Wildcard(result.node(), result.annotations(), schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
 		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, wildcard);
 	}
@@ -247,8 +247,8 @@ public class Wildcard implements Term {
 		return new Wildcard(result.node(), result.annotations(), schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
 	}
 
-	private static Deque<String> getNodeValueAsNamespace(final Node node) {
-		final String value = NodeHelper.requireNodeValue(node);
+	private static Deque<String> getAttrValueAsNamespace(final Attr attr) {
+		final String value = NodeHelper.collapseWhitespace(attr.getValue());
 		switch (value) {
 		case NAMESPACE_ANY:
 		case NAMESPACE_OTHER:
@@ -263,7 +263,7 @@ public class Wildcard implements Term {
 					ls.add(v);
 					break;
 				default:
-					ls.add(NodeHelper.getNodeValueAsAnyUri(node, v));
+					ls.add(NodeHelper.getAttrValueAsAnyUri(attr, v));
 					break;
 				}
 			}
@@ -271,8 +271,8 @@ public class Wildcard implements Term {
 		}
 	}
 
-	private static Deque<String> getNodeValueAsNotNamespace(final Node node) {
-		final String value = NodeHelper.requireNodeValue(node);
+	private static Deque<String> getAttrValueAsNotNamespace(final Attr attr) {
+		final String value = NodeHelper.collapseWhitespace(attr.getValue());
 		final String[] values = value.split(NodeHelper.LIST_SEP);
 		final Deque<String> notNamespace = new ArrayDeque<>(values.length);
 		for (final String v : values) {
@@ -282,15 +282,15 @@ public class Wildcard implements Term {
 				notNamespace.add(v);
 				break;
 			default:
-				notNamespace.add(NodeHelper.getNodeValueAsAnyUri(node, v));
+				notNamespace.add(NodeHelper.getAttrValueAsAnyUri(attr, v));
 				break;
 			}
 		}
 		return notNamespace;
 	}
 
-	private static Deque<String> getNodeValueAsNotQName(final Node node) {
-		final String value = NodeHelper.requireNodeValue(node);
+	private static Deque<String> getAttrValueAsNotQName(final Attr attr) {
+		final String value = NodeHelper.collapseWhitespace(attr.getValue());
 		final String[] values = value.split(NodeHelper.LIST_SEP);
 		final Deque<String> notQName = new ArrayDeque<>(values.length);
 		for (final String v : values) {
@@ -299,13 +299,13 @@ public class Wildcard implements Term {
 				notQName.add(v);
 				break;
 			case QNAME_DEFINED_SIBLING:
-				if (TagParser.Names.ANY_ATTRIBUTE.equals(node.getLocalName())) {
+				if (TagParser.Names.ANY_ATTRIBUTE.equals(attr.getLocalName())) {
 					notQName.add(v);
 					break;
 				}
 				// fallthrough
 			default:
-				NodeHelper.getNodeValueAsQName(node, v);
+				NodeHelper.getAttrValueAsQName(attr, v);
 				notQName.add(v);
 				break;
 			}
@@ -314,10 +314,10 @@ public class Wildcard implements Term {
 	}
 
 	static void register() {
-		AttrParser.register(AttrParser.Names.NAMESPACE, Deque.class, String.class, Wildcard::getNodeValueAsNamespace);
-		AttrParser.register(AttrParser.Names.NOT_NAMESPACE, Deque.class, String.class, Wildcard::getNodeValueAsNotNamespace);
-		AttrParser.register(AttrParser.Names.NOT_QNAME, Deque.class, String.class, Wildcard::getNodeValueAsNotQName);
-		AttrParser.register(AttrParser.Names.PROCESS_CONTENTS, ProcessContents.class, ProcessContents.STRICT, ProcessContents::getNodeValueAsProcessContents);
+		AttrParser.register(AttrParser.Names.NAMESPACE, Deque.class, String.class, Wildcard::getAttrValueAsNamespace);
+		AttrParser.register(AttrParser.Names.NOT_NAMESPACE, Deque.class, String.class, Wildcard::getAttrValueAsNotNamespace);
+		AttrParser.register(AttrParser.Names.NOT_QNAME, Deque.class, String.class, Wildcard::getAttrValueAsNotQName);
+		AttrParser.register(AttrParser.Names.PROCESS_CONTENTS, ProcessContents.class, ProcessContents.STRICT, ProcessContents::getAttrValueAsProcessContents);
 		TagParser.register(TagParser.Names.ANY, anyParser, Particle.class, Wildcard::parseAny);
 		TagParser.register(TagParser.Names.ANY_ATTRIBUTE, anyAttributeParser, Wildcard.class, Wildcard::parseAnyAttribute);
 	}

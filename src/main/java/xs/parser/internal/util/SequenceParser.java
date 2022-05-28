@@ -2,6 +2,7 @@ package xs.parser.internal.util;
 
 import java.util.*;
 import java.util.AbstractMap.*;
+import java.util.concurrent.atomic.*;
 import java.util.stream.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
@@ -36,6 +37,7 @@ public final class SequenceParser {
 		private final Map<QName, String> nonSchemaAttributes;
 		private final Map<TagParser<?>, Deque<Result>> parserResults = new LinkedHashMap<>();
 		private final Deque<Node> anyContent;
+		private final AtomicReference<Object> value = new AtomicReference<>();
 
 		Result(final Schema schema, final Node node, final Result parent, final boolean allowsNonSchemaAttributes, final boolean allowsAnyContent) {
 			this.schema = schema;
@@ -92,7 +94,9 @@ public final class SequenceParser {
 			}
 			final Result r = results.getFirst();
 			checkIfCanParse(r, t);
-			return t.parse(r);
+			final T v = t.parse(r);
+			r.setValue(v);
+			return v;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -130,7 +134,11 @@ public final class SequenceParser {
 			}
 			final DeferredArrayDeque<T> values = new DeferredArrayDeque<>(results.size());
 			for (final Result r : results) {
-				values.add(Deferred.of(() -> t.parse(r)));
+				values.add(Deferred.of(() -> {
+					final T v = t.parse(r);
+					r.setValue(v);
+					return v;
+				}));
 			}
 			return values;
 		}
@@ -149,6 +157,14 @@ public final class SequenceParser {
 
 		public Result parent() {
 			return parent;
+		}
+
+		public Deferred<Object> defer() {
+			return value::get;
+		}
+
+		public void setValue(final Object value) {
+			this.value.set(value);
 		}
 
 	}
@@ -249,7 +265,7 @@ public final class SequenceParser {
 			if (e == null) {
 				if (allowsNonSchemaAttributes && a.getPrefix() != null && !XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(a.getPrefix())) {
 					final QName name = new QName(a.getNamespaceURI(), a.getLocalName(), a.getPrefix());
-					result.nonSchemaAttributes.put(name, NodeHelper.requireNodeValue(a));
+					result.nonSchemaAttributes.put(name, a.getValue());
 				} else {
 					throw NodeHelper.newParseException(node, "Found disallowed non-schema attribute: " + a);
 				}

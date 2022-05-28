@@ -447,26 +447,22 @@ public class ComplexType implements TypeDefinition {
 
 			private final String name;
 
-			private Mode(final String value) {
-				this.name = value;
+			private Mode(final String name) {
+				this.name = name;
 			}
 
-			private static Mode getNodeValueAsMode(final Node node) {
-				final String name = NodeHelper.requireNodeValue(node);
-				final Mode mode = getByName(name);
-				if (Mode.NONE.equals(mode) && !TagParser.Names.OPEN_CONTENT.equals(node.getParentNode().getLocalName())) {
-					throw NodeHelper.newFacetException(node, name, AttrParser.Names.MODE.getLocalPart());
-				}
-				return mode;
-			}
-
-			public static Mode getByName(final String name) {
+			private static Mode getAttrValueAsMode(final Attr attr) {
+				final String value = NodeHelper.collapseWhitespace(attr.getValue());
+				Mode mode = null;
 				for (final Mode m : values()) {
-					if (m.getName().equals(name)) {
-						return m;
+					if (m.getName().equals(value)) {
+						mode = m;
 					}
 				}
-				throw new IllegalArgumentException(name);
+				if (mode == null || (Mode.NONE.equals(mode) && !TagParser.Names.OPEN_CONTENT.equals(attr.getOwnerElement().getLocalName()))) {
+					throw NodeHelper.newFacetException(attr, value, AttrParser.Names.MODE.getLocalPart());
+				}
+				return mode;
 			}
 
 			public String getName() {
@@ -796,7 +792,7 @@ public class ComplexType implements TypeDefinition {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
+		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.finals = Objects.requireNonNull(finals);
 		this.baseType = Objects.requireNonNull(baseType);
 		this.attributeUses = Objects.requireNonNull(attributeUses);
@@ -908,23 +904,23 @@ public class ComplexType implements TypeDefinition {
 				if ((all != null && ((ModelGroup) all.term()).particles().isEmpty()) || (sequence != null && ((ModelGroup) sequence.term()).particles().isEmpty())) {
 					explicitContent = null;
 				} else {
-					final boolean choiceMinOccurs0 = choice != null && NodeHelper.isZero(choice.minOccurs()) && (choice.term() == null || ((ModelGroup) choice.term()).particles().isEmpty());
+					final boolean choiceMinOccurs0 = choice != null && choice.minOccurs().intValue() == 0 && (choice.term() == null || ((ModelGroup) choice.term()).particles().isEmpty());
 					if (choiceMinOccurs0) {
 						explicitContent = null;
 					} else {
-						final String particleMaxOccurs = group != null ? group.maxOccurs()
+						final Number particleMaxOccurs = group != null ? group.maxOccurs()
 								: all != null ? all.maxOccurs()
 								: choice != null ? choice.maxOccurs()
 								: sequence != null ? sequence.maxOccurs()
 								: null;
-						explicitContent = NodeHelper.isZero(particleMaxOccurs) ? null : particle;
+						explicitContent = particleMaxOccurs.intValue() == 0 ? null : particle;
 					}
 				}
 			}
 			final Particle effectiveContent;
 			if (explicitContent == null) {
 				if (effectiveMixed) {
-					effectiveContent = new Particle(result.node(), result.annotations(), AttrParser.MAX_OCCURS.getDefaultValue(), AttrParser.MIN_OCCURS.getDefaultValue(), ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, Deques.emptyDeque()));
+					effectiveContent = new Particle(result.node(), result.annotations(), 1, 1, ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, Deques.emptyDeque()));
 				} else {
 					effectiveContent = null;
 				}
@@ -959,7 +955,7 @@ public class ComplexType implements TypeDefinition {
 							} else if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && effectiveContent != null && effectiveContent.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) effectiveContent.term()).compositor())) { // 4.2.3.2
 								final Deque<Particle> particles = new ArrayDeque<>(((ModelGroup) baseParticle.term()).particles());
 								particles.addAll(((ModelGroup) effectiveContent.term()).particles());
-								effectiveParticle = new Particle(result.node(), result.annotations(), "1", baseParticle.minOccurs(), ModelGroup.synthetic(result.node(), result.annotations(), Compositor.ALL, particles));
+								effectiveParticle = new Particle(result.node(), result.annotations(), 1, baseParticle.minOccurs(), ModelGroup.synthetic(result.node(), result.annotations(), Compositor.ALL, particles));
 							} else { // 4.2.3.3
 								final Deque<Particle> particles = new ArrayDeque<>();
 								if (baseParticle != null) {
@@ -968,7 +964,7 @@ public class ComplexType implements TypeDefinition {
 								if (effectiveContent != null) {
 									particles.add(effectiveContent);
 								}
-								effectiveParticle = new Particle(result.node(), result.annotations(), "1", "1", ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, particles));
+								effectiveParticle = new Particle(result.node(), result.annotations(), 1, 1, ModelGroup.synthetic(result.node(), result.annotations(), Compositor.SEQUENCE, particles));
 							}
 							return new ContentType(result.schema().defaultOpenContent(), effectiveMixed ? Variety.MIXED : Variety.ELEMENT_ONLY, effectiveParticle, complexBase.contentType().openContent(), null);
 						}
@@ -993,10 +989,10 @@ public class ComplexType implements TypeDefinition {
 
 	static void register() {
 		AttrParser.register(AttrParser.Names.ABSTRACT, false);
-		AttrParser.register(AttrParser.Names.BASE, QName.class, NodeHelper::getNodeValueAsQName);
+		AttrParser.register(AttrParser.Names.BASE, QName.class, NodeHelper::getAttrValueAsQName);
 		AttrParser.register(AttrParser.Names.DEFAULT_ATTRIBUTES_APPLY, true);
 		AttrParser.register(AttrParser.Names.MIXED, (Boolean) null);
-		AttrParser.register(AttrParser.Names.MODE, OpenContent.Mode.class, OpenContent.Mode.INTERLEAVE, OpenContent.Mode::getNodeValueAsMode);
+		AttrParser.register(AttrParser.Names.MODE, OpenContent.Mode.class, OpenContent.Mode.INTERLEAVE, OpenContent.Mode::getAttrValueAsMode);
 		TagParser.register(TagParser.Names.ASSERT, Assert.parser, Assert.class, Assert::parse);
 		TagParser.register(new String[] { TagParser.Names.RESTRICTION, TagParser.Names.EXTENSION }, ComplexContent.Derivation.parser, ComplexContent.Derivation.class, ComplexContent.Derivation::parse);
 		TagParser.register(TagParser.Names.COMPLEX_CONTENT, ComplexContent.parser, ComplexContent.class, ComplexContent::parse);

@@ -140,18 +140,18 @@ public class Attribute implements AnnotatedComponent {
 
 		private final String name;
 
-		private Use(final String value) {
-			this.name = value;
+		private Use(final String name) {
+			this.name = name;
 		}
 
-		private static Use getNodeValueAsUse(final Node node) {
-			final String name = NodeHelper.requireNodeValue(node);
+		private static Use getAttrValueAsUse(final Attr attr) {
+			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			for (final Use u : values()) {
-				if (u.getName().equals(name)) {
+				if (u.getName().equals(value)) {
 					return u;
 				}
 			}
-			throw new IllegalArgumentException(name);
+			throw new IllegalArgumentException(value);
 		}
 
 		public String getName() {
@@ -265,7 +265,7 @@ public class Attribute implements AnnotatedComponent {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
+		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.type = Objects.requireNonNull(type);
 		this.scope = scope;
 		this.valueConstraint = valueConstraint;
@@ -310,10 +310,10 @@ public class Attribute implements AnnotatedComponent {
 	}
 
 	static void register() {
-		AttrParser.register(AttrParser.Names.DEFAULT, NodeHelper::getNodeValueAsString);
-		AttrParser.register(AttrParser.Names.FIXED, NodeHelper::getNodeValueAsString);
+		AttrParser.register(AttrParser.Names.DEFAULT, NodeHelper::getAttrValueAsString);
+		AttrParser.register(AttrParser.Names.FIXED, NodeHelper::getAttrValueAsString);
 		AttrParser.register(AttrParser.Names.INHERITABLE, (Boolean) null);
-		AttrParser.register(AttrParser.Names.USE, Use.class, Use.OPTIONAL, Use::getNodeValueAsUse);
+		AttrParser.register(AttrParser.Names.USE, Use.class, Use.OPTIONAL, Use::getAttrValueAsUse);
 		TagParser.register(TagParser.Names.ATTRIBUTE, parser, Attribute.class, Attribute::parse);
 	}
 
