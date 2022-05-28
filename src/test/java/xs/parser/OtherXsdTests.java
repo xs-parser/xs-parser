@@ -16,7 +16,7 @@ import xs.parser.internal.util.*;
 @RunWith(Parameterized.class)
 public class OtherXsdTests {
 
-	private static final DocumentResolver resolver = new DocumentResolver() {
+	private static final DocumentResolver resolver = new DefaultDocumentResolver() {
 
 		@Override
 		public URI resolveUri(final String baseUri, final String namespace, final String schemaLocation) {

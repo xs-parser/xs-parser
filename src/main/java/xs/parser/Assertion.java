@@ -141,10 +141,10 @@ public class Assertion implements AnnotatedComponent {
 	 */
 	public static class XPathExpression {
 
-		static final SequenceParser parser = new SequenceParser()
-				.requiredAttributes(AttributeValue.XPATH)
-				.optionalAttributes(AttributeValue.ID, AttributeValue.XPATHDEFAULTNAMESPACE)
-				.elements(0, 1, ElementValue.ANNOTATION);
+		private static final SequenceParser parser = new SequenceParser()
+				.requiredAttributes(AttrParser.XPATH)
+				.optionalAttributes(AttrParser.ID, AttrParser.XPATH_DEFAULT_NAMESPACE)
+				.elements(0, 1, TagParser.ANNOTATION);
 
 		private final Set<NamespaceBinding> namespaceBindings;
 		private final String defaultNamespace;
@@ -170,7 +170,7 @@ public class Assertion implements AnnotatedComponent {
 				final String key = XMLConstants.XMLNS_ATTRIBUTE.equals(attr.getNodeName())
 						? XMLConstants.DEFAULT_NS_PREFIX
 						: attr.getNodeName().substring(XMLConstants.XMLNS_ATTRIBUTE.length() + 1);
-				xmlns.put(key, attr.getNodeValue());
+				xmlns.put(key, NodeHelper.requireNodeValue(attr));
 			}
 			this.namespaceBindings = new LinkedHashSet<>();
 			xmlns.forEach((prefix, namespace) -> this.namespaceBindings.add(new NamespaceBinding(prefix, namespace)));
@@ -192,10 +192,15 @@ public class Assertion implements AnnotatedComponent {
 			this.expression = expression;
 		}
 
-		static XPathExpression parse(final Result result) {
-			final String expression = result.value(AttributeValue.XPATH);
-			final String xpathDefaultNamespace = result.value(AttributeValue.XPATHDEFAULTNAMESPACE);
+		private static XPathExpression parse(final Result result) {
+			final String expression = result.value(AttrParser.XPATH);
+			final String xpathDefaultNamespace = result.value(AttrParser.XPATH_DEFAULT_NAMESPACE);
 			return new XPathExpression(result, xpathDefaultNamespace, expression);
+		}
+
+		private static String getNodeValueAsXPath(final Node node) {
+			// TODO: Parse and validate XPath
+			return NodeHelper.requireNodeValue(node);
 		}
 
 		/** @return A set of Namespace Binding property records. Each member corresponds to an entry in the [in-scope namespaces] of the host element, with {prefix} being the [prefix] and {namespace} the [namespace name]. */
@@ -231,10 +236,10 @@ public class Assertion implements AnnotatedComponent {
 
 	}
 
-	static final SequenceParser parser = new SequenceParser()
-			.requiredAttributes(AttributeValue.TEST)
-			.optionalAttributes(AttributeValue.ID, AttributeValue.XPATHDEFAULTNAMESPACE)
-			.elements(0, 1, ElementValue.ANNOTATION);
+	private static final SequenceParser parser = new SequenceParser()
+			.requiredAttributes(AttrParser.TEST)
+			.optionalAttributes(AttrParser.ID, AttrParser.XPATH_DEFAULT_NAMESPACE)
+			.elements(0, 1, TagParser.ANNOTATION);
 
 	private final Node node;
 	private final Deque<Annotation> annotations;
@@ -246,9 +251,16 @@ public class Assertion implements AnnotatedComponent {
 		this.test = test;
 	}
 
-	static Assertion parse(final Result result) {
+	private static Assertion parse(final Result result) {
 		final XPathExpression test = XPathExpression.parse(result);
 		return new Assertion(result.node(), result.annotations(), test);
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.TEST, XPathExpression::getNodeValueAsXPath);
+		AttrParser.register(AttrParser.Names.XPATH, XPathExpression::getNodeValueAsXPath);
+		TagParser.register(new String[] { TagParser.Names.FIELD, TagParser.Names.SELECTOR }, XPathExpression.parser, XPathExpression.class, XPathExpression::parse);
+		TagParser.register(TagParser.Names.ASSERTION, Assertion.parser, Assertion.class, Assertion::parse);
 	}
 
 	/** @return An XPath Expression property record, as described below, with &lt;assert&gt; as the "host element" and test as the designated expression [attribute]. */

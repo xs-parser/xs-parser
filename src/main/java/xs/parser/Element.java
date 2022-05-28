@@ -166,12 +166,12 @@ public class Element implements Term {
 
 	private static final Deque<Block> ALLOWED_BLOCK = Deques.asDeque(Block.EXTENSION, Block.RESTRICTION, Block.SUBSTITUTION);
 	private static final Deque<Final> ALLOWED_FINAL = Deques.asDeque(Final.EXTENSION, Final.RESTRICTION);
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID, AttributeValue.ABSTRACT, AttributeValue.BLOCK, AttributeValue.DEFAULT, AttributeValue.FINAL, AttributeValue.FIXED, AttributeValue.FORM, AttributeValue.MAXOCCURS, AttributeValue.MINOCCURS, AttributeValue.NAME, AttributeValue.NILLABLE, AttributeValue.REF, AttributeValue.SUBSTITUTIONGROUP, AttributeValue.TARGETNAMESPACE, AttributeValue.TYPE)
-			.elements(0, 1, ElementValue.ANNOTATION)
-			.elements(0, 1, ElementValue.COMPLEXTYPE, ElementValue.SIMPLETYPE)
-			.elements(0, Integer.MAX_VALUE, ElementValue.ALTERNATIVE)
-			.elements(0, Integer.MAX_VALUE, ElementValue.KEY, ElementValue.KEYREF, ElementValue.UNIQUE);
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID, AttrParser.ABSTRACT, AttrParser.BLOCK, AttrParser.DEFAULT, AttrParser.FINAL, AttrParser.FIXED, AttrParser.FORM, AttrParser.MAX_OCCURS, AttrParser.MIN_OCCURS, AttrParser.NAME, AttrParser.NILLABLE, AttrParser.REF, AttrParser.SUBSTITUTION_GROUP, AttrParser.TARGET_NAMESPACE, AttrParser.TYPE)
+			.elements(0, 1, TagParser.ANNOTATION)
+			.elements(0, 1, TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE)
+			.elements(0, Integer.MAX_VALUE, TagParser.ALTERNATIVE)
+			.elements(0, Integer.MAX_VALUE, TagParser.KEY, TagParser.KEYREF, TagParser.UNIQUE);
 
 	private final Node node;
 	private final Deque<Annotation> annotations;
@@ -192,7 +192,7 @@ public class Element implements Term {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(targetNamespace);
+		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
 		this.type = Objects.requireNonNull(type);
 		this.typeTable = alternatives.isEmpty() ? null : new TypeTable(alternatives, this);
 		this.scope = scope;
@@ -205,10 +205,10 @@ public class Element implements Term {
 		this.isAbstract = isAbstract;
 	}
 
-	static Element parseDecl(final Result result) {
-		final String defaultValue = result.value(AttributeValue.DEFAULT);
-		final String fixedValue = result.value(AttributeValue.FIXED);
-		Deque<Block> effectiveBlockValue = result.value(AttributeValue.BLOCK);
+	private static Element parseDecl(final Result result) {
+		final String defaultValue = result.value(AttrParser.DEFAULT);
+		final String fixedValue = result.value(AttrParser.FIXED);
+		Deque<Block> effectiveBlockValue = result.value(AttrParser.BLOCK);
 		if (effectiveBlockValue.isEmpty()) {
 			effectiveBlockValue = Deques.singletonDeque(result.schema().blockDefault());
 		}
@@ -221,7 +221,7 @@ public class Element implements Term {
 				disallowedSubstitutions.add(b);
 			}
 		}
-		Deque<Final> effectiveFinalValue = result.value(AttributeValue.FINAL);
+		Deque<Final> effectiveFinalValue = result.value(AttrParser.FINAL);
 		if (effectiveFinalValue.isEmpty()) {
 			effectiveFinalValue = Deques.singletonDeque(result.schema().finalDefault());
 		}
@@ -234,11 +234,11 @@ public class Element implements Term {
 				substitutionGroupExclusions.add(f);
 			}
 		}
-		final boolean nillable = result.value(AttributeValue.NILLABLE);
-		final boolean isAbstract = result.value(AttributeValue.ABSTRACT);
-		final Deque<Alternative> alternatives = result.parseAll(ElementValue.ALTERNATIVE);
-		final Deque<IdentityConstraint> identityConstraints = result.parseAll(ElementValue.KEY, ElementValue.KEYREF, ElementValue.UNIQUE);
-		final Form form = result.value(AttributeValue.FORM);
+		final boolean nillable = result.value(AttrParser.NILLABLE);
+		final boolean isAbstract = result.value(AttrParser.ABSTRACT);
+		final Deque<Alternative> alternatives = result.parseAll(TagParser.ALTERNATIVE);
+		final Deque<IdentityConstraint> identityConstraints = result.parseAll(TagParser.KEY, TagParser.KEYREF, TagParser.UNIQUE);
+		final Form form = result.value(AttrParser.FORM);
 		final boolean isGlobal = NodeHelper.isParentSchemaElement(result);
 		final Scope scope;
 		String targetNamespace;
@@ -246,31 +246,31 @@ public class Element implements Term {
 			targetNamespace = result.schema().targetNamespace();
 			scope = new Scope(Scope.Variety.GLOBAL, null);
 		} else {
-			targetNamespace = result.value(AttributeValue.TARGETNAMESPACE);
+			targetNamespace = result.value(AttrParser.TARGET_NAMESPACE);
 			if (targetNamespace == null && (Form.QUALIFIED.equals(form) || (form == null && Form.QUALIFIED.equals(result.schema().elementFormDefault())))) { // 3.3.2.3
 				targetNamespace = result.schema().targetNamespace();
 			}
 			Node n = result.parent().node();
-			while (!ElementValue.COMPLEXTYPE.equalsName(n) && !ElementValue.GROUP.equalsName(n)) {
+			while (!TagParser.COMPLEX_TYPE.equalsName(n) && !TagParser.GROUP.equalsName(n)) {
 				if ((n = n.getParentNode()) == null) {
-					throw new SchemaParseException(result.node(), ElementValue.ELEMENT.getName() + " must be a descendent of " + ElementValue.COMPLEXTYPE.getName() + " or " + ElementValue.GROUP.getName());
+					throw new ParseException(result.node(), TagParser.ELEMENT.getName() + " must be a descendent of " + TagParser.COMPLEX_TYPE.getName() + " or " + TagParser.GROUP.getName());
 				}
 			}
 			scope = new Scope(Scope.Variety.LOCAL, n);
 		}
-		Deque<QName> substitutionGroup = result.value(AttributeValue.SUBSTITUTIONGROUP);
+		Deque<QName> substitutionGroup = result.value(AttrParser.SUBSTITUTION_GROUP);
 		if (substitutionGroup != null && !isGlobal) {
-			throw new SchemaParseException(result.node(), "@substitutionGroup is only valid for global elements");
+			throw new ParseException(result.node(), "@substitutionGroup is only valid for global elements");
 		} else if (substitutionGroup == null) {
 			substitutionGroup = Deques.emptyDeque();
 		}
 		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>(substitutionGroup.size());
 		final Deferred<? extends TypeDefinition> type;
-		final QName typeName = result.value(AttributeValue.TYPE);
+		final QName typeName = result.value(AttrParser.TYPE);
 		if (typeName != null) {
 			type = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final TypeDefinition typeDefinition = result.parse(ElementValue.COMPLEXTYPE, ElementValue.SIMPLETYPE);
+			final TypeDefinition typeDefinition = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
 			type = typeDefinition != null
 					? () -> typeDefinition
 					: substitutionGroupAffiliations.isEmpty()
@@ -299,14 +299,14 @@ public class Element implements Term {
 			valueConstraint = Deferred.none();
 		}
 		substitutionGroup.forEach(s -> substitutionGroupAffiliations.add(result.schema().find(s, Element.class)));
-		final String name = result.value(AttributeValue.NAME);
+		final String name = result.value(AttrParser.NAME);
 		return new Element(result.node(), result.annotations(), name, targetNamespace, type, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
 	}
 
-	static Particle parse(final Result result) {
-		final String maxOccurs = result.value(AttributeValue.MAXOCCURS);
-		final String minOccurs = result.value(AttributeValue.MINOCCURS);
-		final QName refName = result.value(AttributeValue.REF);
+	private static Particle parse(final Result result) {
+		final String maxOccurs = result.value(AttrParser.MAX_OCCURS);
+		final String minOccurs = result.value(AttrParser.MIN_OCCURS);
+		final QName refName = result.value(AttrParser.REF);
 		final Deferred<Element> decl;
 		if (refName != null) {
 			decl = result.schema().find(refName, Element.class);
@@ -315,6 +315,16 @@ public class Element implements Term {
 			decl = () -> elem;
 		}
 		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, decl);
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.NAME, NodeHelper::getNodeValueAsNCName);
+		AttrParser.register(AttrParser.Names.NILLABLE, false);
+		AttrParser.register(AttrParser.Names.REF, QName.class, NodeHelper::getNodeValueAsQName);
+		AttrParser.register(AttrParser.Names.SUBSTITUTION_GROUP, Deque.class, QName.class, null, NodeHelper::getNodeValueAsQNames);
+		AttrParser.register(AttrParser.Names.TYPE, QName.class, NodeHelper::getNodeValueAsQName);
+		TagParser.register(TagParser.Names.ELEMENT, parser, Element.class, Element::parseDecl);
+		TagParser.register(TagParser.Names.ELEMENT, parser, Particle.class, Element::parse);
 	}
 
 	public String name() {

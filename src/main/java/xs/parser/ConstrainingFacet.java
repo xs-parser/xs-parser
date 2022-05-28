@@ -7,6 +7,7 @@ import java.util.stream.*;
 import javax.xml.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
+import xs.parser.internal.TagParser.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
 
@@ -52,8 +53,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 * </table>
 	 */
 	public static class Length extends ConstrainingFacet {
-
-		private static final String NAME = "length";
 
 		private final String value;
 
@@ -110,8 +109,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 */
 	public static class MinLength extends ConstrainingFacet {
 
-		private static final String NAME = "minLength";
-
 		private final String value;
 
 		MinLength(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
@@ -167,8 +164,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 */
 	public static class MaxLength extends ConstrainingFacet {
 
-		private static final String NAME = "maxLength";
-
 		private final String value;
 
 		MaxLength(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
@@ -217,8 +212,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 * </table>
 	 */
 	public static class Pattern extends ConstrainingFacet {
-
-		private static final String NAME = "pattern";
 
 		private final Set<String> value;
 
@@ -276,8 +269,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 * </table>
 	 */
 	public static class Enumeration extends ConstrainingFacet {
-
-		private static final String NAME = "enumeration";
 
 		private final Set<String> value;
 
@@ -352,6 +343,10 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 				this.name = name;
 			}
 
+			private static Value getNodeValueAsValue(final Node node) {
+				return getByName(NodeHelper.requireNodeValue(node));
+			}
+
 			public static Value getByName(final String name) {
 				for (final Value e : values()) {
 					if (e.getName().equals(name)) {
@@ -371,8 +366,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 			}
 
 		}
-
-		private static final String NAME = "whiteSpace";
 
 		private final Value value;
 
@@ -429,8 +422,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 */
 	public static class MaxInclusive extends ConstrainingFacet {
 
-		private static final String NAME = "maxInclusive";
-
 		private final String value;
 
 		MaxInclusive(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
@@ -485,8 +476,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 * </table>
 	 */
 	public static class MaxExclusive extends ConstrainingFacet {
-
-		private static final String NAME = "maxExclusive";
 
 		private final String value;
 
@@ -543,8 +532,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 */
 	public static class MinExclusive extends ConstrainingFacet {
 
-		private static final String NAME = "minExclusive";
-
 		private final String value;
 
 		MinExclusive(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
@@ -599,8 +586,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 * </table>
 	 */
 	public static class MinInclusive extends ConstrainingFacet {
-
-		private static final String NAME = "minInclusive";
 
 		private final String value;
 
@@ -657,8 +642,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 */
 	public static class TotalDigits extends ConstrainingFacet {
 
-		private static final String NAME = "totalDigits";
-
 		private final String value;
 
 		TotalDigits(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
@@ -714,8 +697,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 */
 	public static class FractionDigits extends ConstrainingFacet {
 
-		private static final String NAME = "fractionDigits";
-
 		private final String value;
 
 		FractionDigits(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final String value) {
@@ -765,8 +746,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 * </table>
 	 */
 	public static class Assertions extends ConstrainingFacet {
-
-		private static final String NAME = "assertion";
 
 		private final Deque<Assertion> value;
 
@@ -849,6 +828,10 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 				this.name = name;
 			}
 
+			private static Value getNodeValueAsValue(final Node node) {
+				return getByName(NodeHelper.requireNodeValue(node));
+			}
+
 			public static Value getByName(final String name) {
 				for (final Value e : values()) {
 					if (e.getName().equals(name)) {
@@ -869,8 +852,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 		}
 
-		private static final String NAME = "explicitTimezone";
-
 		private final Value value;
 
 		ExplicitTimezone(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final Value value) {
@@ -887,19 +868,19 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 	private static final Map<String, Deque<Object>> defaultFacets;
 	private static final Document defaultConstrainingFacetsDocument;
-	static final SequenceParser parser = new SequenceParser()
-			.requiredAttributes(AttributeValue.VALUE)
-			.optionalAttributes(AttributeValue.ID, AttributeValue.FIXED)
-			.elements(0, 1, ElementValue.ANNOTATION);
+	private static final SequenceParser parser = new SequenceParser()
+			.requiredAttributes(AttrParser.VALUE)
+			.optionalAttributes(AttrParser.ID, AttrParser.FIXED)
+			.elements(0, 1, TagParser.ANNOTATION);
 
 	static {
 		defaultConstrainingFacetsDocument = NodeHelper.newDocument();
 		final Map<String, Deque<Object>> df = new HashMap<>();
-		final WhiteSpace preserve = new WhiteSpace(createSynthetic(WhiteSpace.NAME, WhiteSpace.Value.PRESERVE), Deques.emptyDeque(), null, WhiteSpace.Value.PRESERVE);
-		final WhiteSpace replace = new WhiteSpace(createSynthetic(WhiteSpace.NAME, WhiteSpace.Value.REPLACE), Deques.emptyDeque(), null, WhiteSpace.Value.REPLACE);
-		final WhiteSpace collapse = new WhiteSpace(createSynthetic(WhiteSpace.NAME, WhiteSpace.Value.COLLAPSE), Deques.emptyDeque(), null, WhiteSpace.Value.COLLAPSE);
-		final WhiteSpace collapseFixed = new WhiteSpace(createSynthetic(WhiteSpace.NAME, WhiteSpace.Value.COLLAPSE), Deques.emptyDeque(), true, WhiteSpace.Value.COLLAPSE);
-		final ExplicitTimezone optional = new ExplicitTimezone(createSynthetic(ExplicitTimezone.NAME, ExplicitTimezone.Value.OPTIONAL), Deques.emptyDeque(), null, ExplicitTimezone.Value.OPTIONAL);
+		final WhiteSpace preserve = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.PRESERVE), Deques.emptyDeque(), null, WhiteSpace.Value.PRESERVE);
+		final WhiteSpace replace = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.REPLACE), Deques.emptyDeque(), null, WhiteSpace.Value.REPLACE);
+		final WhiteSpace collapse = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.COLLAPSE), Deques.emptyDeque(), null, WhiteSpace.Value.COLLAPSE);
+		final WhiteSpace collapseFixed = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.COLLAPSE), Deques.emptyDeque(), true, WhiteSpace.Value.COLLAPSE);
+		final ExplicitTimezone optional = new ExplicitTimezone(createSynthetic(Names.EXPLICIT_TIMEZONE, ExplicitTimezone.Value.OPTIONAL), Deques.emptyDeque(), null, ExplicitTimezone.Value.OPTIONAL);
 		// Primitive
 		df.put(SimpleType.STRING_NAME, asDeque(preserve, Length.class, MinLength.class, MaxLength.class, Pattern.class, Enumeration.class, Assertions.class)); // 3.3.1
 		df.put(SimpleType.BOOLEAN_NAME, asDeque(collapseFixed, Pattern.class, Assertions.class)); // 3.3.2
@@ -924,65 +905,65 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 		df.put(SimpleType.NORMALIZEDSTRING_NAME, asDeque(replace, Length.class, MinLength.class, MaxLength.class, Pattern.class, Enumeration.class, Assertions.class)); // 3.4.1
 		df.put(SimpleType.TOKEN_NAME, asDeque(collapse, Length.class, MinLength.class, MaxLength.class, Pattern.class, Enumeration.class, Assertions.class)); // 3.4.2
 		final String languagePatternValue = "[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*";
-		final Pattern languagePattern = new Pattern(createSynthetic(Pattern.NAME, languagePatternValue), Deques.emptyDeque(), Collections.singleton(languagePatternValue));
+		final Pattern languagePattern = new Pattern(createSynthetic(Names.PATTERN, languagePatternValue), Deques.emptyDeque(), Collections.singleton(languagePatternValue));
 		df.put(SimpleType.LANGUAGE_NAME, asDeque(languagePattern, collapse, Length.class, MinLength.class, MaxLength.class, Enumeration.class, Assertions.class)); // 3.4.3
 		final String nmTokenPatternValue = "\\c+";
-		final Pattern nmTokenPattern = new Pattern(createSynthetic(Pattern.NAME, nmTokenPatternValue), Deques.emptyDeque(), Collections.singleton(nmTokenPatternValue));
+		final Pattern nmTokenPattern = new Pattern(createSynthetic(Names.PATTERN, nmTokenPatternValue), Deques.emptyDeque(), Collections.singleton(nmTokenPatternValue));
 		df.put(SimpleType.NMTOKEN_NAME, asDeque(nmTokenPattern, collapse, Length.class, MinLength.class, MaxLength.class, Enumeration.class, Assertions.class)); // 3.4.4
-		final MinLength minLength1 = new MinLength(createSynthetic(MinLength.NAME, "1"), Deques.emptyDeque(), null, "1");
+		final MinLength minLength1 = new MinLength(createSynthetic(Names.MIN_LENGTH, "1"), Deques.emptyDeque(), null, "1");
 		df.put(SimpleType.NMTOKENS_NAME, asDeque(minLength1, collapse, Length.class, MaxLength.class, Enumeration.class, Pattern.class, Assertions.class)); // 3.4.5
 		final String namePatternValue = "\\i\\c*";
-		final Pattern namePattern = new Pattern(createSynthetic(Pattern.NAME, namePatternValue), Deques.emptyDeque(), Collections.singleton(namePatternValue));
+		final Pattern namePattern = new Pattern(createSynthetic(Names.PATTERN, namePatternValue), Deques.emptyDeque(), Collections.singleton(namePatternValue));
 		df.put(SimpleType.NAME_NAME, asDeque(namePattern, collapse, Length.class, MinLength.class, MaxLength.class, Enumeration.class, Assertions.class)); // 3.4.6
 		final Set<String> ncNamePatternValue = new HashSet<>();
 		ncNamePatternValue.add(namePatternValue);
 		ncNamePatternValue.add("[\\i-[:]][\\c-[:]]*");
-		final Pattern ncNamePattern = new Pattern(createSynthetic(Pattern.NAME, ncNamePatternValue), Deques.emptyDeque(), ncNamePatternValue);
+		final Pattern ncNamePattern = new Pattern(createSynthetic(Names.PATTERN, ncNamePatternValue), Deques.emptyDeque(), ncNamePatternValue);
 		df.put(SimpleType.NCNAME_NAME, asDeque(ncNamePattern, collapse, Length.class, MinLength.class, MaxLength.class, Enumeration.class, Assertions.class)); // 3.4.7
 		df.put(SimpleType.ID_NAME, asDeque(ncNamePattern, collapse, Length.class, MinLength.class, MaxLength.class, Enumeration.class, Assertions.class)); // 3.4.8
 		df.put(SimpleType.IDREF_NAME, asDeque(ncNamePattern, collapse, Length.class, MinLength.class, MaxLength.class, Enumeration.class, Assertions.class)); // 3.4.9
 		df.put(SimpleType.IDREFS_NAME, asDeque(minLength1, collapse, Length.class, MaxLength.class, Enumeration.class, Pattern.class, Assertions.class)); // 3.4.10
 		df.put(SimpleType.ENTITY_NAME, asDeque(ncNamePattern, collapse, Length.class, MinLength.class, MaxLength.class, Enumeration.class, Assertions.class)); // 3.4.11
 		df.put(SimpleType.ENTITIES_NAME, asDeque(minLength1, collapse, Length.class, MaxLength.class, Enumeration.class, Pattern.class, Assertions.class)); // 3.4.12
-		final FractionDigits fractionDigits0Fixed = new FractionDigits(createSynthetic(FractionDigits.NAME, "0"), Deques.emptyDeque(), true, "0");
+		final FractionDigits fractionDigits0Fixed = new FractionDigits(createSynthetic(Names.FRACTION_DIGITS, "0"), Deques.emptyDeque(), true, "0");
 		final String integerPatternValue = "[\\-+]?[0-9]+";
-		final Pattern integerPattern = new Pattern(createSynthetic(Pattern.NAME, integerPatternValue), Deques.emptyDeque(), Collections.singleton(integerPatternValue));
+		final Pattern integerPattern = new Pattern(createSynthetic(Names.PATTERN, integerPatternValue), Deques.emptyDeque(), Collections.singleton(integerPatternValue));
 		df.put(SimpleType.INTEGER_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, TotalDigits.class, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinInclusive.class, MaxExclusive.class, Assertions.class)); // 3.4.13
-		final MaxInclusive maxInclusive0 = new MaxInclusive(createSynthetic(MaxInclusive.NAME, "0"), Deques.emptyDeque(), null, "0");
+		final MaxInclusive maxInclusive0 = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, "0"), Deques.emptyDeque(), null, "0");
 		df.put(SimpleType.NONPOSITIVEINTEGER_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, maxInclusive0, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.14
-		final MaxInclusive maxInclusiveNeg1 = new MaxInclusive(createSynthetic(MaxInclusive.NAME, "-1"), Deques.emptyDeque(), null, "-1");
+		final MaxInclusive maxInclusiveNeg1 = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, "-1"), Deques.emptyDeque(), null, "-1");
 		df.put(SimpleType.NEGATIVEINTEGER_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, maxInclusiveNeg1, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.15
-		final MaxInclusive longMaxInclusive = new MaxInclusive(createSynthetic(MaxInclusive.NAME, Long.toString(Long.MAX_VALUE)), Deques.emptyDeque(), null, Long.toString(Long.MAX_VALUE));
-		final MinInclusive longMinInclusive = new MinInclusive(createSynthetic(MinInclusive.NAME, Long.toString(Long.MIN_VALUE)), Deques.emptyDeque(), null, Long.toString(Long.MIN_VALUE));
+		final MaxInclusive longMaxInclusive = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, Long.toString(Long.MAX_VALUE)), Deques.emptyDeque(), null, Long.toString(Long.MAX_VALUE));
+		final MinInclusive longMinInclusive = new MinInclusive(createSynthetic(Names.MIN_INCLUSIVE, Long.toString(Long.MIN_VALUE)), Deques.emptyDeque(), null, Long.toString(Long.MIN_VALUE));
 		df.put(SimpleType.LONG_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, longMaxInclusive, longMinInclusive, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.16
-		final MaxInclusive intMaxInclusive = new MaxInclusive(createSynthetic(MaxInclusive.NAME, Integer.toString(Integer.MAX_VALUE)), Deques.emptyDeque(), null, Integer.toString(Integer.MAX_VALUE));
-		final MinInclusive intMinInclusive = new MinInclusive(createSynthetic(MinInclusive.NAME, Integer.toString(Integer.MIN_VALUE)), Deques.emptyDeque(), null, Integer.toString(Integer.MIN_VALUE));
+		final MaxInclusive intMaxInclusive = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, Integer.toString(Integer.MAX_VALUE)), Deques.emptyDeque(), null, Integer.toString(Integer.MAX_VALUE));
+		final MinInclusive intMinInclusive = new MinInclusive(createSynthetic(Names.MIN_INCLUSIVE, Integer.toString(Integer.MIN_VALUE)), Deques.emptyDeque(), null, Integer.toString(Integer.MIN_VALUE));
 		df.put(SimpleType.INT_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, intMaxInclusive, intMinInclusive, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.17
-		final MaxInclusive shortMaxInclusive = new MaxInclusive(createSynthetic(MaxInclusive.NAME, Short.toString(Short.MAX_VALUE)), Deques.emptyDeque(), null, Short.toString(Short.MAX_VALUE));
-		final MinInclusive shortMinInclusive = new MinInclusive(createSynthetic(MinInclusive.NAME, Short.toString(Short.MIN_VALUE)), Deques.emptyDeque(), null, Short.toString(Short.MIN_VALUE));
+		final MaxInclusive shortMaxInclusive = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, Short.toString(Short.MAX_VALUE)), Deques.emptyDeque(), null, Short.toString(Short.MAX_VALUE));
+		final MinInclusive shortMinInclusive = new MinInclusive(createSynthetic(Names.MIN_INCLUSIVE, Short.toString(Short.MIN_VALUE)), Deques.emptyDeque(), null, Short.toString(Short.MIN_VALUE));
 		df.put(SimpleType.SHORT_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, shortMaxInclusive, shortMinInclusive, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.18
-		final MaxInclusive byteMaxInclusive = new MaxInclusive(createSynthetic(MaxInclusive.NAME, Byte.toString(Byte.MAX_VALUE)), Deques.emptyDeque(), null, Byte.toString(Byte.MAX_VALUE));
-		final MinInclusive byteMinInclusive = new MinInclusive(createSynthetic(MinInclusive.NAME, Byte.toString(Byte.MIN_VALUE)), Deques.emptyDeque(), null, Byte.toString(Byte.MIN_VALUE));
+		final MaxInclusive byteMaxInclusive = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, Byte.toString(Byte.MAX_VALUE)), Deques.emptyDeque(), null, Byte.toString(Byte.MAX_VALUE));
+		final MinInclusive byteMinInclusive = new MinInclusive(createSynthetic(Names.MIN_INCLUSIVE, Byte.toString(Byte.MIN_VALUE)), Deques.emptyDeque(), null, Byte.toString(Byte.MIN_VALUE));
 		df.put(SimpleType.BYTE_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, byteMaxInclusive, byteMinInclusive, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.19
-		final MinInclusive minInclusive0 = new MinInclusive(createSynthetic(MinInclusive.NAME, "0"), Deques.emptyDeque(), null, "0");
+		final MinInclusive minInclusive0 = new MinInclusive(createSynthetic(Names.MIN_INCLUSIVE, "0"), Deques.emptyDeque(), null, "0");
 		df.put(SimpleType.NONNEGATIVEINTEGER_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, minInclusive0, TotalDigits.class, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.20
-		final MaxInclusive unsignedLongMaxInclusive = new MaxInclusive(createSynthetic(MaxInclusive.NAME, Long.toUnsignedString(-1L)), Deques.emptyDeque(), null, Long.toUnsignedString(-1L));
+		final MaxInclusive unsignedLongMaxInclusive = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, Long.toUnsignedString(-1L)), Deques.emptyDeque(), null, Long.toUnsignedString(-1L));
 		df.put(SimpleType.UNSIGNEDLONG_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, unsignedLongMaxInclusive, minInclusive0, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.21
-		final MaxInclusive unsignedIntMaxInclusive = new MaxInclusive(createSynthetic(MaxInclusive.NAME, Integer.toUnsignedString(-1)), Deques.emptyDeque(), null, Integer.toUnsignedString(-1));
+		final MaxInclusive unsignedIntMaxInclusive = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, Integer.toUnsignedString(-1)), Deques.emptyDeque(), null, Integer.toUnsignedString(-1));
 		df.put(SimpleType.UNSIGNEDINT_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, unsignedIntMaxInclusive, minInclusive0, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.22
-		final MaxInclusive unsignedShortMaxInclusive = new MaxInclusive(createSynthetic(MaxInclusive.NAME, "65535"), Deques.emptyDeque(), null, "65535");
+		final MaxInclusive unsignedShortMaxInclusive = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, "65535"), Deques.emptyDeque(), null, "65535");
 		df.put(SimpleType.UNSIGNEDSHORT_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, unsignedShortMaxInclusive, minInclusive0, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.23
-		final MaxInclusive unsignedByteMaxInclusive = new MaxInclusive(createSynthetic(MaxInclusive.NAME, "255"), Deques.emptyDeque(), null, "255");
+		final MaxInclusive unsignedByteMaxInclusive = new MaxInclusive(createSynthetic(Names.MAX_INCLUSIVE, "255"), Deques.emptyDeque(), null, "255");
 		df.put(SimpleType.UNSIGNEDBYTE_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, unsignedByteMaxInclusive, minInclusive0, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.24
-		final MinInclusive minInclusive1 = new MinInclusive(createSynthetic(MinInclusive.NAME, "1"), Deques.emptyDeque(), null, "1");
+		final MinInclusive minInclusive1 = new MinInclusive(createSynthetic(Names.MIN_INCLUSIVE, "1"), Deques.emptyDeque(), null, "1");
 		df.put(SimpleType.POSITIVEINTEGER_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, minInclusive1, TotalDigits.class, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinExclusive.class, Assertions.class)); // 3.4.25
 		final String yearMonthDurationPatternValue = "[^DT]*";
-		final Pattern yearMonthDurationPattern = new Pattern(createSynthetic(Pattern.NAME, yearMonthDurationPatternValue), Deques.emptyDeque(), Collections.singleton(yearMonthDurationPatternValue));
+		final Pattern yearMonthDurationPattern = new Pattern(createSynthetic(Names.PATTERN, yearMonthDurationPatternValue), Deques.emptyDeque(), Collections.singleton(yearMonthDurationPatternValue));
 		df.put(SimpleType.YEARMONTHDURATION_NAME, asDeque(collapseFixed, yearMonthDurationPattern, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.26
 		final String dayTimeDurationPatternValue = "[^YM]*(T.*)?";
-		final Pattern dayTimeDurationPattern = new Pattern(createSynthetic(Pattern.NAME, dayTimeDurationPatternValue), Deques.emptyDeque(), Collections.singleton(dayTimeDurationPatternValue));
+		final Pattern dayTimeDurationPattern = new Pattern(createSynthetic(Names.PATTERN, dayTimeDurationPatternValue), Deques.emptyDeque(), Collections.singleton(dayTimeDurationPatternValue));
 		df.put(SimpleType.DAYTIMEDURATION_NAME, asDeque(collapseFixed, dayTimeDurationPattern, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.27
-		final ExplicitTimezone dateTimeStampETZFixed = new ExplicitTimezone(createSynthetic(ExplicitTimezone.NAME, ExplicitTimezone.Value.REQUIRED), Deques.emptyDeque(), true, ExplicitTimezone.Value.REQUIRED);
+		final ExplicitTimezone dateTimeStampETZFixed = new ExplicitTimezone(createSynthetic(Names.EXPLICIT_TIMEZONE, ExplicitTimezone.Value.REQUIRED), Deques.emptyDeque(), true, ExplicitTimezone.Value.REQUIRED);
 		df.put(SimpleType.DATETIMESTAMP_NAME, asDeque(collapseFixed, dateTimeStampETZFixed, Pattern.class, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.28
 		defaultFacets = Collections.unmodifiableMap(df);
 	}
@@ -997,6 +978,44 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 		this.fixed = fixed;
 	}
 
+	private static ConstrainingFacet parse(final Result result) {
+		final Boolean fixed = Boolean.valueOf(result.value(AttrParser.FIXED));
+		final Attr value = result.attr(AttrParser.VALUE);
+		result.parent();
+		switch (result.node().getLocalName()) {
+		case Names.LENGTH:
+			return new Length(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsNonNegativeInteger(value));
+		case Names.MIN_LENGTH:
+			return new MinLength(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsNonNegativeInteger(value));
+		case Names.MAX_LENGTH:
+			return new MaxLength(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsNonNegativeInteger(value));
+		case Names.PATTERN:
+			return new Pattern(result.node(), result.annotations(), Collections.singleton(NodeHelper.getNodeValueAsString(value)));
+		case Names.ENUMERATION:
+			return new Enumeration(result.node(), result.annotations(), Collections.singleton(NodeHelper.getNodeValueAsString(value)));
+		case Names.WHITE_SPACE:
+			return new WhiteSpace(result.node(), result.annotations(), fixed, WhiteSpace.Value.getNodeValueAsValue(value));
+		case Names.MAX_INCLUSIVE:
+			return new MaxInclusive(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsString(value));
+		case Names.MAX_EXCLUSIVE:
+			return new MaxExclusive(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsString(value));
+		case Names.MIN_EXCLUSIVE:
+			return new MinExclusive(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsString(value));
+		case Names.MIN_INCLUSIVE:
+			return new MinInclusive(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsString(value));
+		case Names.TOTAL_DIGITS:
+			return new TotalDigits(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsPositiveInteger(value));
+		case Names.FRACTION_DIGITS:
+			return new FractionDigits(result.node(), result.annotations(), fixed, NodeHelper.getNodeValueAsNonNegativeInteger(value));
+		case Names.ASSERTION:
+			return new Assertions(result.node(), Deques.singletonDeque(TagParser.ASSERTION.parse(result)));
+		case Names.EXPLICIT_TIMEZONE:
+			return new ExplicitTimezone(result.node(), result.annotations(), fixed, ExplicitTimezone.Value.getNodeValueAsValue(value));
+		default:
+			throw new Schema.ParseException(result.node(), "Unknown constraining facet " + result.node().getLocalName());
+		}
+	}
+
 	private static Node createSynthetic(final String name, final Object value) {
 		final Node elem = defaultConstrainingFacetsDocument.createElementNS(XMLConstants.W3C_XML_SCHEMA_NS_URI, name);
 		elem.setPrefix("xs");
@@ -1004,6 +1023,24 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 		valueAttr.setNodeValue(value.toString());
 		elem.getAttributes().setNamedItem(valueAttr);
 		return elem;
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.VALUE, NodeHelper::requireNodeValue);
+		TagParser.register(Names.LENGTH, parser, Length.class, ConstrainingFacet::parse);
+		TagParser.register(Names.MAX_LENGTH, parser, MaxLength.class, ConstrainingFacet::parse);
+		TagParser.register(Names.MIN_LENGTH, parser, MinLength.class, ConstrainingFacet::parse);
+		TagParser.register(Names.PATTERN, parser, Pattern.class, ConstrainingFacet::parse);
+		TagParser.register(Names.ENUMERATION, parser, Enumeration.class, ConstrainingFacet::parse);
+		TagParser.register(Names.WHITE_SPACE, parser, WhiteSpace.class, ConstrainingFacet::parse);
+		TagParser.register(Names.MAX_INCLUSIVE, parser, MaxInclusive.class, ConstrainingFacet::parse);
+		TagParser.register(Names.MAX_EXCLUSIVE, parser, MaxExclusive.class, ConstrainingFacet::parse);
+		TagParser.register(Names.MIN_EXCLUSIVE, parser, MinExclusive.class, ConstrainingFacet::parse);
+		TagParser.register(Names.MIN_INCLUSIVE, parser, MinInclusive.class, ConstrainingFacet::parse);
+		TagParser.register(Names.TOTAL_DIGITS, parser, TotalDigits.class, ConstrainingFacet::parse);
+		TagParser.register(Names.FRACTION_DIGITS, parser, FractionDigits.class, ConstrainingFacet::parse);
+		TagParser.register(Names.ASSERTION, parser, Assertions.class, ConstrainingFacet::parse);
+		TagParser.register(Names.EXPLICIT_TIMEZONE, parser, ExplicitTimezone.class, ConstrainingFacet::parse);
 	}
 
 	static Deque<Object> find(final String simpleTypeName) {
@@ -1100,7 +1137,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 					final ConstrainingFacet sibling = (ConstrainingFacet) obj;
 					if (sibling.getClass().equals(declaredFacet.getClass())) {
 						if (Boolean.TRUE == sibling.fixed() && !Objects.equals(sibling.value(), declaredFacet.value())) {
-							throw new SchemaParseException(declaredFacet.node(), "Cannot modify constraining facet with fixed value = true");
+							throw new Schema.ParseException(declaredFacet.node(), "Cannot modify constraining facet with fixed value = true");
 						}
 						found = true;
 						foundBaseFacets.add(obj);
@@ -1108,7 +1145,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 				}
 			}
 			if (!found) {
-				throw new SchemaParseException(declaredFacet.node().getParentNode(), "Constraining facet " + declaredFacet.getClass().getSimpleName() + " is not allowed for the datatype in this context");
+				throw new Schema.ParseException(declaredFacet.node().getParentNode(), "Constraining facet " + declaredFacet.getClass().getSimpleName() + " is not allowed for the datatype in this context");
 			} else if (!newFacets.contains(declaredFacet)) {
 				newFacets.addLast(declaredFacet);
 			}
@@ -1123,43 +1160,6 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 			}
 		}
 		return newFacets;
-	}
-
-	static ConstrainingFacet parse(final Result result) {
-		final Boolean fixed = Boolean.valueOf(result.value(AttributeValue.FIXED));
-		final String value = result.value(AttributeValue.VALUE);
-		switch (result.node().getLocalName()) {
-		case Length.NAME:
-			return new Length(result.node(), result.annotations(), fixed, value);
-		case MinLength.NAME:
-			return new MinLength(result.node(), result.annotations(), fixed, value);
-		case MaxLength.NAME:
-			return new MaxLength(result.node(), result.annotations(), fixed, value);
-		case Pattern.NAME:
-			return new Pattern(result.node(), result.annotations(), Collections.singleton(value));
-		case Enumeration.NAME:
-			return new Enumeration(result.node(), result.annotations(), Collections.singleton(value));
-		case WhiteSpace.NAME:
-			return new WhiteSpace(result.node(), result.annotations(), fixed, WhiteSpace.Value.getByName(value));
-		case MaxInclusive.NAME:
-			return new MaxInclusive(result.node(), result.annotations(), fixed, value);
-		case MaxExclusive.NAME:
-			return new MaxExclusive(result.node(), result.annotations(), fixed, value);
-		case MinExclusive.NAME:
-			return new MinExclusive(result.node(), result.annotations(), fixed, value);
-		case MinInclusive.NAME:
-			return new MinInclusive(result.node(), result.annotations(), fixed, value);
-		case TotalDigits.NAME:
-			return new TotalDigits(result.node(), result.annotations(), fixed, value);
-		case FractionDigits.NAME:
-			return new FractionDigits(result.node(), result.annotations(), fixed, value);
-		case Assertions.NAME:
-			return new Assertions(result.node(), Deques.singletonDeque(Assertion.parse(result)));
-		case ExplicitTimezone.NAME:
-			return new ExplicitTimezone(result.node(), result.annotations(), fixed, ExplicitTimezone.Value.getByName(value));
-		default:
-			throw new SchemaParseException(result.node(), "Unknown constraining facet " + result.node().getLocalName());
-		}
 	}
 
 	/** @return The actual value of the value [attribute] */

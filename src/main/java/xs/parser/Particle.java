@@ -36,11 +36,11 @@ import xs.parser.internal.util.SequenceParser.*;
  */
 public class Particle implements AnnotatedComponent {
 
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID, AttrParser.MAX_OCCURS, AttrParser.MIN_OCCURS)
+			.elements(0, 1, TagParser.ANNOTATION)
+			.elements(0, Integer.MAX_VALUE, TagParser.ELEMENT.use(), TagParser.GROUP.use(), TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE, TagParser.ANY);
 	static final String UNBOUNDED = "unbounded";
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID, AttributeValue.MAXOCCURS, AttributeValue.MINOCCURS)
-			.elements(0, 1, ElementValue.ANNOTATION)
-			.elements(0, Integer.MAX_VALUE, ElementValue.ELEMENT, ElementValue.GROUP, ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE, ElementValue.ANY);
 
 	private final Node node;
 	private final Deque<Annotation> annotations;
@@ -61,16 +61,28 @@ public class Particle implements AnnotatedComponent {
 	}
 
 	@SuppressWarnings("unchecked")
-	static Particle parse(final Result result) {
-		final String maxOccurs = result.value(AttributeValue.MAXOCCURS);
-		final String minOccurs = result.value(AttributeValue.MINOCCURS);
-		final Compositor compositor = ElementValue.ALL.equalsName(result.node()) ? Compositor.ALL
-				: ElementValue.CHOICE.equalsName(result.node()) ? Compositor.CHOICE
-				: ElementValue.SEQUENCE.equalsName(result.node()) ? Compositor.SEQUENCE
+	private static Particle parse(final Result result) {
+		final String maxOccurs = result.value(AttrParser.MAX_OCCURS);
+		final String minOccurs = result.value(AttrParser.MIN_OCCURS);
+		final Compositor compositor = TagParser.ALL.equalsName(result.node()) ? Compositor.ALL
+				: TagParser.CHOICE.equalsName(result.node()) ? Compositor.CHOICE
+				: TagParser.SEQUENCE.equalsName(result.node()) ? Compositor.SEQUENCE
 				: null;
-		final Deque<Particle> particles = result.parseAll(ElementValue.ELEMENT, ElementValue.ALL, ElementValue.CHOICE, ElementValue.SEQUENCE, ElementValue.ANY);
+		final Deque<Particle> particles = result.parseAll(TagParser.ELEMENT.use(), TagParser.GROUP.use(), TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE, TagParser.ANY);
 		final ModelGroup term = ModelGroup.synthetic(result.node(), result.annotations(), compositor, (Deque<Particle>) (Object) particles);
 		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, term);
+	}
+
+	private static String getNodeValueAsMaxOccurs(final Node node) {
+		return UNBOUNDED.equals(node.getNodeValue())
+				? UNBOUNDED
+				: NodeHelper.getNodeValueAsNonNegativeInteger(node);
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.MAX_OCCURS, String.class, "1", Particle::getNodeValueAsMaxOccurs);
+		AttrParser.register(AttrParser.Names.MIN_OCCURS, String.class, "1", NodeHelper::getNodeValueAsNonNegativeInteger);
+		TagParser.register(new String[] { TagParser.Names.ALL, TagParser.Names.CHOICE, TagParser.Names.SEQUENCE }, parser, Particle.class, Particle::parse);
 	}
 
 	/**
@@ -89,7 +101,7 @@ public class Particle implements AnnotatedComponent {
 				if (UNBOUNDED.equals(pEffectiveMax)) {
 					return UNBOUNDED;
 				} else {
-					if (UNBOUNDED.equals(maxOccurs) && !"0".equals(pEffectiveMax)) {
+					if (UNBOUNDED.equals(maxOccurs) && !NodeHelper.isZero(pEffectiveMax)) {
 						return UNBOUNDED;
 					} else {
 						final long pMaxOccurs = Long.parseUnsignedLong(pEffectiveMax);
@@ -131,10 +143,10 @@ public class Particle implements AnnotatedComponent {
 	 * @return {@code true} if this {@code Particle} is emptiable
 	 */
 	boolean isEmptiable() {
-		if ("0".equals(minOccurs)) {
+		if (NodeHelper.isZero(minOccurs)) {
 			return true;
 		} else if (term() instanceof ModelGroup) {
-			return "0".equals(effectiveTotalRangeMinimum());
+			return NodeHelper.isZero(effectiveTotalRangeMinimum());
 		}
 		return false;
 	}

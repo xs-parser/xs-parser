@@ -99,8 +99,8 @@ public class Annotation implements SchemaComponent {
 
 	public static class Appinfo {
 
-		static final SequenceParser parser = new SequenceParser()
-				.optionalAttributes(AttributeValue.SOURCE)
+		private static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttrParser.SOURCE)
 				.allowsAnyContent(true);
 
 		private final Node node;
@@ -109,7 +109,7 @@ public class Annotation implements SchemaComponent {
 			this.node = Objects.requireNonNull(node);
 		}
 
-		static Appinfo parse(final Result result) {
+		private static Appinfo parse(final Result result) {
 			return new Appinfo(result.node());
 		}
 
@@ -117,8 +117,8 @@ public class Annotation implements SchemaComponent {
 
 	public static class Documentation {
 
-		static final SequenceParser parser = new SequenceParser()
-				.optionalAttributes(AttributeValue.SOURCE, AttributeValue.XML_LANG)
+		private static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttrParser.SOURCE, AttrParser.XML_LANG)
 				.allowsAnyContent(true);
 
 		private final Node node;
@@ -127,15 +127,15 @@ public class Annotation implements SchemaComponent {
 			this.node = Objects.requireNonNull(node);
 		}
 
-		static Documentation parse(final Result result) {
+		private static Documentation parse(final Result result) {
 			return new Documentation(result.node());
 		}
 
 	}
 
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID)
-			.elements(0, Integer.MAX_VALUE, ElementValue.DOCUMENTATION, ElementValue.APPINFO);
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID)
+			.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION.documentation(), TagParser.ANNOTATION.appinfo());
 
 	private final Node node;
 	private final Deque<Node> applicationInformation;
@@ -149,12 +149,20 @@ public class Annotation implements SchemaComponent {
 		this.attributes = Objects.requireNonNull(attributes);
 	}
 
-	static Annotation parse(final Result result) {
-		final Deque<Appinfo> appinfo = result.parseAll(ElementValue.APPINFO);
+	private static Annotation parse(final Result result) {
+		final Deque<Appinfo> appinfo = result.parseAll(TagParser.ANNOTATION.appinfo());
 		final Deque<Node> applicationInformation = appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new));
-		final Deque<Documentation> documentation = result.parseAll(ElementValue.DOCUMENTATION);
+		final Deque<Documentation> documentation = result.parseAll(TagParser.ANNOTATION.documentation());
 		final Deque<Node> userInformation = documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new));
 		return new Annotation(result.node(), applicationInformation, userInformation, Collections::emptySet /*TODO*/);
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.SOURCE, NodeHelper::getNodeValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.XML_LANG, NodeHelper::getNodeValueAsLanguage);
+		TagParser.register(TagParser.Names.APPINFO, Appinfo.parser, Appinfo.class, Appinfo::parse);
+		TagParser.register(TagParser.Names.DOCUMENTATION, Documentation.parser, Documentation.class, Documentation::parse);
+		TagParser.register(TagParser.Names.ANNOTATION, Annotation.parser, Annotation.class, Annotation::parse);
 	}
 
 	/** @return A sequence of the &lt;appinfo&gt; element information items from among the [children], in order, if any, otherwise the empty sequence. */

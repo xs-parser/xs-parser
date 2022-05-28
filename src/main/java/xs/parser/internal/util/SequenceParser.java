@@ -11,14 +11,30 @@ import xs.parser.internal.*;
 
 public final class SequenceParser {
 
+	public static class AttrValue<T> {
+
+		private final Attr attr;
+		private final T value;
+
+		public AttrValue(final Attr attr, final T value) {
+			this.attr = attr;
+			this.value = value;
+		}
+
+		public T getValue() {
+			return value;
+		}
+
+	}
+
 	public class Result {
 
 		private final Schema schema;
 		private final Node node;
 		private final Result parent;
-		private final Map<AttributeValue<?>, Object> attributes = new LinkedHashMap<>();
+		private final Map<AttrParser<?>, AttrValue<?>> attributes = new LinkedHashMap<>();
 		private final Map<QName, String> nonSchemaAttributes;
-		private final Map<ElementValue<?>, Deque<Result>> parserResults = new LinkedHashMap<>();
+		private final Map<TagParser<?>, Deque<Result>> parserResults = new LinkedHashMap<>();
 		private final Deque<Node> anyContent;
 
 		Result(final Schema schema, final Node node, final Result parent, final boolean allowsNonSchemaAttributes, final boolean allowsAnyContent) {
@@ -29,12 +45,19 @@ public final class SequenceParser {
 			anyContent = allowsAnyContent ? new ArrayDeque<>() : Deques.emptyDeque();
 		}
 
-		@SuppressWarnings("unchecked")
-		public <T> T value(final AttributeValue<T> a) {
+		public Attr attr(final AttrParser<?> a) {
 			if (!attributes.containsKey(a)) {
 				throw new IllegalArgumentException("Unregisted attribute " + a);
 			}
-			return (T) attributes.get(a);
+			return attributes.get(a).attr;
+		}
+
+		@SuppressWarnings("unchecked")
+		public <T> T value(final AttrParser<T> a) {
+			if (!attributes.containsKey(a)) {
+				throw new IllegalArgumentException("Unregisted attribute " + a);
+			}
+			return (T) attributes.get(a).value;
 		}
 
 		public Map<QName, String> nonSchemaAttributes() {
@@ -42,16 +65,16 @@ public final class SequenceParser {
 		}
 
 		public Deque<Annotation> annotations() {
-			return parseAll(ElementValue.ANNOTATION);
+			return parseAll(TagParser.ANNOTATION);
 		}
 
-		@SafeVarargs public final <T> T parse(final ElementValue<? extends T> e, final ElementValue<? extends T>... more) {
-			T t = parse(e);
+		@SafeVarargs public final <T> T parse(final TagParser<? extends T> first, final TagParser<? extends T>... more) {
+			T t = parse(first);
 			if (t != null) {
 				return t;
 			}
-			for (final ElementValue<? extends T> v : more) {
-				t = parse(v);
+			for (final TagParser<? extends T> m : more) {
+				t = parse(m);
 				if (t != null) {
 					return t;
 				}
@@ -59,25 +82,25 @@ public final class SequenceParser {
 			return null;
 		}
 
-		public <T> T parse(final ElementValue<T> e) {
-			if (!parserResults.containsKey(e)) {
-				throw new IllegalArgumentException(e.toString());
+		public <T> T parse(final TagParser<T> t) {
+			if (!parserResults.containsKey(t)) {
+				throw new IllegalArgumentException(t.toString());
 			}
-			final Deque<Result> results = parserResults.get(e);
+			final Deque<Result> results = parserResults.get(t);
 			if (results == null) {
 				return null;
 			}
 			final Result r = results.getFirst();
-			checkIfCanParse(r, e);
-			return e.getParser().parse(r);
+			checkIfCanParse(r, t);
+			return t.parse(r);
 		}
 
 		@SuppressWarnings("unchecked")
-		@SafeVarargs public final <T> Deque<T> parseAll(final ElementValue<? extends T> e, final ElementValue<? extends T>... more) {
-			final Deque<? extends T> ls = parseAll(e);
+		@SafeVarargs public final <T> Deque<T> parseAll(final TagParser<? extends T> first, final TagParser<? extends T>... more) {
+			final Deque<? extends T> ls = parseAll(first);
 			final Deque<Deque<? extends T>> moreDeques = new ArrayDeque<>();
-			for (final ElementValue<? extends T> v : more) {
-				moreDeques.add(parseAll(v));
+			for (final TagParser<? extends T> t : more) {
+				moreDeques.add(parseAll(t));
 			}
 			if (moreDeques.isEmpty()) {
 				return (Deque<T>) ls;
@@ -94,20 +117,20 @@ public final class SequenceParser {
 			return d;
 		}
 
-		public <T> Deque<T> parseAll(final ElementValue<T> e) {
-			if (!parserResults.containsKey(e)) {
-				throw new IllegalArgumentException("Unregisted element " + e.getName());
+		public <T> Deque<T> parseAll(final TagParser<T> t) {
+			if (!parserResults.containsKey(t)) {
+				throw new IllegalArgumentException("Unregisted element " + t.getName());
 			}
-			final Deque<Result> results = parserResults.get(e);
+			final Deque<Result> results = parserResults.get(t);
 			if (results == null) {
 				return Deques.emptyDeque();
 			}
 			for (final Result r : results) {
-				checkIfCanParse(r, e);
+				checkIfCanParse(r, t);
 			}
 			final DeferredArrayDeque<T> values = new DeferredArrayDeque<>(results.size());
 			for (final Result r : results) {
-				values.add(Deferred.of(() -> e.getParser().parse(r)));
+				values.add(Deferred.of(() -> t.parse(r)));
 			}
 			return values;
 		}
@@ -134,9 +157,9 @@ public final class SequenceParser {
 
 		private final int minInclusive;
 		private final int maxInclusive;
-		private final ElementValue<?>[] values;
+		private final TagParser<?>[] values;
 
-		Occur(final int minInclusive, final int maxInclusive, final ElementValue<?>[] values) {
+		Occur(final int minInclusive, final int maxInclusive, final TagParser<?>[] values) {
 			if (minInclusive < 0 || maxInclusive < 0) {
 				throw new IllegalArgumentException("minInclusive and maxInclusive must be greater than or equal to 0");
 			}
@@ -145,10 +168,10 @@ public final class SequenceParser {
 			this.values = values;
 		}
 
-		ElementValue<?> elementFor(final Node node) {
+		private TagParser<?> elementFor(final Node node) {
 			final String namespaceUri = NodeHelper.namespaceUri(node);
 			final String localName = node.getLocalName();
-			for (final ElementValue<?> v : values) {
+			for (final TagParser<?> v : values) {
 				if (v.getName().getNamespaceURI().equals(namespaceUri) && v.getName().getLocalPart().equals(localName)) {
 					return v;
 				}
@@ -163,32 +186,33 @@ public final class SequenceParser {
 
 	}
 
-	private final Map<QName, Map.Entry<AttributeValue<?>, Boolean>> attributeValues = new LinkedHashMap<>();
+	private final Map<QName, Map.Entry<AttrParser<?>, Boolean>> attrParsers = new LinkedHashMap<>();
 	private final List<Occur> subParsers = new ArrayList<>();
 	private boolean allowsNonSchemaAttributes = true;
 	private boolean allowsAnyContent = false;
 
-	private static void checkIfCanParse(final Result r, final ElementValue<?> e) {
-		if (!e.equalsName(r.node)) {
-			throw new IllegalArgumentException(r.node.toString() + " does not match expected element name " + e.getName());
+	private static void checkIfCanParse(final Result r, final TagParser<?> t) {
+		if (!t.equalsName(r.node)) {
+			throw new IllegalArgumentException(r.node.toString() + " does not match expected element name " + t.getName());
 		}
 	}
 
-	public SequenceParser requiredAttributes(final AttributeValue<?>... attributeValues) {
-		for (final AttributeValue<?> a : attributeValues) {
-			this.attributeValues.put(a.getName(), new SimpleImmutableEntry<>(a, true));
-		}
-		return this;
-	}
-
-	public SequenceParser optionalAttributes(final AttributeValue<?>... attributeValues) {
-		for (final AttributeValue<?> a : attributeValues) {
-			this.attributeValues.put(a.getName(), new SimpleImmutableEntry<>(a, false));
+	public SequenceParser requiredAttributes(final AttrParser<?>... attrParsers) {
+		for (final AttrParser<?> a : attrParsers) {
+			this.attrParsers.put(a.getName(), new SimpleImmutableEntry<>(a, true));
 		}
 		return this;
 	}
 
-	@SafeVarargs public final SequenceParser elements(final int minInclusive, final int maxInclusive, final ElementValue<?>... e) {
+	public SequenceParser optionalAttributes(final AttrParser<?>... attrParsers) {
+		for (final AttrParser<?> a : attrParsers) {
+			this.attrParsers.put(a.getName(), new SimpleImmutableEntry<>(a, false));
+		}
+		return this;
+	}
+
+	@SafeVarargs
+	public final SequenceParser elements(final int minInclusive, final int maxInclusive, final TagParser<?>... e) {
 		this.subParsers.add(new Occur(minInclusive, maxInclusive, e));
 		return this;
 	}
@@ -211,36 +235,36 @@ public final class SequenceParser {
 		final Result result = new Result(schema, node, parent, allowsNonSchemaAttributes, allowsAnyContent);
 		final NamedNodeMap attributes = node.getAttributes();
 		for (int i = 0; i < attributes.getLength(); ++i) {
-			final Node n = attributes.item(i);
-			if (n.getNodeName().startsWith("xmlns")) { // Ignore xmlns= and xmlns:*= attributes
+			final Attr a = (Attr) attributes.item(i);
+			if (a.getNodeName().startsWith("xmlns")) { // Ignore xmlns= and xmlns:*= attributes
 				continue;
 			}
-			final QName attrName = n.getNamespaceURI() != null
-					? new QName(n.getNamespaceURI(), n.getLocalName())
-					: new QName(n.getLocalName());
-			final Map.Entry<AttributeValue<?>, Boolean> a = attributeValues.get(attrName);
-			if (Objects.equals(n.getNamespaceURI(), XMLConstants.W3C_XML_SCHEMA_NS_URI) || Objects.equals(n.getNamespaceURI(), XMLConstants.NULL_NS_URI)) {
-				throw new SchemaParseException(node, "Found disallowed attribute present on element " + node.getLocalName() + ": " + n.getLocalName());
+			final QName attrName = a.getNamespaceURI() != null
+					? new QName(a.getNamespaceURI(), a.getLocalName())
+					: new QName(a.getLocalName());
+			final Map.Entry<AttrParser<?>, Boolean> e = attrParsers.get(attrName);
+			if (Objects.equals(a.getNamespaceURI(), XMLConstants.W3C_XML_SCHEMA_NS_URI) || Objects.equals(a.getNamespaceURI(), XMLConstants.NULL_NS_URI)) {
+				throw NodeHelper.newParseException(node, "Found disallowed attribute present on element " + node.getLocalName() + ": " + a.getLocalName());
 			}
-			if (a == null) {
-				if (allowsNonSchemaAttributes && n.getPrefix() != null && !XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(n.getPrefix())) {
-					final QName name = new QName(n.getNamespaceURI(), n.getLocalName(), n.getPrefix());
-					result.nonSchemaAttributes.put(name, n.getNodeValue());
+			if (e == null) {
+				if (allowsNonSchemaAttributes && a.getPrefix() != null && !XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(a.getPrefix())) {
+					final QName name = new QName(a.getNamespaceURI(), a.getLocalName(), a.getPrefix());
+					result.nonSchemaAttributes.put(name, NodeHelper.requireNodeValue(a));
 				} else {
-					throw new SchemaParseException(node, "Found disallowed non-schema attribute: " + n);
+					throw NodeHelper.newParseException(node, "Found disallowed non-schema attribute: " + a);
 				}
 			} else {
-				final AttributeValue<?> v = a.getKey();
-				result.attributes.put(v, v.parse(n));
+				final AttrParser<?> v = e.getKey();
+				result.attributes.put(v, new AttrValue<>(a, v.parse(a)));
 			}
 		}
-		for (final Map.Entry<QName, Map.Entry<AttributeValue<?>, Boolean>> a : attributeValues.entrySet()) {
+		for (final Map.Entry<QName, Map.Entry<AttrParser<?>, Boolean>> a : attrParsers.entrySet()) {
 			final boolean isRequired = a.getValue().getValue();
-			final AttributeValue<?> v = a.getValue().getKey();
+			final AttrParser<?> v = a.getValue().getKey();
 			if (isRequired && !result.attributes.containsKey(v)) {
-				throw new SchemaParseException(node, "Missing required attribute " + v.getName());
+				throw NodeHelper.newParseException(node, "Missing required attribute " + v.getName());
 			}
-			result.attributes.putIfAbsent(v, v.defaultValue());
+			result.attributes.putIfAbsent(v, v.getDefault());
 		}
 		if (allowsAnyContent) {
 			for (Node n = node.getFirstChild(); n != null; n = n.getNextSibling()) {
@@ -252,30 +276,30 @@ public final class SequenceParser {
 			Occur iter = subParsers.get(parserIndex++);
 			for (Node n = node.getFirstChild(); n != null; n = n.getNextSibling()) {
 				if (n instanceof org.w3c.dom.Element) {
-					ElementValue<?> elementValue;
-					while ((elementValue = iter.elementFor(n)) == null) {
+					TagParser<?> tagParser;
+					while ((tagParser = iter.elementFor(n)) == null) {
 						if (iter.minInclusive > amount || iter.maxInclusive < amount) {
-							throw new SchemaParseException(node, "Invalid occurences for element " + node + ", " + iter.minInclusive + ", " + iter.maxInclusive + " " + amount);
+							throw NodeHelper.newParseException(node, "Invalid occurences for element " + node + ", " + iter.minInclusive + ", " + iter.maxInclusive + " " + amount);
 						}
 						if (parserIndex >= subParsers.size()) {
-							throw new SchemaParseException(node, "Disallowed element: " + n + ", " + n.getClass() + ", expecting one of " + subParsers);
+							throw NodeHelper.newParseException(node, "Disallowed element: " + n + ", " + n.getClass() + ", expecting one of " + subParsers);
 						}
 						iter = subParsers.get(parserIndex++);
-						result.parserResults.put(elementValue, null);
+						result.parserResults.put(tagParser, null);
 						amount = 0;
 					}
-					final Result r = elementValue.getParser().get().parse(schema, n, result);
-					result.parserResults.computeIfAbsent(elementValue, e -> new ArrayDeque<>()).add(r);
+					final Result r = tagParser.getSequenceParser().parse(schema, n, result);
+					result.parserResults.computeIfAbsent(tagParser, e -> new ArrayDeque<>()).add(r);
 					++amount;
 				}
 			}
 			if (iter.minInclusive > amount || iter.maxInclusive < amount) {
-				throw new SchemaParseException(node, "Invalid occurences for element " + node + ", " + iter.minInclusive + ", " + iter.maxInclusive + " " + amount);
+				throw NodeHelper.newParseException(node, "Invalid occurences for element " + node + ", " + iter.minInclusive + ", " + iter.maxInclusive + " " + amount);
 			}
 			// TODO: probably inefficient
 			for (final Occur o : subParsers) {
-				for (final ElementValue<?> e : o.values) {
-					result.parserResults.putIfAbsent(e, null);
+				for (final TagParser<?> t : o.values) {
+					result.parserResults.putIfAbsent(t, null);
 				}
 			}
 		}

@@ -144,8 +144,8 @@ public class Attribute implements AnnotatedComponent {
 			this.name = value;
 		}
 
-		public static Use getByName(final Node node) {
-			final String name = node.getNodeValue();
+		private static Use getNodeValueAsUse(final Node node) {
+			final String name = NodeHelper.requireNodeValue(node);
 			for (final Use u : values()) {
 				if (u.getName().equals(name)) {
 					return u;
@@ -235,21 +235,20 @@ public class Attribute implements AnnotatedComponent {
 	private static final Attribute xsiNil;
 	private static final Attribute xsiSchemaLocation;
 	private static final Attribute xsiNoNamespaceSchemaLocation;
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID, AttributeValue.DEFAULT, AttributeValue.FIXED, AttributeValue.FORM, AttributeValue.NAME, AttributeValue.TARGETNAMESPACE, AttributeValue.TYPE, AttributeValue.INHERITABLE)
-			.elements(0, 1, ElementValue.ANNOTATION)
-			.elements(0, 1, ElementValue.SIMPLETYPE);
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID, AttrParser.DEFAULT, AttrParser.FIXED, AttrParser.FORM, AttrParser.NAME, AttrParser.TARGET_NAMESPACE, AttrParser.TYPE, AttrParser.INHERITABLE)
+			.elements(0, 1, TagParser.ANNOTATION)
+			.elements(0, 1, TagParser.SIMPLE_TYPE);
 
 	static {
-		final Document doc = NodeHelper.newDocument();
-		final Node xsiTypeNode = NodeHelper.newNode(doc, ElementValue.ATTRIBUTE, "xsi", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, "type");
+		final Document xsiSchemaDocument = NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI);
+		final Node xsiTypeNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "type");
 		xsiType = new Attribute(xsiTypeNode, Deques.emptyDeque(), "type", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsQName, new Scope(Scope.Variety.GLOBAL, null), null, null);
-		final Node xsiNilNode = NodeHelper.newNode(doc, ElementValue.ATTRIBUTE, "xsi", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, "nil");
+		final Node xsiNilNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "nil");
 		xsiNil = new Attribute(xsiNilNode, Deques.emptyDeque(), "nil", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsBoolean, new Scope(Scope.Variety.GLOBAL, null), null, null);
-		final Node xsiSchemaLocationNode = NodeHelper.newNode(doc, ElementValue.ATTRIBUTE, "xsi", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, "schemaLocation");
-		final Node xsiSchemaLocationTypeNode = NodeHelper.newNode(doc, ElementValue.SIMPLETYPE, "xs", XMLConstants.W3C_XML_SCHEMA_NS_URI, null);
-		xsiSchemaLocation = new Attribute(xsiSchemaLocationNode, Deques.emptyDeque(), "schemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(() -> new SimpleType(xsiSchemaLocationTypeNode, Deques.emptyDeque(), null, XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deques.emptyDeque(), null, SimpleType::xsAnySimpleType, () -> SimpleType.Variety.LIST, Deques::emptyDeque, null, new SimpleType.List(null, SimpleType::xsAnyURI), null)), new Scope(Scope.Variety.GLOBAL, null), null, null);
-		final Node xsiNoNamespaceSchemaLocationNode = NodeHelper.newNode(doc, ElementValue.ATTRIBUTE, "xsi", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, "noNamespaceSchemaLocation");
+		final Node xsiSchemaLocationNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "schemaLocation");
+		xsiSchemaLocation = new Attribute(xsiSchemaLocationNode, Deques.emptyDeque(), "schemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(() -> new SimpleType(SimpleType.xsAnySimpleType().node(), Deques.emptyDeque(), null, XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deques.emptyDeque(), null, SimpleType::xsAnySimpleType, () -> SimpleType.Variety.LIST, Deques::emptyDeque, null, new SimpleType.List(Deques.emptyDeque(), SimpleType::xsAnyURI), null)), new Scope(Scope.Variety.GLOBAL, null), null, null);
+		final Node xsiNoNamespaceSchemaLocationNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "noNamespaceSchemaLocation");
 		xsiNoNamespaceSchemaLocation = new Attribute(xsiNoNamespaceSchemaLocationNode, Deques.emptyDeque(), "noNamespaceSchemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsAnyURI, new Scope(Scope.Variety.GLOBAL, null), null, null);
 	}
 
@@ -266,47 +265,56 @@ public class Attribute implements AnnotatedComponent {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(targetNamespace);
+		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
 		this.type = Objects.requireNonNull(type);
 		this.scope = scope;
 		this.valueConstraint = valueConstraint;
 		this.inheritable = inheritable != null && inheritable.booleanValue();
 	}
 
-	static Attribute parse(final Result result) {
-		final String defaultValue = result.value(AttributeValue.DEFAULT);
-		final String fixedValue = result.value(AttributeValue.FIXED);
+	private static Attribute parse(final Result result) {
+		final String defaultValue = result.value(AttrParser.DEFAULT);
+		final String fixedValue = result.value(AttrParser.FIXED);
 		final boolean isGlobal = NodeHelper.isParentSchemaElement(result);
-		final Form form = result.value(AttributeValue.FORM);
+		final Form form = result.value(AttrParser.FORM);
 		String targetNamespace;
 		final Scope scope;
 		if (isGlobal) {
 			targetNamespace = result.schema().targetNamespace();
 			scope = new Scope(Scope.Variety.GLOBAL, null);
 		} else {
-			targetNamespace = result.value(AttributeValue.TARGETNAMESPACE);
+			targetNamespace = result.value(AttrParser.TARGET_NAMESPACE);
 			if (targetNamespace == null && (Form.QUALIFIED.equals(form) || (form == null && Form.QUALIFIED.equals(result.schema().attributeFormDefault())))) { // 3.2.2.2
 				targetNamespace = result.schema().targetNamespace();
 			}
 			Node n = result.parent().node();
-			while (!ElementValue.ATTRIBUTEGROUP.equalsName(n) && !ElementValue.COMPLEXTYPE.equalsName(n)) {
-				if ((n = n.getParentNode()) == null) {
-					throw new SchemaParseException(result.node(), ElementValue.ATTRIBUTE.getName() + " must be a descendent of " + ElementValue.COMPLEXTYPE.getName() + " or " + ElementValue.ATTRIBUTEGROUP.getName());
+			while (!TagParser.ATTRIBUTE_GROUP.equalsName(n) && !TagParser.COMPLEX_TYPE.equalsName(n)) {
+				n = n.getParentNode();
+				if (n == null) {
+					throw new ParseException(result.node(), TagParser.ATTRIBUTE.getName() + " must be a descendent of " + TagParser.COMPLEX_TYPE.getName() + " or " + TagParser.ATTRIBUTE_GROUP.getName());
 				}
 			}
 			scope = new Scope(Scope.Variety.LOCAL, n);
 		}
-		final QName typeName = result.value(AttributeValue.TYPE);
-		final SimpleType simpleTypeChild = result.parse(ElementValue.SIMPLETYPE);
+		final QName typeName = result.value(AttrParser.TYPE);
+		final SimpleType simpleTypeChild = result.parse(TagParser.SIMPLE_TYPE);
 		final Deferred<SimpleType> simpleType = typeName != null
 				? result.schema().find(typeName, SimpleType.class)
 				: simpleTypeChild != null ? () -> simpleTypeChild : SimpleType::xsAnySimpleType;
 		final ValueConstraint valueConstraint = defaultValue != null ? new ValueConstraint(simpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
 				: fixedValue != null ? new ValueConstraint(simpleType, ValueConstraint.Variety.FIXED, fixedValue)
 				: null;
-		final String name = result.value(AttributeValue.NAME);
-		final Boolean inheritable = result.value(AttributeValue.INHERITABLE);
+		final String name = result.value(AttrParser.NAME);
+		final Boolean inheritable = result.value(AttrParser.INHERITABLE);
 		return new Attribute(result.node(), result.annotations(), name, targetNamespace, simpleType, scope, valueConstraint, inheritable);
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.DEFAULT, NodeHelper::getNodeValueAsString);
+		AttrParser.register(AttrParser.Names.FIXED, NodeHelper::getNodeValueAsString);
+		AttrParser.register(AttrParser.Names.INHERITABLE, (Boolean) null);
+		AttrParser.register(AttrParser.Names.USE, Use.class, Use.OPTIONAL, Use::getNodeValueAsUse);
+		TagParser.register(TagParser.Names.ATTRIBUTE, parser, Attribute.class, Attribute::parse);
 	}
 
 	/**

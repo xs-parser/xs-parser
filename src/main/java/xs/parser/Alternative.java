@@ -50,10 +50,10 @@ import xs.parser.internal.util.SequenceParser.*;
  */
 public class Alternative implements AnnotatedComponent {
 
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID, AttributeValue.TEST, AttributeValue.TYPE, AttributeValue.XPATHDEFAULTNAMESPACE)
-			.elements(0, 1, ElementValue.ANNOTATION)
-			.elements(0, 1, ElementValue.COMPLEXTYPE, ElementValue.SIMPLETYPE);
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID, AttrParser.TEST, AttrParser.TYPE, AttrParser.XPATH_DEFAULT_NAMESPACE)
+			.elements(0, 1, TagParser.ANNOTATION)
+			.elements(0, 1, TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
 
 	private final Node node;
 	private final Deque<Annotation> annotations;
@@ -67,22 +67,26 @@ public class Alternative implements AnnotatedComponent {
 		this.type = Objects.requireNonNull(type);
 	}
 
-	static Alternative parse(final Result result) {
-		final String expression = result.value(AttributeValue.TEST);
-		final String xpathDefaultNamespace = result.value(AttributeValue.XPATHDEFAULTNAMESPACE);
+	private static Alternative parse(final Result result) {
+		final String expression = result.value(AttrParser.TEST);
+		final String xpathDefaultNamespace = result.value(AttrParser.XPATH_DEFAULT_NAMESPACE);
 		final XPathExpression test = expression != null ? new XPathExpression(result, xpathDefaultNamespace, expression) : null;
 		final Deferred<? extends TypeDefinition> type;
-		final QName typeName = result.value(AttributeValue.TYPE);
+		final QName typeName = result.value(AttrParser.TYPE);
 		if (typeName != null) {
 			type = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final TypeDefinition typeDefinition = result.parse(ElementValue.COMPLEXTYPE, ElementValue.SIMPLETYPE);
+			final TypeDefinition typeDefinition = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
 			if (typeDefinition == null) {
-				throw new SchemaParseException(result.node(), "Type definition not found");
+				throw new Schema.ParseException(result.node(), "Type definition not found");
 			}
 			type = () -> typeDefinition;
 		}
 		return new Alternative(result.node(), result.annotations(), test, type);
+	}
+
+	static void register() {
+		TagParser.register(TagParser.Names.ALTERNATIVE, parser, Alternative.class, Alternative::parse);
 	}
 
 	/** @return If the test [attribute] is not present, then ·absent·; otherwise an XPath Expression property record, as described in section XML Representation of Assertion Schema Components (§3.13.2), with &lt;alternative&gt; as the "host element" and test as the designated expression [attribute]. */

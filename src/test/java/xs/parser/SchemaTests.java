@@ -206,7 +206,7 @@ public class SchemaTests {
 
 	@Test
 	public void testSchemaImportFromResource() throws Exception {
-		final DocumentResolver resolver = new DocumentResolver() {
+		final DocumentResolver resolver = new DefaultDocumentResolver() {
 
 			@Override
 			public Document resolve(final URI resourceUri) throws Exception {

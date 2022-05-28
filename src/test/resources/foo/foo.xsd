@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+			xmlns:vc="http://www.w3.org/2007/XMLSchema-versioning" elementFormDefault="qualified"
+			vc:minVersion="1.1" targetNamespace="foo" xpathDefaultNamespace="foo" xmlns:foo="foo"
+			xmlns="foo">
+
+	<xs:element name="root">
+		<xs:complexType>
+			<xs:choice maxOccurs="unbounded">
+				<xs:element ref="alternate"/>
+			</xs:choice>
+			<xs:attribute name="foo"/>
+			<xs:assert test="@foo eq 'foo'"/>
+		</xs:complexType>
+	</xs:element>
+
+	<xs:complexType name="superCompoType">
+		<xs:attribute name="type">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:enumeration value="sub1"/>
+					<xs:enumeration value="sub2"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="sub1CompoType">
+		<xs:complexContent>
+			<xs:extension base="superCompoType">
+				<xs:attribute name="sub1" use="required" type="xs:string"/>
+				<xs:assert test="string-length(@sub1) &gt; 10 and string-length(@sub1) &lt; 20"/>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="sub2CompoType">
+		<xs:complexContent>
+			<xs:extension base="superCompoType">
+				<xs:attribute name="sub2" use="required" type="xs:int"/>
+				<xs:assert test="@sub2 &gt; 10 and @sub2 &lt; 20"></xs:assert>
+			</xs:extension>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:element name="alternate" type="superCompoType">
+		<xs:alternative test="@type = 'sub1'" type="sub1CompoType"/>
+		<xs:alternative test="@type = 'sub2'" type="sub2CompoType"/>
+	</xs:element>
+
+</xs:schema>

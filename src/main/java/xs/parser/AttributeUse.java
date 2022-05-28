@@ -30,10 +30,10 @@ import xs.parser.internal.util.SequenceParser.*;
  */
 public class AttributeUse implements AnnotatedComponent {
 
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID, AttributeValue.DEFAULT, AttributeValue.FIXED, AttributeValue.FORM, AttributeValue.NAME, AttributeValue.REF, AttributeValue.TARGETNAMESPACE, AttributeValue.TYPE, AttributeValue.USE, AttributeValue.INHERITABLE)
-			.elements(0, 1, ElementValue.ANNOTATION)
-			.elements(0, 1, ElementValue.SIMPLETYPE);
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID, AttrParser.DEFAULT, AttrParser.FIXED, AttrParser.FORM, AttrParser.NAME, AttrParser.REF, AttrParser.TARGET_NAMESPACE, AttrParser.TYPE, AttrParser.USE, AttrParser.INHERITABLE)
+			.elements(0, 1, TagParser.ANNOTATION)
+			.elements(0, 1, TagParser.SIMPLE_TYPE);
 
 	private final Node node;
 	private final Use use;
@@ -47,10 +47,10 @@ public class AttributeUse implements AnnotatedComponent {
 		this.inheritable = inheritable;
 	}
 
-	static AttributeUse parse(final Result result) {
-		final Use use = result.value(AttributeValue.USE);
-		final String defaultValue = result.value(AttributeValue.DEFAULT);
-		final String fixedValue = result.value(AttributeValue.FIXED);
+	private static AttributeUse parse(final Result result) {
+		final Use use = result.value(AttrParser.USE);
+		final String defaultValue = result.value(AttrParser.DEFAULT);
+		final String fixedValue = result.value(AttrParser.FIXED);
 		final Function<Deferred<SimpleType>, ValueConstraint> valueConstraint = s -> {
 			if (defaultValue != null) {
 				return new ValueConstraint(s, ValueConstraint.Variety.DEFAULT, defaultValue);
@@ -62,24 +62,24 @@ public class AttributeUse implements AnnotatedComponent {
 		final Scope scope = NodeHelper.isParentSchemaElement(result)
 				? new Scope(Scope.Variety.GLOBAL, null)
 				: new Scope(Scope.Variety.LOCAL, result.parent().node());
-		final Form form = result.value(AttributeValue.FORM);
-		String targetNamespace = result.value(AttributeValue.TARGETNAMESPACE);
+		final Form form = result.value(AttrParser.FORM);
+		String targetNamespace = result.value(AttrParser.TARGET_NAMESPACE);
 		if (targetNamespace == null) {
 			if (Form.QUALIFIED.equals(form) || (form == null && Form.QUALIFIED.equals(result.schema().attributeFormDefault()))) { // 3.2.2.2
 				targetNamespace = result.schema().targetNamespace();
 			}
 		} else if (scope.variety() != Scope.Variety.LOCAL) {
-			throw new SchemaParseException(result.node(), "@targetNamespace may only appear on a local xs:attribute");
+			throw new ParseException(result.node(), "@targetNamespace may only appear on a local xs:attribute");
 		}
-		final String name = result.value(AttributeValue.NAME);
-		final Boolean inheritable = result.value(AttributeValue.INHERITABLE);
-		final QName refName = result.value(AttributeValue.REF);
+		final String name = result.value(AttrParser.NAME);
+		final Boolean inheritable = result.value(AttrParser.INHERITABLE);
+		final QName refName = result.value(AttrParser.REF);
 		final Deferred<Attribute> attributeDecl;
 		if (refName != null) {
 			attributeDecl = result.schema().find(refName, Attribute.class);
 		} else {
-			final QName typeName = result.value(AttributeValue.TYPE);
-			final SimpleType simpleTypeChild = result.parse(ElementValue.SIMPLETYPE);
+			final QName typeName = result.value(AttrParser.TYPE);
+			final SimpleType simpleTypeChild = result.parse(TagParser.SIMPLE_TYPE);
 			final Deferred<SimpleType> simpleType = typeName != null
 					? result.schema().find(typeName, SimpleType.class)
 					: simpleTypeChild != null ? () -> simpleTypeChild : SimpleType::xsAnySimpleType;
@@ -87,6 +87,10 @@ public class AttributeUse implements AnnotatedComponent {
 			attributeDecl = () -> attr;
 		}
 		return new AttributeUse(result.node(), use, attributeDecl, inheritable == null ? attributeDecl.map(Attribute::inheritable) : () -> inheritable);
+	}
+
+	static void register() {
+		TagParser.register(TagParser.Names.ATTRIBUTE, parser, AttributeUse.class, AttributeUse::parse);
 	}
 
 	/** @return true if the &lt;attribute&gt; element has use = required, otherwise false. */

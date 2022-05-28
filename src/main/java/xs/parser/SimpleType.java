@@ -116,10 +116,10 @@ public class SimpleType implements TypeDefinition {
 	 */
 	public static class List {
 
-		static final SequenceParser parser = new SequenceParser()
-				.optionalAttributes(AttributeValue.ID, AttributeValue.ITEMTYPE)
-				.elements(0, 1, ElementValue.ANNOTATION)
-				.elements(0, 1, ElementValue.SIMPLETYPE);
+		private static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttrParser.ID, AttrParser.ITEM_TYPE)
+				.elements(0, 1, TagParser.ANNOTATION)
+				.elements(0, 1, TagParser.SIMPLE_TYPE);
 
 		private final Deque<Annotation> annotations;
 		private final Deferred<SimpleType> itemType;
@@ -129,12 +129,12 @@ public class SimpleType implements TypeDefinition {
 			this.itemType = Objects.requireNonNull(itemType);
 		}
 
-		static List parse(final Result result) {
-			final QName itemTypeName = result.value(AttributeValue.ITEMTYPE);
+		private static List parse(final Result result) {
+			final QName itemTypeName = result.value(AttrParser.ITEM_TYPE);
 			if (itemTypeName != null) {
 				return new List(result.annotations(), result.schema().find(itemTypeName, SimpleType.class));
 			}
-			final SimpleType itemSimpleType = result.parse(ElementValue.SIMPLETYPE);
+			final SimpleType itemSimpleType = result.parse(TagParser.SIMPLE_TYPE);
 			return new List(result.annotations(), () -> itemSimpleType);
 		}
 
@@ -160,11 +160,11 @@ public class SimpleType implements TypeDefinition {
 	 */
 	public static class Restriction {
 
-		static final SequenceParser parser = new SequenceParser()
-				.optionalAttributes(AttributeValue.BASE, AttributeValue.ID)
-				.elements(0, 1, ElementValue.ANNOTATION)
-				.elements(0, 1, ElementValue.SIMPLETYPE)
-				.elements(0, Integer.MAX_VALUE, ElementValue.MINEXCLUSIVE, ElementValue.MININCLUSIVE, ElementValue.MAXEXCLUSIVE, ElementValue.MAXINCLUSIVE, ElementValue.TOTALDIGITS, ElementValue.FRACTIONDIGITS, ElementValue.LENGTH, ElementValue.MINLENGTH, ElementValue.MAXLENGTH, ElementValue.ENUMERATION, ElementValue.WHITESPACE, ElementValue.PATTERN, ElementValue.ASSERTION, ElementValue.EXPLICITTIMEZONE, ElementValue.ANY);
+		private static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttrParser.BASE, AttrParser.ID)
+				.elements(0, 1, TagParser.ANNOTATION)
+				.elements(0, 1, TagParser.SIMPLE_TYPE)
+				.elements(0, Integer.MAX_VALUE, TagParser.FACETS.length(), TagParser.FACETS.maxLength(), TagParser.FACETS.minLength(), TagParser.FACETS.pattern(), TagParser.FACETS.enumeration(), TagParser.FACETS.whiteSpace(), TagParser.FACETS.maxInclusive(), TagParser.FACETS.maxExclusive(), TagParser.FACETS.minExclusive(), TagParser.FACETS.minInclusive(), TagParser.FACETS.totalDigits(), TagParser.FACETS.fractionDigits(), TagParser.FACETS.assertion(), TagParser.FACETS.explicitTimezone(), TagParser.ANY);
 
 		private final Deque<Annotation> annotations;
 		private final Deferred<SimpleType> base;
@@ -178,13 +178,13 @@ public class SimpleType implements TypeDefinition {
 			this.wildcard = Objects.requireNonNull(wildcard);
 		}
 
-		static Restriction parse(final Result result) {
-			final QName baseType = result.value(AttributeValue.BASE);
+		private static Restriction parse(final Result result) {
+			final QName baseType = result.value(AttrParser.BASE);
 			final Deferred<SimpleType> base = baseType == null
-					? Deferred.of(() -> result.parse(ElementValue.SIMPLETYPE))
+					? Deferred.of(() -> result.parse(TagParser.SIMPLE_TYPE))
 					: result.schema().find(baseType, SimpleType.class);
-			final Deque<ConstrainingFacet> facets = result.parseAll(ElementValue.MINEXCLUSIVE, ElementValue.MININCLUSIVE, ElementValue.MAXEXCLUSIVE, ElementValue.MAXINCLUSIVE, ElementValue.TOTALDIGITS, ElementValue.FRACTIONDIGITS, ElementValue.LENGTH, ElementValue.MINLENGTH, ElementValue.MAXLENGTH, ElementValue.ENUMERATION, ElementValue.WHITESPACE, ElementValue.PATTERN, ElementValue.ASSERTION, ElementValue.EXPLICITTIMEZONE);
-			final Deque<Particle> wildcard = result.parseAll(ElementValue.ANY);
+			final Deque<ConstrainingFacet> facets = result.parseAll(TagParser.FACETS.length(), TagParser.FACETS.maxLength(), TagParser.FACETS.minLength(), TagParser.FACETS.pattern(), TagParser.FACETS.enumeration(), TagParser.FACETS.whiteSpace(), TagParser.FACETS.maxInclusive(), TagParser.FACETS.maxExclusive(), TagParser.FACETS.minExclusive(), TagParser.FACETS.minInclusive(), TagParser.FACETS.totalDigits(), TagParser.FACETS.fractionDigits(), TagParser.FACETS.assertion(), TagParser.FACETS.explicitTimezone());
+			final Deque<Particle> wildcard = result.parseAll(TagParser.ANY);
 			return new Restriction(result.annotations(), base, facets, wildcard);
 		}
 
@@ -218,10 +218,10 @@ public class SimpleType implements TypeDefinition {
 	 */
 	public static class Union {
 
-		static final SequenceParser parser = new SequenceParser()
-				.optionalAttributes(AttributeValue.ID, AttributeValue.MEMBERTYPES)
-				.elements(0, 1, ElementValue.ANNOTATION)
-				.elements(0, Integer.MAX_VALUE, ElementValue.SIMPLETYPE);
+		private static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttrParser.ID, AttrParser.MEMBER_TYPES)
+				.elements(0, 1, TagParser.ANNOTATION)
+				.elements(0, Integer.MAX_VALUE, TagParser.SIMPLE_TYPE);
 
 		private final Deque<Annotation> annotations;
 		private final Deque<SimpleType> memberTypes;
@@ -231,15 +231,15 @@ public class SimpleType implements TypeDefinition {
 			this.memberTypes = Objects.requireNonNull(memberTypes);
 		}
 
-		static Union parse(final Result result) {
-			final Deque<QName> memberTypes = result.value(AttributeValue.MEMBERTYPES);
+		private static Union parse(final Result result) {
+			final Deque<QName> memberTypes = result.value(AttrParser.MEMBER_TYPES);
 			if (memberTypes != null) {
 				final Deque<SimpleType> memberTypesValues = DeferredArrayDeque.of(memberTypes.stream()
 						.map(memberType -> result.schema().find(memberType, SimpleType.class))
 						.collect(Collectors.toCollection(ArrayDeque::new)));
 				return new Union(result.annotations(), memberTypesValues);
 			}
-			final Deque<SimpleType> memberTypesElem = result.parseAll(ElementValue.SIMPLETYPE);
+			final Deque<SimpleType> memberTypesElem = result.parseAll(TagParser.SIMPLE_TYPE);
 			return new Union(result.annotations(), memberTypesElem);
 		}
 
@@ -253,12 +253,10 @@ public class SimpleType implements TypeDefinition {
 
 	}
 
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.FINAL, AttributeValue.ID, AttributeValue.NAME)
-			.elements(0, 1, ElementValue.ANNOTATION)
-			.elements(1, 1, ElementValue.SIMPLETYPE_RESTRICTION, ElementValue.SIMPLETYPE_LIST, ElementValue.SIMPLETYPE_UNION);
-	private static final java.util.regex.Pattern REPLACE_PATTERN = java.util.regex.Pattern.compile("\\r\\n\\t");
-	private static final java.util.regex.Pattern COLLAPSE_PATTERN = java.util.regex.Pattern.compile("\\r\\n\\t[ ]{2,}");
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.FINAL, AttrParser.ID, AttrParser.NAME)
+			.elements(0, 1, TagParser.ANNOTATION)
+			.elements(1, 1, TagParser.SIMPLE_TYPE.restriction(), TagParser.SIMPLE_TYPE.list(), TagParser.SIMPLE_TYPE.union());
 	static final String ANYSIMPLETYPE_NAME = "anySimpleType";
 	private static final SimpleType xsAnySimpleType;
 	static final String ANYATOMICTYPE_NAME = "anyAtomicType";
@@ -314,8 +312,8 @@ public class SimpleType implements TypeDefinition {
 	static final String DATETIMESTAMP_NAME = "dateTimeStamp";
 
 	static {
-		final Document doc = NodeHelper.newDocument();
-		final Node xsAnySimpleTypeNode = NodeHelper.newNode(doc, ElementValue.SIMPLETYPE, "xs", XMLConstants.W3C_XML_SCHEMA_NS_URI, ANYSIMPLETYPE_NAME);
+		final Document doc = NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+		final Node xsAnySimpleTypeNode = NodeHelper.newSchemaNode(doc, TagParser.Names.SIMPLE_TYPE, ANYSIMPLETYPE_NAME);
 		xsAnySimpleType = new SimpleType(xsAnySimpleTypeNode, Deques.emptyDeque(), ANYSIMPLETYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, ComplexType::xsAnyType, Deferred.none(), Deques::emptyDeque, null, null, null);
 		xsAnyAtomicType = create(doc, ANYATOMICTYPE_NAME, xsAnySimpleType);
 		final Map<String, SimpleType> primitiveTypes = new HashMap<>();
@@ -392,7 +390,7 @@ public class SimpleType implements TypeDefinition {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(targetNamespace);
+		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
 		this.baseType = Objects.requireNonNull(baseType);
 		this.finals = Objects.requireNonNull(finals);
 		this.context = context;
@@ -466,8 +464,17 @@ public class SimpleType implements TypeDefinition {
 			list = null;
 			variety = Variety.ATOMIC;
 		}
-		final Node node = NodeHelper.newNode(doc, ElementValue.SIMPLETYPE, "xs", XMLConstants.W3C_XML_SCHEMA_NS_URI, name);
+		final Node node = NodeHelper.newSchemaNode(doc, TagParser.Names.SIMPLE_TYPE, name);
 		return new SimpleType(node, Deques.emptyDeque(), name, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, () -> base, () -> variety, () -> facets, null, list, null);
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.ITEM_TYPE, QName.class, NodeHelper::getNodeValueAsQName);
+		AttrParser.register(AttrParser.Names.MEMBER_TYPES, Deque.class, QName.class, null, NodeHelper::getNodeValueAsQNames);
+		TagParser.register(TagParser.Names.RESTRICTION, Restriction.parser, Restriction.class, Restriction::parse);
+		TagParser.register(TagParser.Names.LIST, List.parser, List.class, List::parse);
+		TagParser.register(TagParser.Names.UNION, Union.parser, Union.class, Union::parse);
+		TagParser.register(TagParser.Names.SIMPLE_TYPE, SimpleType.parser, SimpleType.class, SimpleType::parse);
 	}
 
 	static SimpleType findPrimitiveOrBuiltinType(final String localName) {
@@ -482,16 +489,16 @@ public class SimpleType implements TypeDefinition {
 		throw new IllegalArgumentException("No primitive or built-in simpleType for name " + localName);
 	}
 
-	static SimpleType parse(final Result result) {
-		final String name = result.value(AttributeValue.NAME);
+	private static SimpleType parse(final Result result) {
+		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
-		Deque<Final> finals = result.value(AttributeValue.FINAL);
+		Deque<Final> finals = result.value(AttrParser.FINAL);
 		if (finals.isEmpty()) {
 			finals = Deques.singletonDeque(result.schema().finalDefault());
 		}
-		final Restriction restriction = result.parse(ElementValue.SIMPLETYPE_RESTRICTION);
-		final List list = result.parse(ElementValue.SIMPLETYPE_LIST);
-		final Union union = result.parse(ElementValue.SIMPLETYPE_UNION);
+		final Restriction restriction = result.parse(TagParser.SIMPLE_TYPE.restriction());
+		final List list = result.parse(TagParser.SIMPLE_TYPE.list());
+		final Union union = result.parse(TagParser.SIMPLE_TYPE.union());
 		final Deferred<Variety> variety = list != null ? () -> Variety.LIST
 				: union != null ? () -> Variety.UNION
 				: restriction.base().map(SimpleType::variety);
@@ -500,16 +507,16 @@ public class SimpleType implements TypeDefinition {
 		final Node parentNode = result.node().getParentNode();
 		if (name != null || parentNode == null) {
 			context = null;
-		} else if (ElementValue.ATTRIBUTE.equalsName(parentNode) || ElementValue.ELEMENT.equalsName(parentNode)) {
+		} else if (TagParser.ATTRIBUTE.equalsName(parentNode) || TagParser.ELEMENT.equalsName(parentNode)) {
 			context = parentNode;
 		} else {
 			final Node grandParent = parentNode.getParentNode();
-			if (grandParent != null && ElementValue.SIMPLETYPE.equalsName(grandParent)) {
+			if (grandParent != null && TagParser.SIMPLE_TYPE.equalsName(grandParent)) {
 				context = grandParent;
-			} else if (grandParent != null && ElementValue.SIMPLECONTENT.equalsName(grandParent) && grandParent.getParentNode() != null && ElementValue.COMPLEXTYPE.equalsName(grandParent.getParentNode())) {
+			} else if (grandParent != null && TagParser.COMPLEX_TYPE.simpleContent().equalsName(grandParent) && grandParent.getParentNode() != null && TagParser.COMPLEX_TYPE.equalsName(grandParent.getParentNode())) {
 				context = grandParent.getParentNode();
 			} else {
-				throw new SchemaParseException(result.node());
+				throw new Schema.ParseException(result.node());
 			}
 		}
 		final Deferred<Deque<Object>> facets = variety.map(v -> {
@@ -821,9 +828,9 @@ public class SimpleType implements TypeDefinition {
 		case PRESERVE:
 			return value;
 		case REPLACE:
-			return REPLACE_PATTERN.matcher(value).replaceAll(" ");
+			return value.replaceAll("[\r\n\t]", " ");
 		case COLLAPSE:
-			return COLLAPSE_PATTERN.matcher(value).replaceAll(" ");
+			return NodeHelper.collapseWhitespace(value);
 		default:
 			throw new AssertionError(whiteSpaceValue);
 		}

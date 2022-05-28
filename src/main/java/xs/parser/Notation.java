@@ -20,10 +20,10 @@ import xs.parser.internal.util.SequenceParser.*;
  */
 public class Notation implements AnnotatedComponent {
 
-	static final SequenceParser parser = new SequenceParser()
-			.requiredAttributes(AttributeValue.NAME)
-			.optionalAttributes(AttributeValue.ID, AttributeValue.PUBLIC, AttributeValue.SYSTEM)
-			.elements(0, 1, ElementValue.ANNOTATION);
+	private static final SequenceParser parser = new SequenceParser()
+			.requiredAttributes(AttrParser.NAME)
+			.optionalAttributes(AttrParser.ID, AttrParser.PUBLIC, AttrParser.SYSTEM)
+			.elements(0, 1, TagParser.ANNOTATION);
 
 	private final Node node;
 	private final Deque<Annotation> annotations;
@@ -36,17 +36,23 @@ public class Notation implements AnnotatedComponent {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(targetNamespace);
+		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
 		this.publicIdentiifer = publicId;
 		this.systemIdentifier = systemId;
 	}
 
-	static Notation parse(final Result result) {
-		final String name = result.value(AttributeValue.NAME);
+	private static Notation parse(final Result result) {
+		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
-		final String publicId = result.value(AttributeValue.PUBLIC);
-		final String systemId = result.value(AttributeValue.SYSTEM);
+		final String publicId = result.value(AttrParser.PUBLIC);
+		final String systemId = result.value(AttrParser.SYSTEM);
 		return new Notation(result.node(), result.annotations(), name, targetNamespace, publicId, systemId);
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.PUBLIC, NodeHelper::getNodeValueAsToken);
+		AttrParser.register(AttrParser.Names.SYSTEM, NodeHelper::getNodeValueAsAnyUri);
+		TagParser.register(TagParser.Names.NOTATION, parser, Notation.class, Notation::parse);
 	}
 
 	/** @return The ·actual value· of the name [attribute] */

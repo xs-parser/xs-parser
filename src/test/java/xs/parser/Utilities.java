@@ -15,7 +15,7 @@ public class Utilities {
 	private Utilities() { }
 
 	public static DocumentResolver stringResolver(final String content) {
-		return new DocumentResolver() {
+		return new DefaultDocumentResolver() {
 
 			@Override
 			public Document resolve(final URI resourceUri) throws Exception {
@@ -29,7 +29,9 @@ public class Utilities {
 	}
 
 	public static Schema stringToSchema(final String content) throws IOException, SAXException {
-		return new Schema(new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
+		try (final ByteArrayInputStream stream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))) {
+			return new Schema(NodeHelper.newDocumentBuilder().parse(new InputSource(stream)));
+		}
 	}
 
 	public static Document stringToDocument(final String content) throws IOException, SAXException {

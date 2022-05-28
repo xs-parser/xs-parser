@@ -103,8 +103,25 @@ public class Schema implements AnnotatedComponent {
 			this.name = value;
 		}
 
-		public static Block getByName(final Node node) {
-			return getByName(node.getNodeValue());
+		private static Deque<Block> getNodeValueAsBlocks(final Node node) {
+			final String value = NodeHelper.requireNodeValue(node);
+			if ("#all".equals(value)) {
+				return Deques.singletonDeque(Block.ALL);
+			}
+			final String[] values = value.split(NodeHelper.LIST_SEP);
+			final Deque<Block> ls = new ArrayDeque<>();
+			for (final String v : values) {
+				final Block b = Block.getByName(v);
+				if (Block.ALL.equals(b)) {
+					throw NodeHelper.newParseException(node, Block.ALL + " cannot be present");
+				}
+				ls.add(b);
+			}
+			return Deques.unmodifiableDeque(ls);
+		}
+
+		private static Block getNodeValueAsBlock(final Node node) {
+			return getByName(NodeHelper.requireNodeValue(node));
 		}
 
 		public static Block getByName(final String name) {
@@ -138,8 +155,11 @@ public class Schema implements AnnotatedComponent {
 			this.name = value;
 		}
 
-		public static Form getByName(final Node node) {
-			final String name = node.getNodeValue();
+		static Form getNodeValueAsForm(final Node node) {
+			return getByName(NodeHelper.requireNodeValue(node));
+		}
+
+		public static Form getByName(final String name) {
 			for (final Form f : values()) {
 				if (f.getName().equals(name)) {
 					return f;
@@ -172,10 +192,10 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public static class DefaultOpenContent extends ComplexType.OpenContent {
 
-		static final SequenceParser parser = new SequenceParser()
-				.optionalAttributes(AttributeValue.APPLIESTOEMPTY, AttributeValue.ID, AttributeValue.MODE)
-				.elements(0, 1, ElementValue.ANNOTATION)
-				.elements(1, 1, ElementValue.ANY);
+		private static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttrParser.APPLIES_TO_EMPTY, AttrParser.ID, AttrParser.MODE)
+				.elements(0, 1, TagParser.ANNOTATION)
+				.elements(1, 1, TagParser.ANY);
 
 		private final boolean appliesToEmpty;
 
@@ -184,10 +204,10 @@ public class Schema implements AnnotatedComponent {
 			this.appliesToEmpty = appliesToEmpty;
 		}
 
-		static DefaultOpenContent parse(final Result result) {
-			final boolean appliesToEmpty = result.value(AttributeValue.APPLIESTOEMPTY);
-			final Mode mode = result.value(AttributeValue.MODE);
-			final Particle wildcard = result.parse(ElementValue.ANY);
+		private static DefaultOpenContent parse(final Result result) {
+			final boolean appliesToEmpty = result.value(AttrParser.APPLIES_TO_EMPTY);
+			final Mode mode = result.value(AttrParser.MODE);
+			final Particle wildcard = result.parse(TagParser.ANY);
 			return new DefaultOpenContent(result.annotations(), appliesToEmpty, mode, wildcard);
 		}
 
@@ -210,10 +230,10 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public static class Import {
 
-		static final String RESOURCE_PATH = "xs/parser/";
-		static final SequenceParser parser = new SequenceParser()
-				.optionalAttributes(AttributeValue.ID, AttributeValue.NAMESPACE, AttributeValue.SCHEMALOCATION)
-				.elements(0, 1, ElementValue.ANNOTATION);
+		private static final SequenceParser parser = new SequenceParser()
+				.optionalAttributes(AttrParser.ID, AttrParser.NAMESPACE, AttrParser.SCHEMA_LOCATION)
+				.elements(0, 1, TagParser.ANNOTATION);
+		private static final String RESOURCE_PATH = "xs/parser/";
 
 		private final Schema schema;
 		private final Node node;
@@ -227,18 +247,18 @@ public class Schema implements AnnotatedComponent {
 			this.node = Objects.requireNonNull(node);
 			this.annotations = Objects.requireNonNull(annotations);
 			if (schema.targetNamespace() != null && schema.targetNamespace().equals(namespace)) {
-				throw new SchemaParseException(node, "namespace " + NodeHelper.toStringNamespace(namespace) + " must not match the targetNamespace " + NodeHelper.toStringNamespace(schema.targetNamespace()) + " of the current schema");
+				throw new ParseException(node, "namespace " + NodeHelper.toStringNamespace(namespace) + " must not match the targetNamespace " + NodeHelper.toStringNamespace(schema.targetNamespace()) + " of the current schema");
 			}
 			if (XMLConstants.NULL_NS_URI.equals(namespace)) {
-				throw new SchemaParseException(node, "@namespace must be absent or non-empty");
+				throw new ParseException(node, "@namespace must be absent or non-empty");
 			}
 			this.namespace = namespace;
 			this.schemaLocation = schemaLocation;
 		}
 
-		static Import parse(final Result result) {
-			final String namespace = result.value(AttributeValue.NAMESPACE);
-			final String schemaLocation = result.value(AttributeValue.SCHEMALOCATION);
+		private static Import parse(final Result result) {
+			final String namespace = result.value(AttrParser.NAMESPACE);
+			final String schemaLocation = result.value(AttrParser.SCHEMA_LOCATION);
 			return new Import(result.schema(), result.node(), result.annotations(), namespace, schemaLocation);
 		}
 
@@ -248,8 +268,8 @@ public class Schema implements AnnotatedComponent {
 				if (Objects.equals(namespace, resultSchema.targetNamespace())) {
 					return resultSchema;
 				}
-				throw new SchemaParseException(node, "namespace " + NodeHelper.toStringNamespace(namespace) + " must match the targetNamespace " + NodeHelper.toStringNamespace(resultSchema.targetNamespace()) + " of the imported schema");
-			} catch (final SchemaParseException e) {
+				throw new ParseException(node, "namespace " + NodeHelper.toStringNamespace(namespace) + " must match the targetNamespace " + NodeHelper.toStringNamespace(resultSchema.targetNamespace()) + " of the imported schema");
+			} catch (final ParseException e) {
 				throw e;
 			} catch (final Exception e) {
 				Reporting.report("Could not resolve xs:import, caused by " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
@@ -259,10 +279,6 @@ public class Schema implements AnnotatedComponent {
 
 		private Deque<Annotation> annotations() {
 			return annotations;
-		}
-
-		private String namespace() {
-			return namespace;
 		}
 
 		private Schema importedSchema() {
@@ -283,13 +299,13 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public static class Include {
 
-		static final String RESOURCE_PATH = Import.RESOURCE_PATH;
-		static final SequenceParser parser = new SequenceParser()
-				.requiredAttributes(AttributeValue.SCHEMALOCATION)
-				.optionalAttributes(AttributeValue.ID)
-				.elements(0, 1, ElementValue.ANNOTATION);
+		private static final SequenceParser parser = new SequenceParser()
+				.requiredAttributes(AttrParser.SCHEMA_LOCATION)
+				.optionalAttributes(AttrParser.ID)
+				.elements(0, 1, TagParser.ANNOTATION);
+		private static final String RESOURCE_PATH = Import.RESOURCE_PATH;
 		// Stylesheet for Chameleon Inclusion (F.1)
-		static final Object f1Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "F-1.xsl")));
+		private static final Object f1Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "F-1.xsl")));
 
 		private final Schema schema;
 		private final Node node;
@@ -306,8 +322,8 @@ public class Schema implements AnnotatedComponent {
 			this.shouldCache = shouldCache;
 		}
 
-		static Include parse(final Result result) {
-			final String schemaLocation = result.value(AttributeValue.SCHEMALOCATION);
+		private static Include parse(final Result result) {
+			final String schemaLocation = result.value(AttrParser.SCHEMA_LOCATION);
 			return new Include(result.schema(), result.node(), result.annotations(), schemaLocation, true);
 		}
 
@@ -338,9 +354,9 @@ public class Schema implements AnnotatedComponent {
 				if (Objects.equals(expectedTargetNamespace, resultSchema.targetNamespace())) {
 					return resultSchema;
 				} else {
-					throw new SchemaParseException(node, "targetNamespace " + NodeHelper.toStringNamespace(resultSchema.targetNamespace()) + " of the included schema must match the targetNamespace " + NodeHelper.toStringNamespace(expectedTargetNamespace) + " of the current schema");
+					throw new ParseException(node, "targetNamespace " + NodeHelper.toStringNamespace(resultSchema.targetNamespace()) + " of the included schema must match the targetNamespace " + NodeHelper.toStringNamespace(expectedTargetNamespace) + " of the current schema");
 				}
-			} catch (final SchemaParseException e) {
+			} catch (final ParseException e) {
 				throw e;
 			} catch (final Exception e) {
 				Reporting.report("Could not resolve " + node.getNodeName() + ", caused by " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
@@ -349,7 +365,7 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		Document resolveDocument(final Document resolvedDocument) {
-			final Node childTargetNamespace = resolvedDocument.getDocumentElement().getAttributes().getNamedItemNS(null, AttributeValue.TARGETNAMESPACE.getName().getLocalPart());
+			final Node childTargetNamespace = resolvedDocument.getDocumentElement().getAttributes().getNamedItemNS(null, AttrParser.TARGET_NAMESPACE.getName().getLocalPart());
 			final String parentTargetNamespace = schema.targetNamespace();
 			if (childTargetNamespace == null && parentTargetNamespace != null) {
 				final Map<String, Object> params = new HashMap<>();
@@ -360,7 +376,7 @@ public class Schema implements AnnotatedComponent {
 				try {
 					params.put("newTargetNamespace", new URI(parentTargetNamespace));
 				} catch (final URISyntaxException e) {
-					throw new SchemaParseException(node, e);
+					throw new ParseException(node, e);
 				}
 				return SaxonProcessor.transform(f1Xslt, resolvedDocument, params, null);
 			}
@@ -398,19 +414,19 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public static class Overrides extends Redefine {
 
-		static final SequenceParser parser = new SequenceParser()
-				.requiredAttributes(AttributeValue.SCHEMALOCATION)
-				.optionalAttributes(AttributeValue.ID)
-				.elements(0, Integer.MAX_VALUE, ElementValue.ANNOTATION, ElementValue.SIMPLETYPE, ElementValue.COMPLEXTYPE, ElementValue.GROUP_DECL, ElementValue.ATTRIBUTEGROUP, ElementValue.ELEMENT_DECL, ElementValue.ATTRIBUTE_DECL, ElementValue.NOTATION);
+		private static final SequenceParser parser = new SequenceParser()
+				.requiredAttributes(AttrParser.SCHEMA_LOCATION)
+				.optionalAttributes(AttrParser.ID)
+				.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP, TagParser.ELEMENT, TagParser.ATTRIBUTE, TagParser.NOTATION);
 		// Stylesheet for xs:override (F.2)
-		static final Object f2Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "F-2.xsl")));
+		private static final Object f2Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(Include.RESOURCE_PATH + "F-2.xsl")));
 
 		private Overrides(final Schema schema, final Node node, final Deque<Annotation> annotations, final String schemaLocation) {
 			super(schema, node, annotations, schemaLocation);
 		}
 
-		static Overrides parse(final Result result) {
-			final String schemaLocation = result.value(AttributeValue.SCHEMALOCATION);
+		private static Overrides parse(final Result result) {
+			final String schemaLocation = result.value(AttrParser.SCHEMA_LOCATION);
 			return new Overrides(result.schema(), result.node(), result.annotations(), schemaLocation);
 		}
 
@@ -436,19 +452,19 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public static class Redefine extends Include {
 
-		static final SequenceParser parser = new SequenceParser()
-				.requiredAttributes(AttributeValue.SCHEMALOCATION)
-				.optionalAttributes(AttributeValue.ID)
-				.elements(0, Integer.MAX_VALUE, ElementValue.ANNOTATION, ElementValue.SIMPLETYPE, ElementValue.COMPLEXTYPE, ElementValue.GROUP_DECL, ElementValue.ATTRIBUTEGROUP);
+		private static final SequenceParser parser = new SequenceParser()
+				.requiredAttributes(AttrParser.SCHEMA_LOCATION)
+				.optionalAttributes(AttrParser.ID)
+				.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP);
 		// Stylesheet for xs:redefine
-		static final Object redefineXslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "xs-redefine.xsl")));
+		private static final Object redefineXslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(Include.RESOURCE_PATH + "xs-redefine.xsl")));
 
 		private Redefine(final Schema schema, final Node node, final Deque<Annotation> annotations, final String schemaLocation) {
 			super(schema, node, annotations, schemaLocation, false);
 		}
 
-		static Redefine parse(final Result result) {
-			final String schemaLocation = result.value(AttributeValue.SCHEMALOCATION);
+		private static Redefine parse(final Result result) {
+			final String schemaLocation = result.value(AttrParser.SCHEMA_LOCATION);
 			return new Redefine(result.schema(), result.node(), result.annotations(), schemaLocation);
 		}
 
@@ -519,7 +535,15 @@ public class Schema implements AnnotatedComponent {
 
 	}
 
-	public static class DocumentResolver {
+	public interface DocumentResolver {
+
+		public URI resolveUri(String baseUri, String namespace, String schemaLocation);
+
+		public Document resolve(URI resourceUri) throws Exception;
+
+	}
+
+	public static class DefaultDocumentResolver implements DocumentResolver {
 
 		public URI resolveUri(final String baseUri, final String namespace, final String schemaLocation) {
 			if (schemaLocation != null) {
@@ -545,29 +569,140 @@ public class Schema implements AnnotatedComponent {
 			} else {
 				final Path path = Paths.get(resourceUri.toString());
 				if (Files.isRegularFile(path)) {
-					try (final FileReader reader = new FileReader(path.toFile())) {
-						final InputSource source = new InputSource(reader);
-						source.setSystemId(path.toUri().toString());
+					try (final FileInputStream stream = new FileInputStream(path.toFile())) {
+						final InputSource source = new InputSource(stream);
+						source.setSystemId(resourceUri.toString());
 						return NodeHelper.newDocumentBuilder().parse(source);
 					}
 				} else {
-					final InputStream is = getClass().getResourceAsStream(resourceUri.toString());
-					return is != null ? NodeHelper.newDocumentBuilder().parse(new InputSource(is)) : null;
+					final InputStream stream = getClass().getResourceAsStream(resourceUri.toString());
+					if (stream == null) {
+						return null;
+					}
+					final InputSource source = new InputSource(stream);
+					source.setSystemId(resourceUri.toString());
+					return NodeHelper.newDocumentBuilder().parse(source);
 				}
 			}
 		}
 
 	}
 
-	private static final DocumentResolver DEFAULT_DOCUMENT_RESOLVER = new DocumentResolver();
+	public static class ParseException extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		private final transient Node node;
+
+		ParseException(final String message) {
+			super(message);
+			this.node = null;
+		}
+
+		ParseException(final Node node) {
+			super(node != null ? NodeHelper.toString(node) : "");
+			this.node = node;
+		}
+
+		ParseException(final Node node, final String message) {
+			super(node != null ? formMessage(node, message) : message);
+			this.node = node;
+		}
+
+		ParseException(final Node node, final Throwable cause) {
+			super(node != null ? NodeHelper.toString(node) : null, cause);
+			this.node = node;
+		}
+
+		ParseException(final Throwable cause) {
+			this((String) null, cause);
+		}
+
+		ParseException(final String message, final Throwable cause) {
+			super(message, cause);
+			this.node = cause instanceof ParseException
+					? ((ParseException) cause).node
+					: null;
+		}
+
+		ParseException(final String message, final Throwable cause, final boolean enableSuppression, final boolean writableStackTrace) {
+			super(message, cause, enableSuppression, writableStackTrace);
+			this.node = cause instanceof ParseException
+					? ((ParseException) cause).node
+					: null;
+		}
+
+		private static String formMessage(final Node node, final String message) {
+			final String nodeTypeName;
+			switch (node.getNodeType()) {
+			case Node.ATTRIBUTE_NODE:
+				nodeTypeName = "attribute";
+				break;
+			case Node.ELEMENT_NODE:
+				nodeTypeName = "element";
+				break;
+			default:
+				nodeTypeName = "node";
+				break;
+			}
+			return message + " of " + nodeTypeName + " '" + node.getNodeName() + "' in " + node.getOwnerDocument().getDocumentURI();
+		}
+
+		public Node node() {
+			return node;
+		}
+
+	}
+
+	static {
+		NodeHelper.setNewParseException(ParseException::new);
+		Alternative.register();
+		Annotation.register();
+		Assertion.register();
+		Attribute.register();
+		AttributeGroup.register();
+		AttributeUse.register();
+		ComplexType.register();
+		ConstrainingFacet.register();
+		Element.register();
+		IdentityConstraint.register();
+		ModelGroup.register();
+		Notation.register();
+		Particle.register();
+		SimpleType.register();
+		Wildcard.register();
+		AttrParser.register(AttrParser.Names.APPLIES_TO_EMPTY, false);
+		AttrParser.register(AttrParser.Names.ATTRIBUTE_FORM_DEFAULT, Form.class, Form.UNQUALIFIED, Form::getNodeValueAsForm);
+		AttrParser.register(AttrParser.Names.BLOCK, Deque.class, Block.class, Block::getNodeValueAsBlocks);
+		AttrParser.register(AttrParser.Names.BLOCK_DEFAULT, Block.class, Block.DEFAULT, Block::getNodeValueAsBlock);
+		AttrParser.register(AttrParser.Names.DEFAULT_ATTRIBUTES, QName.class, NodeHelper::getNodeValueAsQName);
+		AttrParser.register(AttrParser.Names.ELEMENT_FORM_DEFAULT, Form.class, Form.UNQUALIFIED, Form::getNodeValueAsForm);
+		AttrParser.register(AttrParser.Names.FINAL, Deque.class, Final.class, Final::getNodeValueAsFinals);
+		AttrParser.register(AttrParser.Names.FINAL_DEFAULT, Final.class, Final.DEFAULT, Final::getNodeValueAsFinal);
+		AttrParser.register(AttrParser.Names.FORM, Form.class, null, Form::getNodeValueAsForm);
+		AttrParser.register(AttrParser.Names.ID, NodeHelper::getNodeValueAsNCName);
+		AttrParser.register(AttrParser.Names.NAMESPACE, NodeHelper::getNodeValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.SCHEMA_LOCATION, NodeHelper::getNodeValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.TARGET_NAMESPACE, NodeHelper::getNodeValueAsAnyUri);
+		AttrParser.register(AttrParser.Names.VERSION, NodeHelper::getNodeValueAsToken);
+		AttrParser.register(AttrParser.Names.XPATH_DEFAULT_NAMESPACE, Schema::getNodeValueAsXPathDefaultNamespace);
+		TagParser.register(TagParser.Names.IMPORT, Import.parser, Import.class, Import::parse);
+		TagParser.register(TagParser.Names.INCLUDE, Include.parser, Include.class, Include::parse);
+		TagParser.register(TagParser.Names.OVERRIDE, Overrides.parser, Overrides.class, Overrides::parse);
+		TagParser.register(TagParser.Names.REDEFINE, Redefine.parser, Redefine.class, Redefine::parse);
+		TagParser.register(TagParser.Names.DEFAULT_OPEN_CONTENT, DefaultOpenContent.parser, DefaultOpenContent.class, DefaultOpenContent::parse);
+	}
+
+	private static final DocumentResolver DEFAULT_DOCUMENT_RESOLVER = new DefaultDocumentResolver();
 	private static final Map<Class<? extends SchemaComponent>, BiFunction<Schema, QName, Deferred<? extends SchemaComponent>>> FINDERS;
-	static final Schema EMPTY = new Schema();
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ATTRIBUTEFORMDEFAULT, AttributeValue.BLOCKDEFAULT, AttributeValue.DEFAULTATTRIBUTES, AttributeValue.XPATHDEFAULTNAMESPACE, AttributeValue.ELEMENTFORMDEFAULT, AttributeValue.FINALDEFAULT, AttributeValue.ID, AttributeValue.TARGETNAMESPACE, AttributeValue.VERSION, AttributeValue.XML_LANG)
-			.elements(0, Integer.MAX_VALUE, ElementValue.IMPORT, ElementValue.INCLUDE, ElementValue.OVERRIDE, ElementValue.REDEFINE, ElementValue.ANNOTATION)
-			.elements(0, 1, ElementValue.DEFAULTOPENCONTENT)
-			.elements(0, Integer.MAX_VALUE, ElementValue.ANNOTATION)
-			.elements(0, Integer.MAX_VALUE, ElementValue.SIMPLETYPE, ElementValue.COMPLEXTYPE, ElementValue.GROUP_DECL, ElementValue.ATTRIBUTEGROUP, ElementValue.ELEMENT_DECL, ElementValue.ATTRIBUTE_DECL, ElementValue.NOTATION, ElementValue.ANNOTATION);
+	private static final Schema EMPTY = new Schema();
+	private static final String XPATH_DEFAULT_NAMESPACE_SCHEMA_DEFAULT = "##local";
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.ATTRIBUTE_FORM_DEFAULT, AttrParser.BLOCK_DEFAULT, AttrParser.DEFAULT_ATTRIBUTES, AttrParser.XPATH_DEFAULT_NAMESPACE, AttrParser.ELEMENT_FORM_DEFAULT, AttrParser.FINAL_DEFAULT, AttrParser.ID, AttrParser.TARGET_NAMESPACE, AttrParser.VERSION, AttrParser.XML_LANG)
+			.elements(0, Integer.MAX_VALUE, TagParser.SCHEMA.imports(), TagParser.SCHEMA.include(), TagParser.SCHEMA.override(), TagParser.SCHEMA.redefine(), TagParser.ANNOTATION)
+			.elements(0, 1, TagParser.SCHEMA.defaultOpenContent())
+			.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION)
+			.elements(0, Integer.MAX_VALUE, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP, TagParser.ELEMENT, TagParser.ATTRIBUTE, TagParser.NOTATION, TagParser.ANNOTATION);
 
 	private final DocumentResolver documentResolver;
 	private final NamespaceContext namespaceContext;
@@ -626,12 +761,12 @@ public class Schema implements AnnotatedComponent {
 		this.notationDeclarations = new Def<>();
 		this.identityConstraintDefinitions = Deques::emptyDeque;
 		this.annotations = new Def<>();
-		this.attributeFormDefault = AttributeValue.ATTRIBUTEFORMDEFAULT.defaultValue();
-		this.blockDefault = AttributeValue.BLOCKDEFAULT.defaultValue();
+		this.attributeFormDefault = AttrParser.ATTRIBUTE_FORM_DEFAULT.getDefaultValue();
+		this.blockDefault = AttrParser.BLOCK_DEFAULT.getDefaultValue();
 		this.defaultAttributes = Deferred.none();
-		this.xpathDefaultNamespace = AttributeValue.XPATHDEFAULTNAMESPACE.defaultValue();
-		this.elementFormDefault = AttributeValue.ELEMENTFORMDEFAULT.defaultValue();
-		this.finalDefault = AttributeValue.FINALDEFAULT.defaultValue();
+		this.xpathDefaultNamespace = XPATH_DEFAULT_NAMESPACE_SCHEMA_DEFAULT;
+		this.elementFormDefault = AttrParser.ELEMENT_FORM_DEFAULT.getDefaultValue();
+		this.finalDefault = AttrParser.FINAL_DEFAULT.getDefaultValue();
 		this.version = null;
 		this.targetNamespace = null;
 		this.location = null;
@@ -645,27 +780,27 @@ public class Schema implements AnnotatedComponent {
 		this.schemaDocumentCache = schemaDocumentCache;
 		this.schemaCache = schemaCache;
 		this.result = parser.parse(this, document.getDocumentElement());
-		this.imports = result.parseAll(ElementValue.IMPORT);
-		this.includes = result.parseAll(ElementValue.INCLUDE);
-		this.overrides = result.parseAll(ElementValue.OVERRIDE);
-		this.redefines = result.parseAll(ElementValue.REDEFINE);
-		this.defaultOpenContent = result.parse(ElementValue.DEFAULTOPENCONTENT);
-		this.typeDefinitions = new Def<>(() -> result.parseAll(ElementValue.SIMPLETYPE, ElementValue.COMPLEXTYPE),
+		this.imports = result.parseAll(TagParser.SCHEMA.imports());
+		this.includes = result.parseAll(TagParser.SCHEMA.include());
+		this.overrides = result.parseAll(TagParser.SCHEMA.override());
+		this.redefines = result.parseAll(TagParser.SCHEMA.redefine());
+		this.defaultOpenContent = result.parse(TagParser.SCHEMA.defaultOpenContent());
+		this.typeDefinitions = new Def<>(() -> result.parseAll(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE),
 				s -> s.typeDefinitions,
 				t -> checkIfUnique(t, TypeDefinition::name, TypeDefinition::targetNamespace));
-		this.attributeDeclarations = new Def<>(() -> result.parseAll(ElementValue.ATTRIBUTE_DECL),
+		this.attributeDeclarations = new Def<>(() -> result.parseAll(TagParser.ATTRIBUTE),
 				s -> s.attributeDeclarations,
 				a -> checkIfUnique(a, Attribute::name, Attribute::targetNamespace));
-		this.attributeGroupDefinitions = new Def<>(() -> result.parseAll(ElementValue.ATTRIBUTEGROUP),
+		this.attributeGroupDefinitions = new Def<>(() -> result.parseAll(TagParser.ATTRIBUTE_GROUP),
 				s -> s.attributeGroupDefinitions,
 				a -> checkIfUnique(a, AttributeGroup::name, AttributeGroup::targetNamespace));
-		this.modelGroupDefinitions = new Def<>(() -> result.parseAll(ElementValue.GROUP_DECL),
+		this.modelGroupDefinitions = new Def<>(() -> result.parseAll(TagParser.GROUP),
 				s -> s.modelGroupDefinitions,
 				g -> checkIfUnique(g, ModelGroup::name, ModelGroup::targetNamespace));
-		this.elementDeclarations = new Def<>(() -> result.parseAll(ElementValue.ELEMENT_DECL),
+		this.elementDeclarations = new Def<>(() -> result.parseAll(TagParser.ELEMENT),
 				s -> s.elementDeclarations,
 				e -> checkIfUnique(e, Element::name, Element::targetNamespace));
-		this.notationDeclarations = new Def<>(() -> result.parseAll(ElementValue.NOTATION),
+		this.notationDeclarations = new Def<>(() -> result.parseAll(TagParser.NOTATION),
 				s -> s.notationDeclarations,
 				n -> checkIfUnique(n, Notation::name, Notation::targetNamespace));
 		this.identityConstraintDefinitions = Deferred.of(() -> {
@@ -693,18 +828,18 @@ public class Schema implements AnnotatedComponent {
 			});
 			return id;
 		});
-		this.annotations = new Def<>(() -> result.parseAll(ElementValue.ANNOTATION), s -> s.annotations);
-		this.attributeFormDefault = result.value(AttributeValue.ATTRIBUTEFORMDEFAULT);
-		this.blockDefault = result.value(AttributeValue.BLOCKDEFAULT);
-		final QName defaultAttributesName = result.value(AttributeValue.DEFAULTATTRIBUTES);
+		this.annotations = new Def<>(() -> result.parseAll(TagParser.ANNOTATION), s -> s.annotations);
+		this.attributeFormDefault = result.value(AttrParser.ATTRIBUTE_FORM_DEFAULT);
+		this.blockDefault = result.value(AttrParser.BLOCK_DEFAULT);
+		final QName defaultAttributesName = result.value(AttrParser.DEFAULT_ATTRIBUTES);
 		this.defaultAttributes = defaultAttributesName != null
 				? find(defaultAttributesName, AttributeGroup.class)
 				: Deferred.none();
-		this.xpathDefaultNamespace = result.value(AttributeValue.XPATHDEFAULTNAMESPACE);
-		this.elementFormDefault = result.value(AttributeValue.ELEMENTFORMDEFAULT);
-		this.finalDefault = result.value(AttributeValue.FINALDEFAULT);
-		this.version = result.value(AttributeValue.VERSION);
-		this.targetNamespace = NodeHelper.validateTargetNamespace(result.value(AttributeValue.TARGETNAMESPACE));
+		this.xpathDefaultNamespace = Optional.ofNullable(result.value(AttrParser.XPATH_DEFAULT_NAMESPACE)).orElse(XPATH_DEFAULT_NAMESPACE_SCHEMA_DEFAULT);
+		this.elementFormDefault = result.value(AttrParser.ELEMENT_FORM_DEFAULT);
+		this.finalDefault = result.value(AttrParser.FINAL_DEFAULT);
+		this.version = result.value(AttrParser.VERSION);
+		this.targetNamespace = NodeHelper.validateTargetNamespace(document.getDocumentElement(), result.value(AttrParser.TARGET_NAMESPACE));
 		if (this.targetNamespace != null && this.targetNamespace.isEmpty()) {
 			throw new IllegalArgumentException("@targetNamespace may not be empty string - must be null or non-empty");
 		}
@@ -716,11 +851,7 @@ public class Schema implements AnnotatedComponent {
 	}
 
 	public Schema(final File file) throws IOException, SAXException {
-		this(documentFromFile(file));
-	}
-
-	public Schema(final InputStream is) throws IOException, SAXException {
-		this(NodeHelper.newDocumentBuilder().parse(is));
+		this(loadDocFromFile(file));
 	}
 
 	public Schema(final Document document) {
@@ -750,16 +881,28 @@ public class Schema implements AnnotatedComponent {
 			final QName q = new QName(targetNs == null ? XMLConstants.NULL_NS_URI : targetNs, name.apply(t));
 			final T dup = names.put(q, t);
 			if (dup != null) {
-				throw new SchemaParseException(t.node(), "Duplicate declaration: " + q);
+				throw new ParseException(t.node(), "Duplicate declaration: " + q);
 			}
 		}
 	}
 
-	private static Document documentFromFile(final File file) throws SAXException, IOException {
-		try (final FileReader reader = new FileReader(file)) {
-			final InputSource source = new InputSource(reader);
+	private static Document loadDocFromFile(final File file) throws SAXException, IOException {
+		try (final FileInputStream stream = new FileInputStream(file)) {
+			final InputSource source = new InputSource(stream);
 			source.setSystemId(file.toPath().toUri().toString());
 			return NodeHelper.newDocumentBuilder().parse(source);
+		}
+	}
+
+	private static String getNodeValueAsXPathDefaultNamespace(final Node node) {
+		final String value = NodeHelper.requireNodeValue(node);
+		switch (value) {
+		case XPATH_DEFAULT_NAMESPACE_SCHEMA_DEFAULT:
+		case "##defaultNamespace":
+		case "##targetNamespace":
+			return value;
+		default:
+			return NodeHelper.getNodeValueAsAnyUri(node, value);
 		}
 	}
 
@@ -787,7 +930,7 @@ public class Schema implements AnnotatedComponent {
 		final BiFunction<Schema, QName, Deferred<TypeDefinition>> findIntrinsicSimpleType = (schema, name) -> {
 			final String localName = name.getLocalPart();
 			if (localName.equals(SimpleType.xsAnyAtomicType().name())) {
-				throw new SchemaParseException(SimpleType.xsAnyAtomicType().name() + " may not be used as a simpleType");
+				throw new ParseException(SimpleType.xsAnyAtomicType().name() + " may not be used as a simpleType");
 			} else if (localName.equals(SimpleType.xsAnySimpleType().name())) {
 				return SimpleType::xsAnySimpleType;
 			} else {
@@ -813,7 +956,7 @@ public class Schema implements AnnotatedComponent {
 			} else if (XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(name.getNamespaceURI())) {
 				return findIntrinsicSimpleType.apply(schema, name);
 			}
-			return schema.typeDefinitions().stream().filter(t -> NodeHelper.equalsName(name, t)).map(t -> (Deferred<TypeDefinition>) () -> t).findAny().orElseThrow(() -> new SchemaParseException("Type definition with name " + name + " not found"));
+			return schema.typeDefinitions().stream().filter(t -> NodeHelper.equalsName(name, t)).map(t -> (Deferred<TypeDefinition>) () -> t).findAny().orElseThrow(() -> new ParseException("Type definition with name " + name + " not found"));
 		});
 		finders.put(AttributeGroup.class, (schema, name) -> deferred(schema.attributeGroupDefinitions().stream().filter(a -> NodeHelper.equalsName(name, a)).findAny()));
 		finders.put(Attribute.class, (schema, name) -> deferred(schema.attributeDeclarations().stream().filter(a -> NodeHelper.equalsName(name, a)).findAny()));
@@ -825,15 +968,12 @@ public class Schema implements AnnotatedComponent {
 	@SuppressWarnings("unchecked")
 	<T extends SchemaComponent> Deferred<T> find(final QName name, final Class<? extends T> cls) {
 		return Deferred.of(() -> {
-			final BiFunction<Schema, QName, Deferred<? extends SchemaComponent>> fn = FINDERS.get(cls);
-			if (fn == null) {
-				throw new IllegalArgumentException("No finder for " + cls);
-			}
+			final BiFunction<Schema, QName, Deferred<? extends SchemaComponent>> fn = Objects.requireNonNull(FINDERS.get(cls));
 			final T t = (T) fn.apply(this, name).get();
 			if (t != null) {
 				return t;
 			}
-			throw new SchemaParseException(cls.getSimpleName() + " with name " + name + " not found");
+			throw new ParseException(cls.getSimpleName() + " with name " + name + " not found");
 		});
 	}
 

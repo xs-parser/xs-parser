@@ -20,7 +20,7 @@ public class ImportTests {
 				+ "<xs:import namespace='https://test.4' schemaLocation='Test.xsd'/>"
 				+ "</xs:schema>"
 		));
-		Assert.assertThrows(SchemaParseException.class, schema::elementDeclarations);
+		Assert.assertThrows(ParseException.class, schema::elementDeclarations);
 	}
 
 	@Test
@@ -40,7 +40,7 @@ public class ImportTests {
 				+ "</xs:simpleType>"
 				+ "</xs:schema>"
 		));
-		Assert.assertThrows(SchemaParseException.class, schema::typeDefinitions); // Force lazy evaluation
+		Assert.assertThrows(ParseException.class, schema::typeDefinitions); // Force lazy evaluation
 	}
 
 	@Test

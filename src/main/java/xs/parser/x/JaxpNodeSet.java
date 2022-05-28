@@ -180,7 +180,7 @@ final class JaxpNodeSet extends NodeSet {
 
 						};
 					} else {
-						throw new IllegalStateException(underlyingValue != null ? underlyingValue.getClass().toString() : "null");
+						throw underlyingValue != null ? new IllegalStateException(underlyingValue.getClass().toString()) : new IllegalStateException();
 					}
 					return new JaxpNodeSet(namespaceContext, queryResultCache, expr, collection, collection, false);
 				} catch (final XPathExpressionException e) {

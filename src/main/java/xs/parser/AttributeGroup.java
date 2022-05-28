@@ -58,11 +58,11 @@ import xs.parser.internal.util.SequenceParser.*;
  */
 public class AttributeGroup implements AnnotatedComponent {
 
-	static final SequenceParser parser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID, AttributeValue.REF, AttributeValue.NAME)
-			.elements(0, 1, ElementValue.ANNOTATION)
-			.elements(0, Integer.MAX_VALUE, ElementValue.ATTRIBUTE, ElementValue.ATTRIBUTEGROUP)
-			.elements(0, 1, ElementValue.ANYATTRIBUTE);
+	private static final SequenceParser parser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID, AttrParser.REF, AttrParser.NAME)
+			.elements(0, 1, TagParser.ANNOTATION)
+			.elements(0, Integer.MAX_VALUE, TagParser.ATTRIBUTE.use(), TagParser.ATTRIBUTE_GROUP)
+			.elements(0, 1, TagParser.ANY_ATTRIBUTE);
 
 	private final Node node;
 	private final Deque<Annotation> annotations;
@@ -75,32 +75,14 @@ public class AttributeGroup implements AnnotatedComponent {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.validateTargetNamespace(targetNamespace);
+		this.targetNamespace = NodeHelper.validateTargetNamespace(node, targetNamespace);
 		this.attributeUses = Objects.requireNonNull(attributeUses);
 		this.attributeWildcard = attributeWildcard;
 	}
 
-	static Deferred<Deque<AttributeUse>> findAttributeUses(final Deque<AttributeUse> attributeUses, final Deque<AttributeGroup> attributeGroups) {
-		if (attributeGroups.isEmpty()) {
-			return () -> attributeUses;
-		}
-		return Deferred.of(() -> {
-			int size = attributeUses.size();
-			for (final AttributeGroup a : attributeGroups) {
-				size += a.attributeUses().size();
-			}
-			final Deque<AttributeUse> attrUses = new DeferredArrayDeque<>(size);
-			attrUses.addAll(attributeUses);
-			for (final AttributeGroup a : attributeGroups) {
-				attrUses.addAll(a.attributeUses());
-			}
-			return attrUses;
-		});
-	}
-
-	static AttributeGroup parse(final Result result) {
+	private static AttributeGroup parse(final Result result) {
 		final String targetNamespace = result.schema().targetNamespace();
-		final QName refAttr = result.value(AttributeValue.REF);
+		final QName refAttr = result.value(AttrParser.REF);
 		if (refAttr != null) {
 			final Deferred<AttributeGroup> ref = result.schema().find(refAttr, AttributeGroup.class);
 			return new AttributeGroup(result.node(), result.annotations(), null, targetNamespace, Deferred.none(), null) {
@@ -122,12 +104,34 @@ public class AttributeGroup implements AnnotatedComponent {
 
 			};
 		}
-		final String name = result.value(AttributeValue.NAME);
-		final Deque<AttributeUse> attributes = result.parseAll(ElementValue.ATTRIBUTE);
-		final Deque<AttributeGroup> attributeGroups = result.parseAll(ElementValue.ATTRIBUTEGROUP);
+		final String name = result.value(AttrParser.NAME);
+		final Deque<AttributeUse> attributes = result.parseAll(TagParser.ATTRIBUTE.use());
+		final Deque<AttributeGroup> attributeGroups = result.parseAll(TagParser.ATTRIBUTE_GROUP);
 		final Deferred<Deque<AttributeUse>> attributeUses = findAttributeUses(attributes, attributeGroups);
-		final Wildcard attributeWildcard = result.parse(ElementValue.ANYATTRIBUTE);
+		final Wildcard attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
 		return new AttributeGroup(result.node(), result.annotations(), name, targetNamespace, attributeUses, attributeWildcard);
+	}
+
+	static void register() {
+		TagParser.register(TagParser.Names.ATTRIBUTE_GROUP, parser, AttributeGroup.class, AttributeGroup::parse);
+	}
+
+	static Deferred<Deque<AttributeUse>> findAttributeUses(final Deque<AttributeUse> attributeUses, final Deque<AttributeGroup> attributeGroups) {
+		if (attributeGroups.isEmpty()) {
+			return () -> attributeUses;
+		}
+		return Deferred.of(() -> {
+			int size = attributeUses.size();
+			for (final AttributeGroup a : attributeGroups) {
+				size += a.attributeUses().size();
+			}
+			final Deque<AttributeUse> attrUses = new DeferredArrayDeque<>(size);
+			attrUses.addAll(attributeUses);
+			for (final AttributeGroup a : attributeGroups) {
+				attrUses.addAll(a.attributeUses());
+			}
+			return attrUses;
+		});
 	}
 
 	/** @return The ·actual value· of the name [attribute] */

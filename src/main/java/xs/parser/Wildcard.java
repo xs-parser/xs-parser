@@ -74,8 +74,8 @@ public class Wildcard implements Term {
 			this.name = value;
 		}
 
-		public static ProcessContents getByName(final Node node) {
-			final String name = node.getNodeValue();
+		public static ProcessContents getNodeValueAsProcessContents(final Node node) {
+			final String name = NodeHelper.requireNodeValue(node);
 			for (final ProcessContents p : values()) {
 				if (p.getName().equals(name)) {
 					return p;
@@ -158,12 +158,18 @@ public class Wildcard implements Term {
 
 	}
 
-	static final SequenceParser anyParser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID, AttributeValue.MAXOCCURS, AttributeValue.MINOCCURS, AttributeValue.ANY_NAMESPACE, AttributeValue.NOTNAMESPACE, AttributeValue.NOTQNAME, AttributeValue.PROCESSCONTENTS)
-			.elements(0, 1, ElementValue.ANNOTATION);
-	static final SequenceParser anyAttributeParser = new SequenceParser()
-			.optionalAttributes(AttributeValue.ID, AttributeValue.ANY_NAMESPACE, AttributeValue.NOTNAMESPACE, AttributeValue.NOTQNAME, AttributeValue.PROCESSCONTENTS)
-			.elements(0, 1, ElementValue.ANNOTATION);
+	private static final String NAMESPACE_ANY = "##any";
+	private static final String NAMESPACE_LOCAL = "##local";
+	private static final String NAMESPACE_OTHER = "##other";
+	private static final String NAMESPACE_TARGET_NAMESPACE = "##targetNamespace";
+	private static final String QNAME_DEFINED = "##defined";
+	private static final String QNAME_DEFINED_SIBLING = "##definedSibling";
+	private static final SequenceParser anyParser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID, AttrParser.MAX_OCCURS, AttrParser.MIN_OCCURS, AttrParser.ANY_NAMESPACE, AttrParser.NOT_NAMESPACE, AttrParser.NOT_QNAME, AttrParser.PROCESS_CONTENTS)
+			.elements(0, 1, TagParser.ANNOTATION);
+	private static final SequenceParser anyAttributeParser = new SequenceParser()
+			.optionalAttributes(AttrParser.ID, AttrParser.ANY_NAMESPACE, AttrParser.NOT_NAMESPACE, AttrParser.NOT_QNAME, AttrParser.PROCESS_CONTENTS)
+			.elements(0, 1, TagParser.ANNOTATION);
 
 	private final Node node;
 	private final Deque<Annotation> annotations;
@@ -177,11 +183,11 @@ public class Wildcard implements Term {
 		Set<String> namespaces = null;
 		if (namespace.size() == 1) {
 			switch (namespace.getFirst()) {
-			case "##any":
+			case NAMESPACE_ANY:
 				variety = Variety.ANY;
 				namespaces = Collections.emptySet();
 				break;
-			case "##other":
+			case NAMESPACE_OTHER:
 				variety = Variety.NOT;
 				namespaces = schemaTargetNamespace != null ? Collections.singleton(schemaTargetNamespace) : Collections.emptySet();
 				break;
@@ -198,8 +204,8 @@ public class Wildcard implements Term {
 		}
 		if (namespaces == null) {
 			namespaces = namespace.stream()
-					.filter(s -> !"##local".equals(s))
-					.map(s -> "##targetNamespace".equals(s) ? schemaTargetNamespace : s)
+					.filter(s -> !NAMESPACE_LOCAL.equals(s))
+					.map(s -> NAMESPACE_TARGET_NAMESPACE.equals(s) ? schemaTargetNamespace : s)
 					.collect(Collectors.toCollection(LinkedHashSet::new));
 		}
 		final Set<String> disallowedNames = notQName.isEmpty()
@@ -207,9 +213,9 @@ public class Wildcard implements Term {
 				: notQName.stream()
 						.map(s -> {
 							switch (s) {
-							case "##defined":
+							case QNAME_DEFINED:
 								return "defined";
-							case "##definedSibling":
+							case QNAME_DEFINED_SIBLING:
 								return "sibling";
 							default:
 								return s;
@@ -220,25 +226,100 @@ public class Wildcard implements Term {
 		this.processContents = processContents;
 	}
 
-	static Particle parseAny(final Result result) {
+	private static Particle parseAny(final Result result) {
 		final String schemaTargetNamespace = result.schema().targetNamespace();
-		final Deque<String> namespace = result.value(AttributeValue.ANY_NAMESPACE);
-		final Deque<String> notNamespace = result.value(AttributeValue.NOTNAMESPACE);
-		final Deque<String> notQName = result.value(AttributeValue.NOTQNAME);
-		final ProcessContents processContents = result.value(AttributeValue.PROCESSCONTENTS);
-		final String maxOccurs = result.value(AttributeValue.MAXOCCURS);
-		final String minOccurs = result.value(AttributeValue.MINOCCURS);
+		final Deque<String> namespace = result.value(AttrParser.ANY_NAMESPACE);
+		final Deque<String> notNamespace = result.value(AttrParser.NOT_NAMESPACE);
+		final Deque<String> notQName = result.value(AttrParser.NOT_QNAME);
+		final ProcessContents processContents = result.value(AttrParser.PROCESS_CONTENTS);
+		final String maxOccurs = result.value(AttrParser.MAX_OCCURS);
+		final String minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final Wildcard wildcard = new Wildcard(result.node(), result.annotations(), schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
 		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, wildcard);
 	}
 
-	static Wildcard parseAnyAttribute(final Result result) {
+	private static Wildcard parseAnyAttribute(final Result result) {
 		final String schemaTargetNamespace = result.schema().targetNamespace();
-		final Deque<String> namespace = result.value(AttributeValue.ANY_NAMESPACE);
-		final Deque<String> notNamespace = result.value(AttributeValue.NOTNAMESPACE);
-		final Deque<String> notQName = result.value(AttributeValue.NOTQNAME);
-		final ProcessContents processContents = result.value(AttributeValue.PROCESSCONTENTS);
+		final Deque<String> namespace = result.value(AttrParser.ANY_NAMESPACE);
+		final Deque<String> notNamespace = result.value(AttrParser.NOT_NAMESPACE);
+		final Deque<String> notQName = result.value(AttrParser.NOT_QNAME);
+		final ProcessContents processContents = result.value(AttrParser.PROCESS_CONTENTS);
 		return new Wildcard(result.node(), result.annotations(), schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
+	}
+
+	private static Deque<String> getNodeValueAsNamespace(final Node node) {
+		final String value = NodeHelper.requireNodeValue(node);
+		switch (value) {
+		case NAMESPACE_ANY:
+		case NAMESPACE_OTHER:
+			return Deques.singletonDeque(value);
+		default:
+			final String[] values = value.split(NodeHelper.LIST_SEP);
+			final Deque<String> ls = new ArrayDeque<>();
+			for (final String v : values) {
+				switch (v) {
+				case NAMESPACE_LOCAL:
+				case NAMESPACE_TARGET_NAMESPACE:
+					ls.add(v);
+					break;
+				default:
+					ls.add(NodeHelper.getNodeValueAsAnyUri(node, v));
+					break;
+				}
+			}
+			return Deques.unmodifiableDeque(ls);
+		}
+	}
+
+	private static Deque<String> getNodeValueAsNotNamespace(final Node node) {
+		final String value = NodeHelper.requireNodeValue(node);
+		final String[] values = value.split(NodeHelper.LIST_SEP);
+		final Deque<String> notNamespace = new ArrayDeque<>(values.length);
+		for (final String v : values) {
+			switch (v) {
+			case NAMESPACE_LOCAL:
+			case NAMESPACE_TARGET_NAMESPACE:
+				notNamespace.add(v);
+				break;
+			default:
+				notNamespace.add(NodeHelper.getNodeValueAsAnyUri(node, v));
+				break;
+			}
+		}
+		return notNamespace;
+	}
+
+	private static Deque<String> getNodeValueAsNotQName(final Node node) {
+		final String value = NodeHelper.requireNodeValue(node);
+		final String[] values = value.split(NodeHelper.LIST_SEP);
+		final Deque<String> notQName = new ArrayDeque<>(values.length);
+		for (final String v : values) {
+			switch (v) {
+			case QNAME_DEFINED:
+				notQName.add(v);
+				break;
+			case QNAME_DEFINED_SIBLING:
+				if (TagParser.Names.ANY_ATTRIBUTE.equals(node.getLocalName())) {
+					notQName.add(v);
+					break;
+				}
+				// fallthrough
+			default:
+				NodeHelper.getNodeValueAsQName(node, v);
+				notQName.add(v);
+				break;
+			}
+		}
+		return notQName;
+	}
+
+	static void register() {
+		AttrParser.register(AttrParser.Names.NAMESPACE, Deque.class, String.class, Wildcard::getNodeValueAsNamespace);
+		AttrParser.register(AttrParser.Names.NOT_NAMESPACE, Deque.class, String.class, Wildcard::getNodeValueAsNotNamespace);
+		AttrParser.register(AttrParser.Names.NOT_QNAME, Deque.class, String.class, Wildcard::getNodeValueAsNotQName);
+		AttrParser.register(AttrParser.Names.PROCESS_CONTENTS, ProcessContents.class, ProcessContents.STRICT, ProcessContents::getNodeValueAsProcessContents);
+		TagParser.register(TagParser.Names.ANY, anyParser, Particle.class, Wildcard::parseAny);
+		TagParser.register(TagParser.Names.ANY_ATTRIBUTE, anyAttributeParser, Wildcard.class, Wildcard::parseAnyAttribute);
 	}
 
 	public NamespaceConstraint namespaceConstraint() {
