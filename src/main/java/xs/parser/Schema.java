@@ -495,6 +495,210 @@ public class Schema implements AnnotatedComponent {
 
 	}
 
+	enum RepresentationConstraints {
+
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-attribute">Attribute Declaration Representation OK</a> */
+		SrcAttribute("src-attribute"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-attribute_group">Attribute Group Definition Representation OK</a> */
+		SrcAttributeGroup("src-attribute_group"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-cip">Conditional Inclusion Constraints</a> */
+		SrcCip("src-cip"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-ct">Complex Type Definition Representation OK</a> */
+		SrcCt("src-ct"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-element">Element Declaration Representation OK</a> */
+		SrcElement("src-element"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-2/#src-enumeration-value">Enumeration value</a> */
+		SrcEnumerationValue("src-enumeration-value"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-expredef">Individual Component Redefinition</a> */
+		SrcExpredef("src-expredef"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-identity-constraint">Identity-constraint Definition Representation OK</a> */
+		SrcIdentityConstraint("src-identity-constraint"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-import">Import Constraints and Semantics</a> */
+		SrcImport("src-import"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-include">Inclusion Constraints and Semantics</a> */
+		SrcInclude("src-include"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-2/#src-list-itemType-or-simpleType">itemType attribute or simpleType child</a> */
+		SrcListItemTypeOrSimpleType("src-list-itemType-or-simpleType"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-override">Override Constraints and Semantics</a> */
+		SrcOverride("src-override"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-2/#src-pattern-value">Pattern value</a> */
+		SrcPatternValue("src-pattern-value"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-redefine">Redefinition Constraints and Semantics</a> */
+		SrcRedefine("src-redefine"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-resolve">QName resolution (Schema Document)</a> */
+		SrcResolve("src-resolve"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-2/#src-restriction-base-or-simpleType">base attribute or simpleType child</a> */
+		SrcRestrictionBaseOrSimpleType("src-restriction-base-or-simpleType"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-simple-type">Simple Type Definition Representation OK</a> */
+		SrcSimpleType("src-simple-type"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-ta">Type Alternative Representation OK</a> */
+		SrcTa("src-ta"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-2/#src-union-memberTypes-or-simpleTypes">memberTypes attribute or simpleType children</a> */
+		SrcUnionMemberTypesOrSimpleTypes("src-union-memberTypes-or-simpleTypes"),
+		/** <a href="https://www.w3.org/TR/xmlschema11-1/#src-wildcard">Wildcard Representation OK</a> */
+		SrcWildcard("src-wildcard");
+
+		private final String name;
+
+		RepresentationConstraints(final String name) {
+			this.name = name;
+		}
+
+		@Override
+		public String toString() {
+			return name;
+		}
+
+	}
+
+	enum ComponentConstraints {
+
+		/** Attribute Declaration Properties Correct */
+		APropsCorrect("a-props-correct"),
+		/** Attribute Group Definition Properties Correct */
+		AgPropsCorrect("ag-props-correct"),
+		/** Annotation Correct */
+		AnPropsCorrect("an-props-correct"),
+		/** Assertion Properties Correct */
+		AsPropsCorrect("as-props-correct"),
+		/** Attribute Use Correct */
+		AuPropsCorrect("au-props-correct"),
+		/** Fields Value OK */
+		CFieldsXPaths("c-fields-xpaths"),
+		/** Identity-constraint Definition Properties Correct */
+		CPropsCorrect("c-props-correct"),
+		/** Selector Value OK */
+		CSelectorXPath("c-selector-xpath"),
+		/** All Group Limited */
+		CosAllLimited("cos-all-limited"),
+		/** Applicable Facets */
+		CosApplicableFacets("cos-applicable-facets"),
+		/** Valid restriction of assertions */
+		CosAssertionsRestriction("cos-assertions-restriction"),
+		/** cos-aw-intersect */
+		CosAwIntersect("Attribute Wildcard Intersection"),
+		/** Attribute Wildcard Union */
+		CosAwUnion("cos-aw-union"),
+		/** Effective Total Range (choice) */
+		CosChoiceRange("cos-choice-range"),
+		/** Content type restricts (Complex Content) */
+		CosContentActRestrict("cos-content-act-restrict"),
+		/** Type Derivation OK (Complex) */
+		CosCtDerivedOk("cos-ct-derived-ok"),
+		/** Derivation Valid (Extension) */
+		CosCtExtends("cos-ct-extends"),
+		/** Element Declarations Consistent */
+		CosElementConsistent("cos-element-consistent"),
+		/** Substitution Group OK (Transitive) */
+		CosEquivDerivedOkRec("cos-equiv-derived-ok-rec"),
+		/** Particle Emptiable */
+		CosGroupEmptiable("cos-group-emptiable"),
+		/** Unique Particle Attribution */
+		CosNonambig("cos-nonambig"),
+		/** Wildcard Subset */
+		CosNsSubset("cos-ns-subset"),
+		/** Particle Valid (Extension) */
+		CosParticleExtend("cos-particle-extend"),
+		/** Valid restriction of pattern */
+		CosPatternRestriction("cos-pattern-restriction"),
+		/** Effective Total Range (all and sequence) */
+		CosSeqRange("cos-seq-range"),
+		/** Type Derivation OK (Simple) */
+		CosStDerivedOk("cos-st-derived-ok"),
+		/** Derivation Valid (Restriction, Simple) */
+		CosStRestricts("cos-st-restricts"),
+		/** Element Default Valid (Immediate) */
+		CosValidDefault("cos-valid-default"),
+		/** Simple Default Valid */
+		CosValidSimpleDefault("cos-valid-simple-default"),
+		/** Complex Type Definition Properties Correct */
+		CtPropsCorrect("ct-props-correct"),
+		/** Derivation Valid (Restriction, Complex) */
+		DerivationOkRestriction("derivation-ok-restriction"),
+		/** Element Declaration Properties Correct */
+		EPropsCorrect("e-props-correct"),
+		/** enumeration facet value required for NOTATION */
+		EnumerationRequiredNotation("enumeration-required-notation"),
+		/** enumeration valid restriction */
+		EnumerationValidRestriction("enumeration-valid-restriction"),
+		/** fractionDigits less than or equal to totalDigits */
+		FractionDigitsTotalDigits("fractionDigits-totalDigits"),
+		/** fractionDigits valid restriction */
+		FractionDigitsValidRestriction("fractionDigits-valid-restriction"),
+		/** length and minLength or maxLength */
+		LengthMinLengthMaxLength("length-minLength-maxLength"),
+		/** length valid restriction */
+		LengthValidRestriction("length-valid-restriction"),
+		/** maxExclusive valid restriction */
+		MaxExclusiveValidRestriction("maxExclusive-valid-restriction"),
+		/** maxInclusive and maxExclusive */
+		MaxInclusiveMaxExclusive("maxInclusive-maxExclusive"),
+		/** maxInclusive valid restriction */
+		MaxInclusiveValidRestriction("maxInclusive-valid-restriction"),
+		/** maxLength valid restriction */
+		MaxLengthValidRestriction("maxLength-valid-restriction"),
+		/** Model Group Correct */
+		MgPropsCorrect("mg-props-correct"),
+		/** Model Group Definition Properties Correct */
+		MgdPropsCorrect("mgd-props-correct"),
+		/** minExclusive <= maxExclusive */
+		MinExclusiveLessThanEqualToMaxExclusive("minExclusive-less-than-equal-to-maxExclusive"),
+		/** minExclusive < maxInclusive */
+		MinExclusiveLessThanMaxInclusive("minExclusive-less-than-maxInclusive"),
+		/** minExclusive valid restriction */
+		MinExclusiveValidRestriction("minExclusive-valid-restriction"),
+		/** minInclusive <= maxInclusive */
+		MinInclusiveLessThanEqualToMaxInclusive("minInclusive-less-than-equal-to-maxInclusive"),
+		/** minInclusive < maxExclusive */
+		MinInclusiveLessThanMaxExclusive("minInclusive-less-than-maxExclusive"),
+		/** minInclusive and minExclusive */
+		MinInclusiveMinExclusive("minInclusive-minExclusive"),
+		/** minInclusive valid restriction */
+		MinInclusiveValidRestriction("minInclusive-valid-restriction"),
+		/** minLength <= maxLength */
+		MinLengthLessThanEqualToMaxLength("minLength-less-than-equal-to-maxLength"),
+		/** minLength valid restriction */
+		MinLengthValidRestriction("minLength-valid-restriction"),
+		/** Notation Declaration Correct */
+		NPropsCorrect("n-props-correct"),
+		/** xmlns Not Allowed */
+		NoXmlns("no-xmlns"),
+		/** xsi: Not Allowed */
+		NoXsi("no-xsi"),
+		/** Particle Correct */
+		PPropsCorrect("p-props-correct"),
+		/** Schema Properties Correct */
+		SchPropsCorrect("sch-props-correct"),
+		/** Simple Type Definition Properties Correct */
+		StPropsCorrect("st-props-correct"),
+		/** Simple Type Restriction (Facets) */
+		StRestrictFacets("st-restrict-facets"),
+		/** Type Alternative Properties Correct */
+		TaPropsCorrect("ta-props-correct"),
+		/** timezone valid restriction */
+		TimezoneValidRestriction("timezone-valid-restriction"),
+		/** totalDigits valid restriction */
+		TotalDigitsValidRestriction("totalDigits-valid-restriction"),
+		/** Wildcard Properties Correct */
+		WPropsCorrect("w-props-correct"),
+		/** whiteSpace valid restriction */
+		WhiteSpaceValidRestriction("whiteSpace-valid-restriction"),
+		/** XPath Valid */
+		XPathValid("xpath-valid");
+
+		private final String name;
+
+		ComponentConstraints(final String name) {
+			this.name = name;
+		}
+
+		@Override
+		public String toString() {
+			return name;
+		}
+
+	}
+
 	private class Def<T extends SchemaComponent> {
 
 		private final Deque<T> declared;
