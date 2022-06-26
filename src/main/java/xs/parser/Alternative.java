@@ -68,6 +68,8 @@ public class Alternative implements AnnotatedComponent {
 	}
 
 	private static Alternative parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String expression = result.value(AttrParser.TEST);
 		final String xpathDefaultNamespace = result.value(AttrParser.XPATH_DEFAULT_NAMESPACE);
 		final XPathExpression test = expression != null ? new XPathExpression(result, xpathDefaultNamespace, expression) : null;
@@ -82,7 +84,7 @@ public class Alternative implements AnnotatedComponent {
 			}
 			typeDefinition = () -> type;
 		}
-		return new Alternative(result.node(), result.annotations(), test, typeDefinition);
+		return new Alternative(node, annotations, test, typeDefinition);
 	}
 
 	static void register() {

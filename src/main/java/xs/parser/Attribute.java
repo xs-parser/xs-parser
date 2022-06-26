@@ -4,6 +4,7 @@ import java.util.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
+import xs.parser.Annotation.*;
 import xs.parser.Schema.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
@@ -300,7 +301,7 @@ public class Attribute implements AnnotatedComponent {
 		final Node xsiNilNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "nil");
 		xsiNil = new Attribute(xsiNilNode, Deques.emptyDeque(), "nil", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsBoolean, new Scope(Scope.Variety.GLOBAL, null), null, null);
 		final Node xsiSchemaLocationNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "schemaLocation");
-		xsiSchemaLocation = new Attribute(xsiSchemaLocationNode, Deques.emptyDeque(), "schemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(() -> new SimpleType(SimpleType.xsAnySimpleType().node(), Deques.emptyDeque(), null, XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deques.emptyDeque(), null, SimpleType::xsAnySimpleType, () -> SimpleType.Variety.LIST, Deques::emptyDeque, null, new SimpleType.List(Deques.emptyDeque(), SimpleType::xsAnyURI), null)), new Scope(Scope.Variety.GLOBAL, null), null, null);
+		xsiSchemaLocation = new Attribute(xsiSchemaLocationNode, Deques.emptyDeque(), "schemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(() -> new SimpleType(SimpleType.xsAnySimpleType().node(), Deques.emptyDeque(), null, XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deques.emptyDeque(), null, SimpleType::xsAnySimpleType, () -> SimpleType.Variety.LIST, Deques.emptyDeque(), null, new SimpleType.List(AnnotationSet.EMPTY, SimpleType::xsAnyURI), null)), new Scope(Scope.Variety.GLOBAL, null), null, null);
 		final Node xsiNoNamespaceSchemaLocationNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "noNamespaceSchemaLocation");
 		xsiNoNamespaceSchemaLocation = new Attribute(xsiNoNamespaceSchemaLocationNode, Deques.emptyDeque(), "noNamespaceSchemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsAnyURI, new Scope(Scope.Variety.GLOBAL, null), null, null);
 	}
@@ -326,6 +327,8 @@ public class Attribute implements AnnotatedComponent {
 	}
 
 	private static Attribute parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String defaultValue = result.value(AttrParser.DEFAULT);
 		final String fixedValue = result.value(AttrParser.FIXED);
 		final boolean isGlobal = NodeHelper.isParentSchemaElement(result);
@@ -359,7 +362,7 @@ public class Attribute implements AnnotatedComponent {
 				: null;
 		final String name = result.value(AttrParser.NAME);
 		final Boolean inheritable = result.value(AttrParser.INHERITABLE);
-		return new Attribute(result.node(), result.annotations(), name, targetNamespace, simpleType, scope, valueConstraint, inheritable);
+		return new Attribute(node, annotations, name, targetNamespace, simpleType, scope, valueConstraint, inheritable);
 	}
 
 	static void register() {

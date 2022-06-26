@@ -376,12 +376,6 @@ public class TagParser<T> {
 		}
 	}
 
-	public static <T> void register(final String[] elementLocalNames, final SequenceParser sequenceParser, final Class<T> cls, final Function<Result, T> parseMethod) {
-		for (final String e : elementLocalNames) {
-			register(e, sequenceParser, cls, parseMethod);
-		}
-	}
-
 	public static final TagParser<Particle> ALL = defer(Names.ALL, Particle.class);
 	public static final TagParser<Alternative> ALTERNATIVE = defer(Names.ALTERNATIVE, Alternative.class);
 	public static final AoParsers<Annotation> ANNOTATION = defer(Names.ANNOTATION, Annotation.class);

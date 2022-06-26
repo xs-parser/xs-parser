@@ -12,6 +12,7 @@ import javax.xml.parsers.*;
 import javax.xml.transform.stream.*;
 import org.w3c.dom.*;
 import org.xml.sax.*;
+import xs.parser.Annotation.*;
 import xs.parser.TypeDefinition.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
@@ -197,16 +198,17 @@ public class Schema implements AnnotatedComponent {
 
 		private final boolean appliesToEmpty;
 
-		private DefaultOpenContent(final Deque<Annotation> annotations, final boolean appliesToEmpty, final Mode mode, final Particle wildcard) {
+		private DefaultOpenContent(final AnnotationSet annotations, final boolean appliesToEmpty, final Mode mode, final Particle wildcard) {
 			super(annotations, mode, wildcard);
 			this.appliesToEmpty = appliesToEmpty;
 		}
 
 		private static DefaultOpenContent parse(final Result result) {
+			final AnnotationSet annotations = Annotation.of(result);
 			final boolean appliesToEmpty = result.value(AttrParser.APPLIES_TO_EMPTY);
 			final Mode mode = result.value(AttrParser.MODE);
 			final Particle wildcard = result.parse(TagParser.ANY);
-			return new DefaultOpenContent(result.annotations(), appliesToEmpty, mode, wildcard);
+			return new DefaultOpenContent(annotations, appliesToEmpty, mode, wildcard);
 		}
 
 		boolean appliesToEmpty() {
@@ -234,12 +236,12 @@ public class Schema implements AnnotatedComponent {
 
 		private final Schema schema;
 		private final Node node;
-		private final Deque<Annotation> annotations;
+		private final AnnotationSet annotations;
 		private final String namespace;
 		private final String schemaLocation;
 		private final Deferred<Schema> importedSchema = Deferred.of(this::importSchema);
 
-		private Import(final Schema schema, final Node node, final Deque<Annotation> annotations, final String namespace, final String schemaLocation) {
+		private Import(final Schema schema, final Node node, final AnnotationSet annotations, final String namespace, final String schemaLocation) {
 			this.schema = schema;
 			this.node = Objects.requireNonNull(node);
 			this.annotations = Objects.requireNonNull(annotations);
@@ -254,9 +256,14 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		private static Import parse(final Result result) {
+			final AnnotationSet annotations = Annotation.of(result);
 			final String namespace = result.value(AttrParser.NAMESPACE);
 			final String schemaLocation = result.value(AttrParser.SCHEMA_LOCATION);
-			return new Import(result.schema(), result.node(), result.annotations(), namespace, schemaLocation);
+			return new Import(result.schema(), result.node(), annotations, namespace, schemaLocation);
+		}
+
+		AnnotationSet annotations() {
+			return annotations;
 		}
 
 		private Schema importSchema() {
@@ -272,10 +279,6 @@ public class Schema implements AnnotatedComponent {
 				Reporting.report("Could not resolve xs:import, caused by " + e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 			}
 			return Schema.EMPTY;
-		}
-
-		private Deque<Annotation> annotations() {
-			return annotations;
 		}
 
 		private Schema importedSchema() {
@@ -306,12 +309,12 @@ public class Schema implements AnnotatedComponent {
 
 		private final Schema schema;
 		private final Node node;
-		private final Deque<Annotation> annotations;
+		private final AnnotationSet annotations;
 		private final String schemaLocation;
 		private final Deferred<Schema> includedSchema = Deferred.of(this::includeSchema);
 		private final boolean shouldCache;
 
-		private Include(final Schema schema, final Node node, final Deque<Annotation> annotations, final String schemaLocation, final boolean shouldCache) {
+		private Include(final Schema schema, final Node node, final AnnotationSet annotations, final String schemaLocation, final boolean shouldCache) {
 			this.schema = schema;
 			this.node = Objects.requireNonNull(node);
 			this.annotations = Objects.requireNonNull(annotations);
@@ -320,8 +323,9 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		private static Include parse(final Result result) {
+			final AnnotationSet annotations = Annotation.of(result);
 			final String schemaLocation = result.value(AttrParser.SCHEMA_LOCATION);
-			return new Include(result.schema(), result.node(), result.annotations(), schemaLocation, true);
+			return new Include(result.schema(), result.node(), annotations, schemaLocation, true);
 		}
 
 		private Schema includeSchema() {
@@ -385,7 +389,7 @@ public class Schema implements AnnotatedComponent {
 			return doc;
 		}
 
-		private Deque<Annotation> annotations() {
+		AnnotationSet annotations() {
 			return annotations;
 		}
 
@@ -418,13 +422,14 @@ public class Schema implements AnnotatedComponent {
 		// Stylesheet for xs:override (F.2)
 		private static final Object f2Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(Include.RESOURCE_PATH + "F-2.xsl")));
 
-		private Overrides(final Schema schema, final Node node, final Deque<Annotation> annotations, final String schemaLocation) {
+		private Overrides(final Schema schema, final Node node, final AnnotationSet annotations, final String schemaLocation) {
 			super(schema, node, annotations, schemaLocation);
 		}
 
 		private static Overrides parse(final Result result) {
+			final AnnotationSet annotations = Annotation.of(result);
 			final String schemaLocation = result.value(AttrParser.SCHEMA_LOCATION);
-			return new Overrides(result.schema(), result.node(), result.annotations(), schemaLocation);
+			return new Overrides(result.schema(), result.node(), annotations, schemaLocation);
 		}
 
 		@Override
@@ -456,13 +461,14 @@ public class Schema implements AnnotatedComponent {
 		// Stylesheet for xs:redefine
 		private static final Object redefineXslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(Include.RESOURCE_PATH + "xs-redefine.xsl")));
 
-		private Redefine(final Schema schema, final Node node, final Deque<Annotation> annotations, final String schemaLocation) {
+		private Redefine(final Schema schema, final Node node, final AnnotationSet annotations, final String schemaLocation) {
 			super(schema, node, annotations, schemaLocation, false);
 		}
 
 		private static Redefine parse(final Result result) {
+			final AnnotationSet annotations = Annotation.of(result);
 			final String schemaLocation = result.value(AttrParser.SCHEMA_LOCATION);
-			return new Redefine(result.schema(), result.node(), result.annotations(), schemaLocation);
+			return new Redefine(result.schema(), result.node(), annotations, schemaLocation);
 		}
 
 		@Override
@@ -492,7 +498,7 @@ public class Schema implements AnnotatedComponent {
 			this.constituents = findAll(schemas, mapper);
 			this.all = constituents.map(c -> {
 				final Deque<T> deque = declared.get();
-				final Deque<T> allDeque = new DeferredArrayDeque<>(deque.size(), c);
+				final Deque<T> allDeque = new DeferredArrayDeque<>(c);
 				allDeque.addAll(deque);
 				after.accept(allDeque);
 				return allDeque;
@@ -516,13 +522,13 @@ public class Schema implements AnnotatedComponent {
 					if (schemas.add(s)) {
 						final Def<U> def = mapper.apply(s);
 						final Deque<U> decls = def.declared.get();
-						final Deque<U> combine = new DeferredArrayDeque<>(decls.size(), def.findAll(schemas, mapper).get());
+						final Deque<U> combine = new DeferredArrayDeque<>(def.findAll(schemas, mapper).get());
 						combine.addAll(decls);
 						values.add(combine);
 						size += combine.size();
 					}
 				}
-				final Deque<U> ls = new DeferredArrayDeque<>(size);
+				final Deque<U> ls = new DeferredArrayDeque<>();
 				for (final Deque<U> value : values) {
 					ls.addAll(value);
 				}
@@ -742,7 +748,7 @@ public class Schema implements AnnotatedComponent {
 	private final Def<AttributeGroup> attributeGroupDefinitions;
 	private final Def<Element> elementDeclarations;
 	private final Def<Notation> notationDeclarations;
-	private final Deferred<Deque<IdentityConstraint>> identityConstraintDefinitions;
+	private final Deque<IdentityConstraint> identityConstraintDefinitions;
 	private final Def<Annotation> annotations;
 	private final Form attributeFormDefault;
 	private final Block blockDefault;
@@ -780,7 +786,7 @@ public class Schema implements AnnotatedComponent {
 		this.attributeGroupDefinitions = new Def<>();
 		this.elementDeclarations = new Def<>();
 		this.notationDeclarations = new Def<>();
-		this.identityConstraintDefinitions = Deques::emptyDeque;
+		this.identityConstraintDefinitions = Deques.emptyDeque();
 		this.annotations = new Def<>();
 		this.attributeFormDefault = AttrParser.ATTRIBUTE_FORM_DEFAULT.getDefaultValue();
 		this.blockDefault = AttrParser.BLOCK_DEFAULT.getDefaultValue();
@@ -824,14 +830,14 @@ public class Schema implements AnnotatedComponent {
 		this.notationDeclarations = new Def<>(() -> result.parseAll(TagParser.NOTATION),
 				s -> s.notationDeclarations,
 				n -> checkIfUnique(n, Notation::name, Notation::targetNamespace));
-		this.identityConstraintDefinitions = Deferred.of(() -> {
-			final Deque<IdentityConstraint> id = new ArrayDeque<>();
-			this.elementDeclarations().forEach(e -> id.addAll(e.identityConstraintDefinitions()));
+		this.identityConstraintDefinitions = new DeferredArrayDeque<>(() -> {
+			final Deque<IdentityConstraint> x = new ArrayDeque<>();
+			this.elementDeclarations().forEach(e -> x.addAll(e.identityConstraintDefinitions()));
 			this.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
 				if (c.contentType() != null && c.contentType().particle() != null) {
 					final Particle p = c.contentType().particle();
 					if (p.term() instanceof Element) {
-						id.addAll(((Element) p.term()).identityConstraintDefinitions());
+						x.addAll(((Element) p.term()).identityConstraintDefinitions());
 					} else if (p.term() instanceof ModelGroup) {
 						final Deque<ModelGroup> d = new ArrayDeque<>(Collections.singleton((ModelGroup) p.term()));
 						while (!d.isEmpty()) {
@@ -840,16 +846,26 @@ public class Schema implements AnnotatedComponent {
 								if (p2.term() instanceof ModelGroup) {
 									d.push((ModelGroup) p2.term());
 								} else if (p2.term() instanceof Element) {
-									id.addAll(((Element) p2.term()).identityConstraintDefinitions());
+									x.addAll(((Element) p2.term()).identityConstraintDefinitions());
 								}
 							});
 						}
 					}
 				}
 			});
-			return id;
+			return x;
 		});
-		this.annotations = new Def<>(() -> result.parseAll(TagParser.ANNOTATION), s -> s.annotations);
+		this.annotations = new Def<>(() -> {
+			final AnnotationSet annotations = Annotation.of(result);
+			annotations.addAll(this.imports, Import::annotations);
+			annotations.addAll(this.includes, Include::annotations);
+			annotations.addAll(this.overrides, Overrides::annotations);
+			annotations.addAll(this.redefines, Redefine::annotations);
+			if (defaultOpenContent != null) {
+				annotations.add(defaultOpenContent.annotations());
+			}
+			return annotations.resolve(result.node());
+		}, s -> s.annotations);
 		this.attributeFormDefault = result.value(AttrParser.ATTRIBUTE_FORM_DEFAULT);
 		this.blockDefault = result.value(AttrParser.BLOCK_DEFAULT);
 		final QName defaultAttributesName = result.value(AttrParser.DEFAULT_ATTRIBUTES);
@@ -987,8 +1003,7 @@ public class Schema implements AnnotatedComponent {
 	@SuppressWarnings("unchecked")
 	<T extends SchemaComponent> Deferred<T> find(final QName name, final Class<? extends T> cls) {
 		return Deferred.of(() -> {
-			final BiFunction<Schema, QName, Deferred<? extends SchemaComponent>> fn = Objects.requireNonNull(FINDERS.get(cls));
-			final T t = (T) fn.apply(this, name).get();
+			final T t = (T) FINDERS.get(cls).apply(this, name).get();
 			if (t != null) {
 				return t;
 			}
@@ -1117,7 +1132,7 @@ public class Schema implements AnnotatedComponent {
 
 	/** @return The identity-constraint definitions corresponding to all the &lt;key&gt;, &lt;keyref&gt;, and &lt;unique&gt; element information items anywhere within the [children], if any, plus any definitions brought in via &lt;include&gt;, &lt;override&gt;, &lt;redefine&gt;, and &lt;import&gt;. */
 	public Deque<IdentityConstraint> identityConstraintDefinitions() {
-		return Deques.unmodifiableDeque(identityConstraintDefinitions.get());
+		return Deques.unmodifiableDeque(identityConstraintDefinitions);
 	}
 
 	@Override

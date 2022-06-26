@@ -54,12 +54,14 @@ public class ModelGroup implements Term {
 	}
 
 	private static Particle parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
 		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final QName refName = result.value(AttrParser.REF);
 		final ModelGroup term;
 		if (refName != null) {
-			term = new ModelGroup(result.node(), result.annotations(), refName.getLocalPart(), result.schema().targetNamespace(), null, null, Deques.emptyDeque()) {
+			term = new ModelGroup(node, annotations, refName.getLocalPart(), result.schema().targetNamespace(), null, null, Deques.emptyDeque()) {
 
 				final Deferred<ModelGroup> ref = result.schema().find(refName, ModelGroup.class);
 
@@ -82,15 +84,17 @@ public class ModelGroup implements Term {
 		} else {
 			term = parseDecl(result);
 		}
-		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, term);
+		return new Particle(node, annotations, maxOccurs, minOccurs, term);
 	}
 
 	private static ModelGroup parseDecl(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Particle particle = result.parse(TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE);
 		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
 		final ModelGroup term = (ModelGroup) particle.term();
-		return new ModelGroup(result.node(), result.annotations(), name, targetNamespace, term, term.compositor(), term.particles());
+		return new ModelGroup(node, annotations, name, targetNamespace, term, term.compositor(), term.particles());
 	}
 
 	static void register() {

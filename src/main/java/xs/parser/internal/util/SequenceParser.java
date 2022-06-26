@@ -34,7 +34,7 @@ public final class SequenceParser {
 		private final Node node;
 		private final Result parent;
 		private final Map<AttrParser<?>, AttrValue<?>> attributes = new LinkedHashMap<>();
-		private final Map<QName, String> nonSchemaAttributes;
+		private final Set<Attr> nonSchemaAttributes;
 		private final Map<TagParser<?>, Deque<Result>> parserResults = new LinkedHashMap<>();
 		private final Deque<Node> anyContent;
 		private final AtomicReference<Object> value = new AtomicReference<>();
@@ -43,31 +43,30 @@ public final class SequenceParser {
 			this.schema = schema;
 			this.node = node;
 			this.parent = parent;
-			nonSchemaAttributes = allowsNonSchemaAttributes ? new HashMap<>() : Collections.emptyMap();
+			nonSchemaAttributes = allowsNonSchemaAttributes ? new LinkedHashSet<>() : Collections.emptySet();
 			anyContent = allowsAnyContent ? new ArrayDeque<>() : Deques.emptyDeque();
 		}
 
 		public Attr attr(final AttrParser<?> a) {
-			if (!attributes.containsKey(a)) {
-				throw new IllegalArgumentException("Unregisted attribute " + a);
+			final AttrValue<?> val = attributes.get(a);
+			if (val == null) {
+				throw new IllegalArgumentException("Unregistered attribute \"" + a + '"');
 			}
-			return attributes.get(a).attr;
+			return val.attr;
 		}
 
 		@SuppressWarnings("unchecked")
 		public <T> T value(final AttrParser<T> a) {
-			if (!attributes.containsKey(a)) {
-				throw new IllegalArgumentException("Unregisted attribute " + a);
+			final AttrValue<?> val = attributes.get(a);
+			if (val == null) {
+				throw new IllegalArgumentException("Unregistered attribute \"" + a + '"');
 			}
-			return (T) attributes.get(a).value;
+			return (T) val.value;
 		}
 
-		public Map<QName, String> nonSchemaAttributes() {
+		// TODO: delete - unused
+		public Set<Attr> nonSchemaAttributes() {
 			return nonSchemaAttributes;
-		}
-
-		public Deque<Annotation> annotations() {
-			return parseAll(TagParser.ANNOTATION);
 		}
 
 		@SafeVarargs public final <T> T parse(final TagParser<? extends T> first, final TagParser<? extends T>... more) {
@@ -99,31 +98,17 @@ public final class SequenceParser {
 			return v;
 		}
 
-		@SuppressWarnings("unchecked")
 		@SafeVarargs public final <T> Deque<T> parseAll(final TagParser<? extends T> first, final TagParser<? extends T>... more) {
-			final Deque<? extends T> ls = parseAll(first);
-			final Deque<Deque<? extends T>> moreDeques = new ArrayDeque<>();
+			final Deque<T> x = new DeferredArrayDeque<>(parseAll(first));
 			for (final TagParser<? extends T> t : more) {
-				moreDeques.add(parseAll(t));
+				x.addAll(parseAll(t));
 			}
-			if (moreDeques.isEmpty()) {
-				return (Deque<T>) ls;
-			}
-			int size = ls.size();
-			for (final Deque<? extends T> x : moreDeques) {
-				size += x.size();
-			}
-			final DeferredArrayDeque<T> d = new DeferredArrayDeque<>(size);
-			d.addAll(ls);
-			for (final Deque<? extends T> x : moreDeques) {
-				d.addAll(x);
-			}
-			return d;
+			return x;
 		}
 
 		public <T> Deque<T> parseAll(final TagParser<T> t) {
 			if (!parserResults.containsKey(t)) {
-				throw new IllegalArgumentException("Unregisted element " + t.getName());
+				throw new IllegalArgumentException("Unregistered element \"" + t.getName() + '"');
 			}
 			final Deque<Result> results = parserResults.get(t);
 			if (results == null) {
@@ -132,15 +117,15 @@ public final class SequenceParser {
 			for (final Result r : results) {
 				checkIfCanParse(r, t);
 			}
-			final DeferredArrayDeque<T> values = new DeferredArrayDeque<>(results.size());
-			for (final Result r : results) {
-				values.add(Deferred.of(() -> {
+			return new DeferredArrayDeque<>(() -> {
+				final ArrayDeque<T> x = new ArrayDeque<>();
+				for (final Result r : results) {
 					final T v = t.parse(r);
 					r.setValue(v);
-					return v;
-				}));
-			}
-			return values;
+					x.addLast(v);
+				}
+				return x;
+			});
 		}
 
 		public Deque<Node> anyContent() {
@@ -264,8 +249,7 @@ public final class SequenceParser {
 			}
 			if (e == null) {
 				if (allowsNonSchemaAttributes && a.getPrefix() != null && !XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(a.getPrefix())) {
-					final QName name = new QName(a.getNamespaceURI(), a.getLocalName(), a.getPrefix());
-					result.nonSchemaAttributes.put(name, a.getValue());
+					result.nonSchemaAttributes.add(a);
 				} else {
 					throw NodeHelper.newParseException(node, "Found disallowed non-schema attribute: " + a);
 				}

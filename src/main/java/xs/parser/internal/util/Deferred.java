@@ -16,7 +16,7 @@ public interface Deferred<T> {
 
 	public T get();
 
-	public default <U> Deferred<U> map(Function<T, U> mapper) {
+	public default <U> Deferred<U> map(final Function<T, U> mapper) {
 		return Deferred.of(() -> mapper.apply(get()));
 	}
 

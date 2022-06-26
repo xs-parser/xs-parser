@@ -5,6 +5,7 @@ import java.util.stream.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
+import xs.parser.Annotation.*;
 import xs.parser.ConstrainingFacet.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
@@ -121,24 +122,25 @@ public class SimpleType implements TypeDefinition {
 				.elements(0, 1, TagParser.ANNOTATION)
 				.elements(0, 1, TagParser.SIMPLE_TYPE);
 
-		private final Deque<Annotation> annotations;
+		private final AnnotationSet annotations;
 		private final Deferred<SimpleType> itemTypeDefinition;
 
-		List(final Deque<Annotation> annotations, final Deferred<SimpleType> itemTypeDefinition) {
+		List(final AnnotationSet annotations, final Deferred<SimpleType> itemTypeDefinition) {
 			this.annotations = Objects.requireNonNull(annotations);
 			this.itemTypeDefinition = Objects.requireNonNull(itemTypeDefinition);
 		}
 
 		private static List parse(final Result result) {
+			final AnnotationSet annotations = Annotation.of(result);
 			final QName itemTypeName = result.value(AttrParser.ITEM_TYPE);
 			if (itemTypeName != null) {
-				return new List(result.annotations(), result.schema().find(itemTypeName, SimpleType.class));
+				return new List(annotations, result.schema().find(itemTypeName, SimpleType.class));
 			}
 			final SimpleType itemSimpleType = result.parse(TagParser.SIMPLE_TYPE);
-			return new List(result.annotations(), () -> itemSimpleType);
+			return new List(annotations, () -> itemSimpleType);
 		}
 
-		private Deque<Annotation> annotations() {
+		private AnnotationSet annotations() {
 			return annotations;
 		}
 
@@ -166,12 +168,12 @@ public class SimpleType implements TypeDefinition {
 				.elements(0, 1, TagParser.SIMPLE_TYPE)
 				.elements(0, Integer.MAX_VALUE, TagParser.FACETS.length(), TagParser.FACETS.maxLength(), TagParser.FACETS.minLength(), TagParser.FACETS.pattern(), TagParser.FACETS.enumeration(), TagParser.FACETS.whiteSpace(), TagParser.FACETS.maxInclusive(), TagParser.FACETS.maxExclusive(), TagParser.FACETS.minExclusive(), TagParser.FACETS.minInclusive(), TagParser.FACETS.totalDigits(), TagParser.FACETS.fractionDigits(), TagParser.FACETS.assertion(), TagParser.FACETS.explicitTimezone(), TagParser.ANY);
 
-		private final Deque<Annotation> annotations;
+		private final AnnotationSet annotations;
 		private final Deferred<SimpleType> baseTypeDefinition;
 		private final Deque<ConstrainingFacet> facets;
 		private final Deque<Particle> wildcard;
 
-		private Restriction(final Deque<Annotation> annotations, final Deferred<SimpleType> baseTypeDefinition, final Deque<ConstrainingFacet> facets, final Deque<Particle> wildcard) {
+		private Restriction(final AnnotationSet annotations, final Deferred<SimpleType> baseTypeDefinition, final Deque<ConstrainingFacet> facets, final Deque<Particle> wildcard) {
 			this.annotations = Objects.requireNonNull(annotations);
 			this.baseTypeDefinition = Objects.requireNonNull(baseTypeDefinition);
 			this.facets = Objects.requireNonNull(facets);
@@ -179,16 +181,17 @@ public class SimpleType implements TypeDefinition {
 		}
 
 		private static Restriction parse(final Result result) {
+			final AnnotationSet annotations = Annotation.of(result);
 			final QName baseType = result.value(AttrParser.BASE);
 			final Deferred<SimpleType> baseTypeDefinition = baseType == null
 					? Deferred.of(() -> result.parse(TagParser.SIMPLE_TYPE))
 					: result.schema().find(baseType, SimpleType.class);
 			final Deque<ConstrainingFacet> facets = result.parseAll(TagParser.FACETS.length(), TagParser.FACETS.maxLength(), TagParser.FACETS.minLength(), TagParser.FACETS.pattern(), TagParser.FACETS.enumeration(), TagParser.FACETS.whiteSpace(), TagParser.FACETS.maxInclusive(), TagParser.FACETS.maxExclusive(), TagParser.FACETS.minExclusive(), TagParser.FACETS.minInclusive(), TagParser.FACETS.totalDigits(), TagParser.FACETS.fractionDigits(), TagParser.FACETS.assertion(), TagParser.FACETS.explicitTimezone());
 			final Deque<Particle> wildcard = result.parseAll(TagParser.ANY);
-			return new Restriction(result.annotations(), baseTypeDefinition, facets, wildcard);
+			return new Restriction(annotations, baseTypeDefinition, facets, wildcard);
 		}
 
-		private Deque<Annotation> annotations() {
+		private AnnotationSet annotations() {
 			return annotations;
 		}
 
@@ -223,28 +226,27 @@ public class SimpleType implements TypeDefinition {
 				.elements(0, 1, TagParser.ANNOTATION)
 				.elements(0, Integer.MAX_VALUE, TagParser.SIMPLE_TYPE);
 
-		private final Deque<Annotation> annotations;
+		private final AnnotationSet annotations;
 		private final Deque<SimpleType> memberTypeDefinitions;
 
-		private Union(final Deque<Annotation> annotations, final Deque<SimpleType> memberTypeDefinitions) {
+		private Union(final AnnotationSet annotations, final Deque<SimpleType> memberTypeDefinitions) {
 			this.annotations = Objects.requireNonNull(annotations);
 			this.memberTypeDefinitions = Objects.requireNonNull(memberTypeDefinitions);
 		}
 
 		private static Union parse(final Result result) {
+			final AnnotationSet annotations = Annotation.of(result);
 			final Deque<QName> memberTypes = result.value(AttrParser.MEMBER_TYPES);
 			final Deque<SimpleType> memberTypeDefinitions;
 			if (memberTypes != null) {
-				memberTypeDefinitions = DeferredArrayDeque.of(memberTypes.stream()
-						.map(memberType -> result.schema().find(memberType, SimpleType.class))
-						.collect(Collectors.toCollection(ArrayDeque::new)));
+				memberTypeDefinitions = new DeferredArrayDeque<>(() -> memberTypes.stream().map(memberType -> result.schema().find(memberType, SimpleType.class).get()).collect(Collectors.toCollection(ArrayDeque::new)));
 			} else {
 				memberTypeDefinitions = result.parseAll(TagParser.SIMPLE_TYPE);
 			}
-			return new Union(result.annotations(), memberTypeDefinitions);
+			return new Union(annotations, memberTypeDefinitions);
 		}
 
-		private Deque<Annotation> annotations() {
+		private AnnotationSet annotations() {
 			return annotations;
 		}
 
@@ -315,7 +317,7 @@ public class SimpleType implements TypeDefinition {
 	static {
 		final Document doc = NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 		final Node xsAnySimpleTypeNode = NodeHelper.newSchemaNode(doc, TagParser.Names.SIMPLE_TYPE, ANYSIMPLETYPE_NAME);
-		xsAnySimpleType = new SimpleType(xsAnySimpleTypeNode, Deques.emptyDeque(), ANYSIMPLETYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, ComplexType::xsAnyType, Deferred.none(), Deques::emptyDeque, null, null, null);
+		xsAnySimpleType = new SimpleType(xsAnySimpleTypeNode, Deques.emptyDeque(), ANYSIMPLETYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, ComplexType::xsAnyType, Deferred.none(), Deques.emptyDeque(), null, null, null);
 		xsAnyAtomicType = create(doc, ANYATOMICTYPE_NAME, xsAnySimpleType);
 		final Map<String, SimpleType> primitiveTypeDefinitions = new HashMap<>();
 		primitiveTypeDefinitions.put(STRING_NAME, create(doc, STRING_NAME, xsAnyAtomicType));
@@ -380,14 +382,14 @@ public class SimpleType implements TypeDefinition {
 	private final Deque<Final> finals;
 	private final Node context;
 	private final Deferred<Variety> variety;
-	private final Deferred<Deque<Object>> facets;
-	private final Deferred<Deque<ConstrainingFacet>> facetValues;
-	private final Deferred<Deque<FundamentalFacet>> fundamentalFacets;
+	private final Deque<Object> facets;
+	private final Deque<ConstrainingFacet> facetValues;
+	private final Deque<FundamentalFacet> fundamentalFacets;
 	private final Deferred<SimpleType> primitiveTypeDefinition;
 	private final Deferred<SimpleType> itemTypeDefinition;
-	private final Deferred<Deque<SimpleType>> memberTypeDefinitions;
+	private final Deque<SimpleType> memberTypeDefinitions;
 
-	SimpleType(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Node context, final Deferred<? extends TypeDefinition> baseTypeDefinition, final Deferred<Variety> variety, final Deferred<Deque<Object>> facets, final Restriction restriction, final List list, final Union union) {
+	SimpleType(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Node context, final Deferred<? extends TypeDefinition> baseTypeDefinition, final Deferred<Variety> variety, final Deque<Object> facets, final Restriction restriction, final List list, final Union union) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -397,8 +399,8 @@ public class SimpleType implements TypeDefinition {
 		this.context = context;
 		this.variety = Objects.requireNonNull(variety);
 		this.facets = Objects.requireNonNull(facets);
-		this.facetValues = facets.map(f -> f.stream().filter(ConstrainingFacet.class::isInstance).map(ConstrainingFacet.class::cast).collect(Collectors.toCollection(ArrayDeque::new)));
-		this.fundamentalFacets = Deferred.of(() -> {
+		this.facetValues = new DeferredArrayDeque<>(() -> facets.stream().filter(ConstrainingFacet.class::isInstance).map(ConstrainingFacet.class::cast).collect(Collectors.toCollection(ArrayDeque::new)));
+		this.fundamentalFacets = new DeferredArrayDeque<>(() -> {
 			final Deque<FundamentalFacet> f = FundamentalFacet.find(this);
 			if (f != null) {
 				return f;
@@ -430,7 +432,8 @@ public class SimpleType implements TypeDefinition {
 			}
 			return null;
 		});
-		this.memberTypeDefinitions = variety.map(v -> {
+		this.memberTypeDefinitions = new DeferredArrayDeque<>(() -> {
+			final Variety v = variety.get();
 			if (Variety.UNION.equals(v)) {
 				assert restriction != null || union != null;
 				return restriction != null
@@ -442,6 +445,8 @@ public class SimpleType implements TypeDefinition {
 	}
 
 	private static SimpleType parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations;
 		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
 		Deque<Final> finals = result.value(AttrParser.FINAL);
@@ -456,7 +461,7 @@ public class SimpleType implements TypeDefinition {
 				: restriction.baseTypeDefinition().map(SimpleType::variety);
 		final Deferred<SimpleType> baseType = variety.map(v -> Variety.LIST.equals(v) || Variety.UNION.equals(v) ? xsAnySimpleType : restriction.baseTypeDefinition().get());
 		final Node context;
-		final Node parentNode = result.node().getParentNode();
+		final Node parentNode = node.getParentNode();
 		if (name != null || parentNode == null) {
 			context = null;
 		} else if (TagParser.ATTRIBUTE.equalsName(parentNode) || TagParser.ELEMENT.equalsName(parentNode)) {
@@ -468,24 +473,29 @@ public class SimpleType implements TypeDefinition {
 			} else if (grandParent != null && TagParser.COMPLEX_TYPE.simpleContent().equalsName(grandParent) && grandParent.getParentNode() != null && TagParser.COMPLEX_TYPE.equalsName(grandParent.getParentNode())) {
 				context = grandParent.getParentNode();
 			} else {
-				throw new Schema.ParseException(result.node());
+				throw new Schema.ParseException(node);
 			}
 		}
-		final Deferred<Deque<Object>> facets = variety.map(v -> {
+		final Deque<Object> facets = new DeferredArrayDeque<Object>(() -> {
+			final Variety v = variety.get();
 			switch (v) {
 			case UNION:
 				return Deques.asDeque(Pattern.class, ConstrainingFacet.Enumeration.class, Assertions.class);
 			case LIST:
 				return restriction != null // standalone xs:list vs xs:restriction of xs:list
-						? ConstrainingFacet.combineLikeFacets(restriction.baseTypeDefinition().get(), restriction.baseTypeDefinition().get().facets.get(), restriction.facets())
-						: Deques.asDeque(new ConstrainingFacet.WhiteSpace(result.node(), result.annotations(), true, WhiteSpace.Value.COLLAPSE), Length.class, MaxLength.class, MinLength.class, ConstrainingFacet.Enumeration.class, Pattern.class, Assertions.class);
+						? ConstrainingFacet.combineLikeFacets(restriction.baseTypeDefinition().get(), restriction.baseTypeDefinition().get().facets, restriction.facets())
+						: Deques.asDeque(WhiteSpace.collapseFixed, Length.class, MaxLength.class, MinLength.class, ConstrainingFacet.Enumeration.class, Pattern.class, Assertions.class);
 			case ATOMIC:
-				return ConstrainingFacet.combineLikeFacets(baseType.get(), baseType.get().facets.get(), restriction.facets());
+				return ConstrainingFacet.combineLikeFacets(baseType.get(), baseType.get().facets, restriction.facets());
 			default:
 				throw new AssertionError();
 			}
 		});
-		return new SimpleType(result.node(), result.annotations(), name, targetNamespace, finals, context, baseType, variety, facets, restriction, list, union);
+		annotations = (restriction != null ? restriction.annotations()
+				: list != null ? list.annotations()
+				: union != null ? union.annotations()
+				: AnnotationSet.EMPTY).resolve(node);
+		return new SimpleType(node, annotations, name, targetNamespace, finals, context, baseType, variety, facets, restriction, list, union);
 	}
 
 	private static SimpleType create(final Document doc, final String name, final TypeDefinition baseTypeDefinition) {
@@ -497,15 +507,15 @@ public class SimpleType implements TypeDefinition {
 		final List list;
 		switch (name) {
 		case ENTITIES_NAME:
-			list = new List(Deques.emptyDeque(), SimpleType::xsENTITY);
+			list = new List(AnnotationSet.EMPTY, SimpleType::xsENTITY);
 			variety = Variety.LIST;
 			break;
 		case IDREFS_NAME:
-			list = new List(Deques.emptyDeque(), SimpleType::xsIDREF);
+			list = new List(AnnotationSet.EMPTY, SimpleType::xsIDREF);
 			variety = Variety.LIST;
 			break;
 		case NMTOKENS_NAME:
-			list = new List(Deques.emptyDeque(), SimpleType::xsNMTOKEN);
+			list = new List(AnnotationSet.EMPTY, SimpleType::xsNMTOKEN);
 			variety = Variety.LIST;
 			break;
 		default:
@@ -513,7 +523,7 @@ public class SimpleType implements TypeDefinition {
 			variety = Variety.ATOMIC;
 		}
 		final Node node = NodeHelper.newSchemaNode(doc, TagParser.Names.SIMPLE_TYPE, name);
-		return new SimpleType(node, Deques.emptyDeque(), name, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, () -> baseTypeDefinition, () -> variety, () -> facets, null, list, null);
+		return new SimpleType(node, Deques.emptyDeque(), name, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, () -> baseTypeDefinition, () -> variety, facets, null, list, null);
 	}
 
 	static void register() {
@@ -538,7 +548,7 @@ public class SimpleType implements TypeDefinition {
 	}
 
 	static SimpleType wrap(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Node context, final SimpleType baseSimpleType, final Deque<ConstrainingFacet> declaredFacets) {
-		final Deferred<Deque<Object>> facets = baseSimpleType.facets.map(f -> ConstrainingFacet.combineLikeFacets(baseSimpleType, f, declaredFacets));
+		final Deque<Object> facets = ConstrainingFacet.combineLikeFacets(baseSimpleType, baseSimpleType.facets, declaredFacets);
 		return new SimpleType(node, annotations, name, targetNamespace, finals, context, () -> baseSimpleType, baseSimpleType.variety, facets, null, null, null) {
 
 			@Override
@@ -848,12 +858,12 @@ public class SimpleType implements TypeDefinition {
 	 * <br>3 If the &lt;list&gt; alternative is chosen, then a set with one member, a whiteSpace facet with {value} = collapse and {fixed} = true.
 	 * <br>4 otherwise the empty set */
 	public Deque<ConstrainingFacet> facets() {
-		return Deques.unmodifiableDeque(facetValues.get());
+		return Deques.unmodifiableDeque(facetValues);
 	}
 
 	/** @return Based on {variety}, {facets}, {base type definition} and {member type definitions}, a set of Fundamental Facet components, one each as specified in The ordered Schema Component, The bounded Schema Component, The cardinality Schema Component and The numeric Schema Component . */
 	public Deque<FundamentalFacet> fundamentalFacets() {
-		return Deques.unmodifiableDeque(fundamentalFacets.get());
+		return Deques.unmodifiableDeque(fundamentalFacets);
 	}
 
 	/** @return From among the ·ancestors· of this Simple Type Definition, that Simple Type Definition which corresponds to a primitive datatype. */
@@ -876,7 +886,7 @@ public class SimpleType implements TypeDefinition {
 	 * <br>2 otherwise (that is, the {base type definition} is not ·xs:anySimpleType·), the {member type definitions} of the {base type definition}.
 	 * <br>Note: In this case, a &lt;restriction&gt; element will invariably be present. */
 	public Deque<SimpleType> memberTypeDefinitions() {
-		return Deques.unmodifiableDeque(memberTypeDefinitions.get());
+		return Deques.unmodifiableDeque(memberTypeDefinitions);
 	}
 
 	@Override

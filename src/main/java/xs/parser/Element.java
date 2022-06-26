@@ -206,6 +206,8 @@ public class Element implements Term {
 	}
 
 	private static Element parseDecl(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String defaultValue = result.value(AttrParser.DEFAULT);
 		final String fixedValue = result.value(AttrParser.FIXED);
 		Deque<Block> effectiveBlockValue = result.value(AttrParser.BLOCK);
@@ -264,7 +266,7 @@ public class Element implements Term {
 		} else if (substitutionGroup == null) {
 			substitutionGroup = Deques.emptyDeque();
 		}
-		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>(substitutionGroup.size());
+		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>();
 		final Deferred<? extends TypeDefinition> typeDefinition;
 		final QName typeName = result.value(AttrParser.TYPE);
 		if (typeName != null) {
@@ -273,9 +275,9 @@ public class Element implements Term {
 			final TypeDefinition type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
 			typeDefinition = type != null
 					? () -> type
-					: substitutionGroupAffiliations.isEmpty()
+					: substitutionGroup.isEmpty()
 							? ComplexType::xsAnyType
-							: substitutionGroupAffiliations.getFirst().typeDefinition;
+							: () -> substitutionGroupAffiliations.getFirst().typeDefinition.get();
 		}
 		final Deferred<ValueConstraint> valueConstraint;
 		if (defaultValue != null || fixedValue != null) {
@@ -298,12 +300,14 @@ public class Element implements Term {
 		} else {
 			valueConstraint = Deferred.none();
 		}
-		substitutionGroup.forEach(s -> substitutionGroupAffiliations.add(result.schema().find(s, Element.class)));
+		substitutionGroup.forEach(s -> substitutionGroupAffiliations.addLast(result.schema().find(s, Element.class)));
 		final String name = result.value(AttrParser.NAME);
-		return new Element(result.node(), result.annotations(), name, targetNamespace, typeDefinition, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
+		return new Element(node, annotations, name, targetNamespace, typeDefinition, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
 	}
 
 	private static Particle parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
 		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final QName refName = result.value(AttrParser.REF);
@@ -314,7 +318,7 @@ public class Element implements Term {
 			final Element elem = parseDecl(result);
 			decl = () -> elem;
 		}
-		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, decl);
+		return new Particle(node, annotations, maxOccurs, minOccurs, decl);
 	}
 
 	static void register() {

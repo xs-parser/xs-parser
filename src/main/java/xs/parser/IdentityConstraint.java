@@ -78,10 +78,12 @@ public class IdentityConstraint implements AnnotatedComponent {
 	}
 
 	private static IdentityConstraint parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
-		final Category category = Category.fromNode(result.node());
-		assert category != null : NodeHelper.toString(result.node());
+		final Category category = Category.fromNode(node);
+		assert category != null : NodeHelper.toString(node);
 		final QName refAttr = result.value(AttrParser.REF);
 		if (refAttr != null) {
 			IdentityConstraint ref = null;
@@ -93,15 +95,15 @@ public class IdentityConstraint implements AnnotatedComponent {
 				}
 			}
 			if (ref == null) {
-				throw new Schema.ParseException(result.node(), "No sibling key for identity constraint @ref");
+				throw new Schema.ParseException(node, "No sibling key for identity constraint @ref");
 			}
-			return new IdentityConstraint(result.node(), result.annotations(), ref.name(), ref.targetNamespace(), category, ref.selector(), ref.fields(), ref.referencedKey());
+			return new IdentityConstraint(node, annotations, ref.name(), ref.targetNamespace(), category, ref.selector(), ref.fields(), ref.referencedKey());
 		}
 		final XPathExpression selector = result.parse(TagParser.SELECTOR);
 		final Deque<XPathExpression> fields = result.parseAll(TagParser.FIELD);
 		final QName refer = result.value(AttrParser.REFER);
 		IdentityConstraint referencedKey = null;
-		if (refer != null && TagParser.KEYREF.equalsName(result.node())) {
+		if (refer != null && TagParser.KEYREF.equalsName(node)) {
 			final Deque<IdentityConstraint> siblingKeys = result.parseAll(TagParser.KEY, TagParser.KEYREF, TagParser.UNIQUE);
 			for (final IdentityConstraint k : siblingKeys) {
 				if (TagParser.KEY.equalsName(k.node()) && refer.getLocalPart().equals(k.name())) {
@@ -110,15 +112,17 @@ public class IdentityConstraint implements AnnotatedComponent {
 				}
 			}
 			if (referencedKey == null) {
-				throw new Schema.ParseException(result.node(), refer + " did not match any known identity constraints");
+				throw new Schema.ParseException(node, refer + " did not match any known identity constraints");
 			}
 		}
-		return new IdentityConstraint(result.node(), result.annotations(), name, targetNamespace, category, selector, fields, referencedKey);
+		return new IdentityConstraint(node, annotations, name, targetNamespace, category, selector, fields, referencedKey);
 	}
 
 	static void register() {
 		AttrParser.register(AttrParser.Names.REFER, QName.class, NodeHelper::getAttrValueAsQName);
-		TagParser.register(new String[] { TagParser.Names.KEY, TagParser.Names.KEYREF, TagParser.Names.UNIQUE }, parser, IdentityConstraint.class, IdentityConstraint::parse);
+		TagParser.register(TagParser.Names.KEY, parser, IdentityConstraint.class, IdentityConstraint::parse);
+		TagParser.register(TagParser.Names.KEYREF, parser, IdentityConstraint.class, IdentityConstraint::parse);
+		TagParser.register(TagParser.Names.UNIQUE, parser, IdentityConstraint.class, IdentityConstraint::parse);
 	}
 
 	public String name() {
