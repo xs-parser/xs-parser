@@ -69,13 +69,14 @@ public final class SequenceParser {
 			return nonSchemaAttributes;
 		}
 
-		@SafeVarargs public final <T> T parse(final TagParser<? extends T> first, final TagParser<? extends T>... more) {
-			T t = parse(first);
+		@SuppressWarnings("unchecked")
+		@SafeVarargs public final <T> Deferred<T> parse(final TagParser<? extends T> first, final TagParser<? extends T>... more) {
+			Deferred<T> t = (Deferred<T>) parse(first);
 			if (t != null) {
 				return t;
 			}
 			for (final TagParser<? extends T> m : more) {
-				t = parse(m);
+				t = (Deferred<T>) parse(m);
 				if (t != null) {
 					return t;
 				}
@@ -83,7 +84,7 @@ public final class SequenceParser {
 			return null;
 		}
 
-		public <T> T parse(final TagParser<T> t) {
+		public <T> Deferred<T> parse(final TagParser<T> t) {
 			if (!parserResults.containsKey(t)) {
 				throw new IllegalArgumentException(t.toString());
 			}
@@ -93,9 +94,11 @@ public final class SequenceParser {
 			}
 			final Result r = results.getFirst();
 			checkIfCanParse(r, t);
-			final T v = t.parse(r);
-			r.setValue(v);
-			return v;
+			return Deferred.of(() -> {
+				final T v = t.parse(r);
+				r.setValue(v);
+				return v;
+			});
 		}
 
 		@SafeVarargs public final <T> Deque<T> parseAll(final TagParser<? extends T> first, final TagParser<? extends T>... more) {

@@ -207,16 +207,16 @@ public class ComplexType implements TypeDefinition {
 
 			private final AnnotationSet annotations;
 			private final Deferred<ComplexType> base;
-			private final OpenContent openContent;
-			private final Particle group;
-			private final Particle all;
-			private final Particle choice;
-			private final Particle sequence;
+			private final Deferred<OpenContent> openContent;
+			private final Deferred<Particle> group;
+			private final Deferred<Particle> all;
+			private final Deferred<Particle> choice;
+			private final Deferred<Particle> sequence;
 			private final Deque<AttributeUse> attributeUses;
-			private final Wildcard attributeWildcard;
+			private final Deferred<Wildcard> attributeWildcard;
 			private final Deque<Assert> asserts;
 
-			Derivation(final AnnotationSet annotations, final Deferred<ComplexType> base, final Particle group, final Particle all, final Particle choice, final Particle sequence, final OpenContent openContent, final Deque<AttributeUse> attributeUses, final Wildcard attributeWildcard, final Deque<Assert> asserts) {
+			Derivation(final AnnotationSet annotations, final Deferred<ComplexType> base, final Deferred<Particle> group, final Deferred<Particle> all, final Deferred<Particle> choice, final Deferred<Particle> sequence, final Deferred<OpenContent> openContent, final Deque<AttributeUse> attributeUses, final Deferred<Wildcard> attributeWildcard, final Deque<Assert> asserts) {
 				this.annotations = Objects.requireNonNull(annotations);
 				this.base = Objects.requireNonNull(base);
 				this.group = group;
@@ -232,18 +232,18 @@ public class ComplexType implements TypeDefinition {
 			private static Derivation parse(final Result result) {
 				final QName baseType = result.value(AttrParser.BASE);
 				final Deferred<ComplexType> baseTypeDefinition = result.schema().find(baseType, ComplexType.class);
-				final Particle group = result.parse(TagParser.GROUP.use());
-				final Particle all = result.parse(TagParser.ALL);
-				final Particle choice = result.parse(TagParser.CHOICE);
-				final Particle sequence = result.parse(TagParser.SEQUENCE);
-				final OpenContent openContent = result.parse(TagParser.COMPLEX_TYPE.openContent());
+				final Deferred<Particle> group = result.parse(TagParser.GROUP.use());
+				final Deferred<Particle> all = result.parse(TagParser.ALL);
+				final Deferred<Particle> choice = result.parse(TagParser.CHOICE);
+				final Deferred<Particle> sequence = result.parse(TagParser.SEQUENCE);
+				final Deferred<OpenContent> openContent = result.parse(TagParser.COMPLEX_TYPE.openContent());
 				final Deque<AttributeGroup> attributeGroups = result.parseAll(TagParser.ATTRIBUTE_GROUP);
 				final Deque<AttributeUse> attributeUses = AttributeGroup.findAttributeUses(result.parseAll(TagParser.ATTRIBUTE.use()), attributeGroups);
 				final AnnotationSet annotations = Annotation.of(result).addAll(attributeGroups);
 				if (openContent != null) {
-					annotations.add(openContent.annotations());
+					annotations.add(openContent, OpenContent::annotations);
 				}
-				final Wildcard attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
+				final Deferred<Wildcard> attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
 				final Deque<Assert> asserts = result.parseAll(TagParser.COMPLEX_TYPE.asserts());
 				return new Derivation(annotations, baseTypeDefinition, group, all, choice, sequence, openContent, attributeUses, attributeWildcard, asserts);
 			}
@@ -257,23 +257,23 @@ public class ComplexType implements TypeDefinition {
 			}
 
 			OpenContent openContent() {
-				return openContent;
+				return openContent != null ? openContent.get() : null;
 			}
 
 			Particle group() {
-				return group;
+				return group != null ? group.get() : null;
 			}
 
 			Particle all() {
-				return all;
+				return all != null ? all.get() : null;
 			}
 
 			Particle choice() {
-				return choice;
+				return choice != null ? choice.get() : null;
 			}
 
 			Particle sequence() {
-				return sequence;
+				return sequence != null ? sequence.get() : null;
 			}
 
 			Deque<AttributeUse> attributeUses() {
@@ -281,7 +281,7 @@ public class ComplexType implements TypeDefinition {
 			}
 
 			Wildcard attributeWildcard() {
-				return attributeWildcard;
+				return attributeWildcard != null ? attributeWildcard.get() : null;
 			}
 
 			Deque<Assert> asserts() {
@@ -298,9 +298,9 @@ public class ComplexType implements TypeDefinition {
 		private final AnnotationSet annotations;
 		private final Boolean mixed;
 		private final DerivationMethod derivationMethod;
-		private final Derivation derivation;
+		private final Deferred<Derivation> derivation;
 
-		ComplexContent(final AnnotationSet annotations, final Boolean mixed, final DerivationMethod derivationMethod, final Derivation derivation) {
+		ComplexContent(final AnnotationSet annotations, final Boolean mixed, final DerivationMethod derivationMethod, final Deferred<Derivation> derivation) {
 			this.annotations = Objects.requireNonNull(annotations);
 			this.mixed = mixed;
 			this.derivationMethod = derivationMethod;
@@ -309,17 +309,17 @@ public class ComplexType implements TypeDefinition {
 
 		private static ComplexContent parse(final Result result) {
 			final Boolean mixed = result.value(AttrParser.MIXED);
-			final Derivation restriction = result.parse(TagParser.COMPLEX_TYPE.complexContent().restriction());
+			final Deferred<Derivation> restriction = result.parse(TagParser.COMPLEX_TYPE.complexContent().restriction());
 			final DerivationMethod derivationMethod;
 			final AnnotationSet annotations;
 			if (restriction != null) {
 				derivationMethod = DerivationMethod.RESTRICTION;
-				annotations = Annotation.of(result).add(restriction.annotations());
+				annotations = Annotation.of(result).add(restriction, Derivation::annotations);
 				return new ComplexContent(annotations, mixed, derivationMethod, restriction);
 			} else {
-				final Derivation extension = result.parse(TagParser.COMPLEX_TYPE.complexContent().extension());
+				final Deferred<Derivation> extension = result.parse(TagParser.COMPLEX_TYPE.complexContent().extension());
 				derivationMethod = DerivationMethod.EXTENSION;
-				annotations = Annotation.of(result).add(extension.annotations());
+				annotations = Annotation.of(result).add(extension, Derivation::annotations);
 				return new ComplexContent(annotations, mixed, derivationMethod, extension);
 			}
 		}
@@ -329,7 +329,7 @@ public class ComplexType implements TypeDefinition {
 		}
 
 		Derivation derivation() {
-			return derivation;
+			return derivation.get();
 		}
 
 		Boolean mixed() {
@@ -378,38 +378,46 @@ public class ComplexType implements TypeDefinition {
 	 */
 	public static class ContentType {
 
-		private final Variety variety;
-		private final Particle particle;
-		private final OpenContent openContent;
-		private final SimpleType simpleTypeDefinition;
+		private final Deferred<Variety> variety;
+		private final Deferred<Particle> particle;
+		private final Deferred<OpenContent> openContent;
+		private final Deferred<SimpleType> simpleTypeDefinition;
 
-		private ContentType(final DefaultOpenContent defaultOpenContent, final Variety variety, final Particle particle, final OpenContent openContent, final SimpleType simpleTypeDefinition) {
+		private ContentType(final Deferred<DefaultOpenContent> defaultOpenContent, final Deferred<Variety> variety, final Deferred<Particle> particle, final Deferred<OpenContent> openContent, final Deferred<SimpleType> simpleTypeDefinition) {
 			this.variety = Objects.requireNonNull(variety);
-			this.particle = particle;
+			this.particle = Objects.requireNonNull(particle);
 			if (openContent != null) {
 				this.openContent = openContent;
-			} else if (!Variety.EMPTY.equals(variety) || (defaultOpenContent != null && defaultOpenContent.appliesToEmpty())) {
-				this.openContent = defaultOpenContent;
+			} else if (!Variety.EMPTY.equals(variety) || defaultOpenContent != null) {
+				this.openContent = Deferred.of(() -> {
+					if (defaultOpenContent != null) {
+						final DefaultOpenContent d = defaultOpenContent.get();
+						if (d.appliesToEmpty()) {
+							return d;
+						}
+					}
+					return null;
+				});
 			} else {
-				this.openContent = null;
+				this.openContent = Deferred.none();
 			}
-			this.simpleTypeDefinition = simpleTypeDefinition;
+			this.simpleTypeDefinition = Objects.requireNonNull(simpleTypeDefinition);
 		}
 
 		public Variety variety() {
-			return variety;
+			return variety.get();
 		}
 
 		public Particle particle() {
-			return particle;
+			return particle.get();
 		}
 
 		public OpenContent openContent() {
-			return openContent;
+			return openContent.get();
 		}
 
 		public SimpleType simpleTypeDefinition() {
-			return simpleTypeDefinition;
+			return simpleTypeDefinition.get();
 		}
 
 	}
@@ -493,9 +501,9 @@ public class ComplexType implements TypeDefinition {
 
 		private final AnnotationSet annotations;
 		private final Mode mode;
-		private final Particle wildcard;
+		private final Deferred<Particle> wildcard;
 
-		OpenContent(final AnnotationSet annotations, final Mode mode, final Particle wildcard) {
+		OpenContent(final AnnotationSet annotations, final Mode mode, final Deferred<Particle> wildcard) {
 			this.annotations = Objects.requireNonNull(annotations);
 			this.mode = mode;
 			this.wildcard = wildcard;
@@ -504,7 +512,7 @@ public class ComplexType implements TypeDefinition {
 		private static OpenContent parse(final Result result) {
 			final AnnotationSet annotations = Annotation.of(result);
 			final Mode mode = result.value(AttrParser.MODE);
-			final Particle wildcard = result.parse(TagParser.ANY);
+			final Deferred<Particle> wildcard = result.parse(TagParser.ANY);
 			return new OpenContent(annotations, mode, wildcard);
 		}
 
@@ -519,7 +527,7 @@ public class ComplexType implements TypeDefinition {
 
 		/** @return Let W be the wildcard corresponding to the &lt;any&gt; [child] of the ·wildcard element·. If the {open content} of the ·explicit content type· is ·absent·, then W; otherwise a wildcard whose {process contents} and {annotations} are those of W, and whose {namespace constraint} is the wildcard union of the {namespace constraint} of W and of {open content}.{wildcard} of the ·explicit content type·, as defined in Attribute Wildcard Union (§3.10.6.3). */
 		public Particle wildcard() {
-			return wildcard;
+			return wildcard.get();
 		}
 
 	}
@@ -558,10 +566,10 @@ public class ComplexType implements TypeDefinition {
 			private final AnnotationSet annotations;
 			private final Deferred<? extends TypeDefinition> base;
 			private final Deque<AttributeUse> attributeUses;
-			private final Wildcard attributeWildcard;
+			private final Deferred<Wildcard> attributeWildcard;
 			private final Deque<Assert> asserts;
 
-			Extension(final AnnotationSet annotations, final Deferred<? extends TypeDefinition> base, final Deque<AttributeUse> attributeUses, final Wildcard attributeWildcard, final Deque<Assert> asserts) {
+			Extension(final AnnotationSet annotations, final Deferred<? extends TypeDefinition> base, final Deque<AttributeUse> attributeUses, final Deferred<Wildcard> attributeWildcard, final Deque<Assert> asserts) {
 				this.annotations = Objects.requireNonNull(annotations);
 				this.base = Objects.requireNonNull(base);
 				this.attributeUses = Objects.requireNonNull(attributeUses);
@@ -575,7 +583,7 @@ public class ComplexType implements TypeDefinition {
 				final Deque<AttributeGroup> attributeGroups = result.parseAll(TagParser.ATTRIBUTE_GROUP);
 				final Deque<AttributeUse> attributeUses = AttributeGroup.findAttributeUses(result.parseAll(TagParser.ATTRIBUTE.use()), attributeGroups);
 				final AnnotationSet annotations = Annotation.of(result).addAll(attributeGroups);
-				final Wildcard attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
+				final Deferred<Wildcard> attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
 				final Deque<Assert> asserts = result.parseAll(TagParser.COMPLEX_TYPE.asserts());
 				return new Extension(annotations, baseTypeDefinition, attributeUses, attributeWildcard, asserts);
 			}
@@ -593,7 +601,7 @@ public class ComplexType implements TypeDefinition {
 			}
 
 			Wildcard attributeWildcard() {
-				return attributeWildcard;
+				return attributeWildcard.get();
 			}
 
 			Deque<Assert> asserts() {
@@ -628,12 +636,12 @@ public class ComplexType implements TypeDefinition {
 			private final Deferred<ComplexType> base;
 			private final Deque<ConstrainingFacet> facets;
 			private final Deque<Particle> wildcard;
-			private final SimpleType simpleType;
+			private final Deferred<SimpleType> simpleType;
 			private final Deque<AttributeUse> attributeUses;
-			private final Wildcard attributeWildcard;
+			private final Deferred<Wildcard> attributeWildcard;
 			private final Deque<Assert> asserts;
 
-			private Restriction(final AnnotationSet annotations, final Deferred<ComplexType> base, final Deque<ConstrainingFacet> facets, final Deque<Particle> wildcard, final SimpleType simpleType, final Deque<AttributeUse> attributeUses, final Wildcard attributeWildcard, final Deque<Assert> asserts) {
+			private Restriction(final AnnotationSet annotations, final Deferred<ComplexType> base, final Deque<ConstrainingFacet> facets, final Deque<Particle> wildcard, final Deferred<SimpleType> simpleType, final Deque<AttributeUse> attributeUses, final Deferred<Wildcard> attributeWildcard, final Deque<Assert> asserts) {
 				this.annotations = Objects.requireNonNull(annotations);
 				this.base = Objects.requireNonNull(base);
 				this.facets = Objects.requireNonNull(facets);
@@ -647,13 +655,13 @@ public class ComplexType implements TypeDefinition {
 			private static Restriction parse(final Result result) {
 				final QName baseType = result.value(AttrParser.BASE);
 				final Deferred<ComplexType> baseTypeDefinition = result.schema().find(baseType, ComplexType.class);
-				final SimpleType simpleType = result.parse(TagParser.SIMPLE_TYPE);
+				final Deferred<SimpleType> simpleType = result.parse(TagParser.SIMPLE_TYPE);
 				final Deque<ConstrainingFacet> facets = result.parseAll(TagParser.FACETS.length(), TagParser.FACETS.maxLength(), TagParser.FACETS.minLength(), TagParser.FACETS.pattern(), TagParser.FACETS.enumeration(), TagParser.FACETS.whiteSpace(), TagParser.FACETS.maxInclusive(), TagParser.FACETS.maxExclusive(), TagParser.FACETS.minExclusive(), TagParser.FACETS.minInclusive(), TagParser.FACETS.totalDigits(), TagParser.FACETS.fractionDigits(), TagParser.FACETS.assertion());
 				final Deque<Particle> wildcard = result.parseAll(TagParser.ANY);
 				final Deque<AttributeGroup> attributeGroups = result.parseAll(TagParser.ATTRIBUTE_GROUP);
 				final Deque<AttributeUse> attributeUses = AttributeGroup.findAttributeUses(result.parseAll(TagParser.ATTRIBUTE.use()), attributeGroups);
 				final AnnotationSet annotations = Annotation.of(result).addAll(attributeGroups);
-				final Wildcard attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
+				final Deferred<Wildcard> attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
 				final Deque<Assert> asserts = result.parseAll(TagParser.COMPLEX_TYPE.asserts());
 				return new Restriction(annotations, baseTypeDefinition, facets, wildcard, simpleType, attributeUses, attributeWildcard, asserts);
 			}
@@ -676,7 +684,7 @@ public class ComplexType implements TypeDefinition {
 			}
 
 			SimpleType simpleType() {
-				return simpleType;
+				return simpleType.get();
 			}
 
 			Deque<AttributeUse> attributeUses() {
@@ -684,7 +692,7 @@ public class ComplexType implements TypeDefinition {
 			}
 
 			Wildcard attributeWildcard() {
-				return attributeWildcard;
+				return attributeWildcard.get();
 			}
 
 			Deque<Assert> asserts() {
@@ -699,18 +707,18 @@ public class ComplexType implements TypeDefinition {
 				.elements(1, 1, TagParser.COMPLEX_TYPE.simpleContent().extension(), TagParser.COMPLEX_TYPE.simpleContent().restriction());
 
 		private final DerivationMethod derivationMethod;
-		private final Restriction restriction;
-		private final Extension extension;
+		private final Deferred<Restriction> restriction;
+		private final Deferred<Extension> extension;
 
-		private SimpleContent(final DerivationMethod derivationMethod, final Restriction restriction, final Extension extension) {
+		private SimpleContent(final DerivationMethod derivationMethod, final Deferred<Restriction> restriction, final Deferred<Extension> extension) {
 			this.derivationMethod = derivationMethod;
 			this.restriction = restriction;
 			this.extension = extension;
 		}
 
 		private static SimpleContent parse(final Result result) {
-			final Restriction restriction = result.parse(TagParser.COMPLEX_TYPE.simpleContent().restriction());
-			final Extension extension = result.parse(TagParser.COMPLEX_TYPE.simpleContent().extension());
+			final Deferred<Restriction> restriction = result.parse(TagParser.COMPLEX_TYPE.simpleContent().restriction());
+			final Deferred<Extension> extension = result.parse(TagParser.COMPLEX_TYPE.simpleContent().extension());
 			final DerivationMethod derivationMethod = restriction != null
 					? DerivationMethod.RESTRICTION
 					: DerivationMethod.EXTENSION;
@@ -738,11 +746,11 @@ public class ComplexType implements TypeDefinition {
 		}
 
 		Restriction restriction() {
-			return restriction;
+			return restriction.get();
 		}
 
 		Extension extension() {
-			return extension;
+			return extension.get();
 		}
 
 	}
@@ -760,9 +768,9 @@ public class ComplexType implements TypeDefinition {
 
 	static {
 		final Document xsAnyTypeDoc = NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-		final ContentType xsAnyTypeContentType = new ContentType(null, Variety.EMPTY, null, null, null);
+		final ContentType xsAnyTypeContentType = new ContentType(null, () -> Variety.EMPTY, Deferred.none(), Deferred.none(), Deferred.none());
 		final Node xsAnyTypeNode = NodeHelper.newSchemaNode(xsAnyTypeDoc, TagParser.Names.COMPLEX_TYPE, ANYTYPE_NAME);
-		xsAnyType = new ComplexType(xsAnyTypeNode, Deques.emptyDeque(), ANYTYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), Deferred.none(), Deques.emptyDeque(), null, null, false, DerivationMethod.RESTRICTION, () -> xsAnyTypeContentType, Deques.emptyDeque(), Deques.emptyDeque()) {
+		xsAnyType = new ComplexType(xsAnyTypeNode, Deques.emptyDeque(), ANYTYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), Deferred.none(), Deques.emptyDeque(), null, null, false, () -> DerivationMethod.RESTRICTION, () -> xsAnyTypeContentType, Deques.emptyDeque(), Deques.emptyDeque()) {
 
 			@Override
 			public TypeDefinition baseTypeDefinition() {
@@ -779,15 +787,15 @@ public class ComplexType implements TypeDefinition {
 	private final Deque<Final> finals;
 	private final Deferred<? extends TypeDefinition> baseTypeDefinition;
 	private final Deque<AttributeUse> attributeUses;
-	private final Wildcard attributeWildcard;
+	private final Deferred<Wildcard> attributeWildcard;
 	private final Node context;
 	private final boolean isAbstract;
-	private final DerivationMethod derivationMethod;
+	private final Deferred<DerivationMethod> derivationMethod;
 	private final Deferred<ContentType> contentType;
 	private final Deque<Block> prohibitedSubstitutions;
 	private final Deque<Assertion> assertions;
 
-	private ComplexType(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Deferred<? extends TypeDefinition> baseTypeDefinition, final Deque<AttributeUse> attributeUses, final Wildcard attributeWildcard, final Node context, final boolean isAbstract, final DerivationMethod derivationMethod, final Deferred<ContentType> contentType, final Deque<Block> prohibitedSubstitutions, final Deque<Assertion> assertions) {
+	private ComplexType(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Deferred<? extends TypeDefinition> baseTypeDefinition, final Deque<AttributeUse> attributeUses, final Deferred<Wildcard> attributeWildcard, final Node context, final boolean isAbstract, final Deferred<DerivationMethod> derivationMethod, final Deferred<ContentType> contentType, final Deque<Block> prohibitedSubstitutions, final Deque<Assertion> assertions) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -798,10 +806,14 @@ public class ComplexType implements TypeDefinition {
 		this.attributeWildcard = attributeWildcard;
 		this.context = context;
 		this.isAbstract = isAbstract;
-		this.derivationMethod = derivationMethod;
+		this.derivationMethod = Objects.requireNonNull(derivationMethod);
 		this.contentType = Objects.requireNonNull(contentType);
 		this.prohibitedSubstitutions = Objects.requireNonNull(prohibitedSubstitutions);
 		this.assertions = Objects.requireNonNull(assertions);
+	}
+
+	private static boolean nonNull(final Deferred<?> def) {
+		return def != null && def.get() != null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -821,68 +833,67 @@ public class ComplexType implements TypeDefinition {
 		final String name = result.value(AttrParser.NAME);
 		final boolean defaultAttributesApply = result.value(AttrParser.DEFAULT_ATTRIBUTES_APPLY);
 		final String targetNamespace = result.schema().targetNamespace();
-		final ComplexContent complexContent = result.parse(TagParser.COMPLEX_TYPE.complexContent());
-		final SimpleContent simpleContent = result.parse(TagParser.COMPLEX_TYPE.simpleContent());
-		final boolean effectiveMixed = complexContent != null && complexContent.mixed() != null
-				? complexContent.mixed()
-				: mixed != null && mixed;
+		final Deferred<ComplexContent> complexContent = result.parse(TagParser.COMPLEX_TYPE.complexContent());
+		final Deferred<SimpleContent> simpleContent = result.parse(TagParser.COMPLEX_TYPE.simpleContent());
+		final Deferred<Boolean> effectiveMixed = Deferred.of(() ->
+				complexContent != null && complexContent.get().mixed() != null
+						? complexContent.get().mixed()
+						: mixed != null && mixed);
 		final Deferred<? extends TypeDefinition> baseTypeDefinition;
 		final Deque<Assert> assertions;
 		final Deque<AttributeUse> attributeUses;
-		final Wildcard attributeWildcard;
-		final DerivationMethod derivationMethod;
+		final Deferred<Wildcard> attributeWildcard;
+		final Deferred<DerivationMethod> derivationMethod;
 		final Deferred<ContentType> explicitContentType;
 		if (simpleContent != null) {
 			// https://www.w3.org/TR/xmlschema11-1/#dcl.ctd.ctsc
-			annotations.add(simpleContent.restriction() != null
-					? simpleContent.restriction().annotations()
-					: simpleContent.extension().annotations());
-			assertions = simpleContent.asserts();
-			final Deferred<SimpleType> simpleBase = Deferred.of(() -> {
-				final TypeDefinition typeDefinition = simpleContent.base();
+			annotations.add(simpleContent.map(s -> s.restriction() != null ? s.restriction().annotations() : s.extension().annotations()), Function.identity());
+			assertions = simpleContent.mapToDeque(s -> s.asserts());
+			final Deferred<SimpleType> simpleBase = simpleContent.map(s -> {
+				final TypeDefinition typeDefinition = s.base();
 				if (typeDefinition instanceof ComplexType) {
 					final ComplexType complexType = (ComplexType) typeDefinition;
-					if (complexType.contentType().variety() == Variety.SIMPLE && DerivationMethod.RESTRICTION.equals(simpleContent.derivationMethod())) { // 1
-						if (simpleContent.restriction().simpleType() != null) { // 1.1
-							return simpleContent.restriction().simpleType();
+					if (complexType.contentType().variety() == Variety.SIMPLE && DerivationMethod.RESTRICTION.equals(s.derivationMethod())) { // 1
+						if (s.restriction().simpleType() != null) { // 1.1
+							return s.restriction().simpleType();
 						} else { // 1.2
-							return SimpleType.wrap(node, Deques.emptyDeque(), null, result.schema().targetNamespace(), Deques.emptyDeque(), complexType.node(), complexType.contentType().simpleTypeDefinition(), simpleContent.restriction().facets());
+							return SimpleType.wrap(node, Deques.emptyDeque(), null, result.schema().targetNamespace(), Deques.emptyDeque(), complexType.node(), complexType.contentType().simpleTypeDefinition(), s.restriction().facets());
 						}
-					} else if (complexType.contentType().variety() == Variety.MIXED && DerivationMethod.RESTRICTION.equals(simpleContent.derivationMethod()) && complexType.contentType().particle().isEmptiable()) { // 2
-						final SimpleType sb = simpleContent.restriction().simpleType() != null ? simpleContent.restriction().simpleType() : SimpleType.xsAnySimpleType();
+					} else if (complexType.contentType().variety() == Variety.MIXED && DerivationMethod.RESTRICTION.equals(s.derivationMethod()) && complexType.contentType().particle().isEmptiable()) { // 2
+						final SimpleType sb = s.restriction().simpleType() != null ? s.restriction().simpleType() : SimpleType.xsAnySimpleType();
 						return SimpleType.wrap(node, Deques.emptyDeque(), null, result.schema().targetNamespace(), Deques.emptyDeque(), complexType.node(), sb, sb.facets());
-					} else if (complexType.contentType().variety() == Variety.SIMPLE && DerivationMethod.EXTENSION.equals(simpleContent.derivationMethod())) { // 3
+					} else if (complexType.contentType().variety() == Variety.SIMPLE && DerivationMethod.EXTENSION.equals(s.derivationMethod())) { // 3
 						return complexType.contentType().simpleTypeDefinition();
 					}
-				} else if (DerivationMethod.EXTENSION.equals(simpleContent.derivationMethod()) && typeDefinition instanceof SimpleType) { // 4
+				} else if (DerivationMethod.EXTENSION.equals(s.derivationMethod()) && typeDefinition instanceof SimpleType) { // 4
 					return (SimpleType) typeDefinition;
 				}
 				return SimpleType.xsAnySimpleType(); // 5
 			});
 			baseTypeDefinition = simpleBase;
-			attributeUses = simpleContent.attributeUses();
-			attributeWildcard = simpleContent.attributeWildcard();
-			derivationMethod = simpleContent.derivationMethod();
-			explicitContentType = Deferred.of(() -> new ContentType(result.schema().defaultOpenContent(), Variety.SIMPLE, null, null, simpleBase.get()));
+			attributeUses = simpleContent.mapToDeque(SimpleContent::attributeUses);
+			attributeWildcard = simpleContent.map(SimpleContent::attributeWildcard);
+			derivationMethod = simpleContent.map(SimpleContent::derivationMethod);
+			explicitContentType = Deferred.of(() -> new ContentType(result.schema().defaultOpenContent(), () -> Variety.SIMPLE, null, null, simpleBase));
 		} else {
-			final OpenContent openContent;
-			final Particle group;
-			final Particle all;
-			final Particle choice;
-			final Particle sequence;
+			final Deferred<OpenContent> openContent;
+			final Deferred<Particle> group;
+			final Deferred<Particle> all;
+			final Deferred<Particle> choice;
+			final Deferred<Particle> sequence;
 			final Deque<Assert> asserts;
 			if (complexContent != null) {
-				annotations.add(complexContent.annotations());
-				openContent = complexContent.derivation().openContent();
-				group = complexContent.derivation().group();
-				all = complexContent.derivation().all();
-				choice = complexContent.derivation().choice();
-				sequence = complexContent.derivation().sequence();
-				asserts = complexContent.derivation().asserts();
-				baseTypeDefinition = complexContent.derivation()::base;
-				attributeUses = complexContent.derivation().attributeUses();
-				attributeWildcard = complexContent.derivation().attributeWildcard();
-				derivationMethod = complexContent.derivationMethod();
+				annotations.add(complexContent, ComplexContent::annotations);
+				openContent = complexContent.map(c -> c.derivation().openContent());
+				group = complexContent.map(c -> c.derivation().group());
+				all = complexContent.map(c -> c.derivation().all());
+				choice = complexContent.map(c -> c.derivation().choice());
+				sequence = complexContent.map(c -> c.derivation().sequence());
+				asserts = complexContent.mapToDeque(c -> c.derivation().asserts());
+				baseTypeDefinition = complexContent.map(c -> c.derivation().base());
+				attributeUses = complexContent.mapToDeque(c -> c.derivation().attributeUses());
+				attributeWildcard = complexContent.map(c -> c.derivation().attributeWildcard());
+				derivationMethod = complexContent.map(ComplexContent::derivationMethod);
 			} else {
 				openContent = result.parse(TagParser.COMPLEX_TYPE.openContent());
 				group = result.parse(TagParser.GROUP.use());
@@ -895,49 +906,56 @@ public class ComplexType implements TypeDefinition {
 				annotations.addAll(attributeGroups);
 				attributeUses = AttributeGroup.findAttributeUses(result.parseAll(TagParser.ATTRIBUTE.use()), attributeGroups);
 				attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
-				derivationMethod = DerivationMethod.RESTRICTION;
+				derivationMethod = () -> DerivationMethod.RESTRICTION;
 			}
 			assertions = asserts;
-			final Particle particle = group != null ? group : all != null ? all : choice != null ? choice : sequence != null ? sequence : null;
-			final Particle explicitContent;
-			if (particle == null) {
-				explicitContent = null;
-			} else {
-				if ((all != null && ((ModelGroup) all.term()).particles().isEmpty()) || (sequence != null && ((ModelGroup) sequence.term()).particles().isEmpty())) {
-					explicitContent = null;
+			final Deferred<Particle> particle = Deferred.of(() ->
+					nonNull(group) ? group.get()
+					: nonNull(all) ? all.get()
+					: nonNull(choice) ? choice.get()
+					: nonNull(sequence) ? sequence.get()
+					: null);
+			final Deferred<Particle> explicitContent = Deferred.of(() -> {
+				if (particle == null) {
+					return null;
 				} else {
-					final boolean choiceMinOccurs0 = choice != null && choice.minOccurs().intValue() == 0 && (choice.term() == null || ((ModelGroup) choice.term()).particles().isEmpty());
-					if (choiceMinOccurs0) {
-						explicitContent = null;
+					if ((nonNull(all) && ((ModelGroup) all.get().term()).particles().isEmpty()) || (nonNull(sequence) && ((ModelGroup) sequence.get().term()).particles().isEmpty())) {
+						return null;
 					} else {
-						final Number particleMaxOccurs = group != null ? group.maxOccurs()
-								: all != null ? all.maxOccurs()
-								: choice != null ? choice.maxOccurs()
-								: sequence != null ? sequence.maxOccurs()
-								: null;
-						explicitContent = particleMaxOccurs.intValue() == 0 ? null : particle;
+						final boolean choiceMinOccurs0 = nonNull(choice) && choice.get().minOccurs().intValue() == 0 && (choice.get().term() == null || ((ModelGroup) choice.get().term()).particles().isEmpty());
+						if (choiceMinOccurs0) {
+							return null;
+						} else {
+							final Number particleMaxOccurs = nonNull(group) ? group.get().maxOccurs()
+									: nonNull(all) ? all.get().maxOccurs()
+									: nonNull(choice) ? choice.get().maxOccurs()
+									: nonNull(sequence) ? sequence.get().maxOccurs()
+									: null;
+							return particleMaxOccurs.intValue() == 0 ? null : particle.get();
+						}
 					}
 				}
-			}
-			final Particle effectiveContent;
-			if (explicitContent == null) {
-				if (effectiveMixed) {
-					effectiveContent = new Particle(node, Deques.emptyDeque(), 1, 1, ModelGroup.synthetic(node, Deques.emptyDeque(), Compositor.SEQUENCE, Deques.emptyDeque()));
+			});
+			final Deferred<Particle> effectiveContent = explicitContent.map(e -> {
+				if (e == null) {
+					if (effectiveMixed.get()) {
+						return new Particle(node, Deques.emptyDeque(), 1, 1, ModelGroup.synthetic(node, Deques.emptyDeque(), Compositor.SEQUENCE, Deques.emptyDeque()));
+					} else {
+						return null;
+					}
 				} else {
-					effectiveContent = null;
+					return e;
 				}
-			} else {
-				effectiveContent = explicitContent;
-			}
-			explicitContentType = Deferred.of(() -> {
+			});
+			explicitContentType = effectiveContent.map(ef -> {
 				final Supplier<ContentType> handleRestriction = () -> {
-					if (effectiveContent == null) { // 4.1.1
-						return new ContentType(result.schema().defaultOpenContent(), Variety.EMPTY, null, openContent, null);
+					if (ef == null) { // 4.1.1
+						return new ContentType(result.schema().defaultOpenContent(), () -> Variety.EMPTY, Deferred.none(), openContent, Deferred.none());
 					} else { // 4.1.2
-						return new ContentType(result.schema().defaultOpenContent(), effectiveMixed ? Variety.MIXED : Variety.ELEMENT_ONLY, effectiveContent, openContent, null);
+						return new ContentType(result.schema().defaultOpenContent(), effectiveMixed.map(e -> e ? Variety.MIXED : Variety.ELEMENT_ONLY), effectiveContent, openContent, Deferred.none());
 					}
 				};
-				switch (derivationMethod) {
+				switch (derivationMethod.get()) {
 				case RESTRICTION: // 4.1
 					return handleRestriction.get();
 				case EXTENSION: // 4.2
@@ -945,30 +963,30 @@ public class ComplexType implements TypeDefinition {
 						return handleRestriction.get(); // 4.2.1
 					} else {
 						final ComplexType complexBase = (ComplexType) baseTypeDefinition.get();
-						if (effectiveContent == null && complexBase.contentType().variety().isMixedOrElementOnly()) {
+						if (ef == null && complexBase.contentType().variety().isMixedOrElementOnly()) {
 							return complexBase.contentType(); // 4.2.2
 						} else if (!complexBase.contentType().variety().isMixedOrElementOnly()) {
 							return handleRestriction.get(); // 4.2.1
 						} else { // 4.2.3
 							final Particle baseParticle = complexBase.contentType().particle();
 							final Particle effectiveParticle;
-							if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && effectiveContent == null) { // 4.2.3.1
+							if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && ef == null) { // 4.2.3.1
 								effectiveParticle = baseParticle;
-							} else if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && effectiveContent != null && effectiveContent.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) effectiveContent.term()).compositor())) { // 4.2.3.2
+							} else if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && ef != null && ef.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) ef.term()).compositor())) { // 4.2.3.2
 								final Deque<Particle> particles = new ArrayDeque<>(((ModelGroup) baseParticle.term()).particles());
-								particles.addAll(((ModelGroup) effectiveContent.term()).particles());
+								particles.addAll(((ModelGroup) ef.term()).particles());
 								effectiveParticle = new Particle(node, Deques.emptyDeque(), 1, baseParticle.minOccurs(), ModelGroup.synthetic(node, Deques.emptyDeque(), Compositor.ALL, particles));
 							} else { // 4.2.3.3
 								final Deque<Particle> particles = new ArrayDeque<>();
 								if (baseParticle != null) {
 									particles.add(baseParticle);
 								}
-								if (effectiveContent != null) {
-									particles.add(effectiveContent);
+								if (ef != null) {
+									particles.add(ef);
 								}
 								effectiveParticle = new Particle(node, Deques.emptyDeque(), 1, 1, ModelGroup.synthetic(node, Deques.emptyDeque(), Compositor.SEQUENCE, particles));
 							}
-							return new ContentType(result.schema().defaultOpenContent(), effectiveMixed ? Variety.MIXED : Variety.ELEMENT_ONLY, effectiveParticle, complexBase.contentType().openContent(), null);
+							return new ContentType(result.schema().defaultOpenContent(), effectiveMixed.map(e -> e ? Variety.MIXED : Variety.ELEMENT_ONLY), () -> effectiveParticle, complexBase.contentType()::openContent, Deferred.none());
 						}
 					}
 				default:
@@ -978,10 +996,9 @@ public class ComplexType implements TypeDefinition {
 		}
 		annotations.addAll(assertions, Assert::annotationSet);
 		if (defaultAttributesApply && result.schema().defaultAttributes() != null) {
-			attributeUses.addAll(result.schema().defaultAttributes().attributeUses());
+			attributeUses.addAll(result.schema().defaultAttributes().mapToDeque(AttributeGroup::attributeUses));
 		}
 		final Node context = result.parent() != null ? result.parent().node() : null;
-		assert explicitContentType != null : NodeHelper.toString(node);
 		return new ComplexType(node, annotations.resolve(node), name, targetNamespace, finals, baseTypeDefinition, attributeUses, attributeWildcard, context, isAbstract, derivationMethod, explicitContentType, block, (Deque<Assertion>) (Object) assertions);
 	}
 
@@ -1011,7 +1028,7 @@ public class ComplexType implements TypeDefinition {
 	}
 
 	public DerivationMethod derivationMethod() {
-		return derivationMethod;
+		return derivationMethod.get();
 	}
 
 	/** @return The ·actual value· of the abstract [attribute], if present, otherwise false. */
@@ -1024,7 +1041,7 @@ public class ComplexType implements TypeDefinition {
 	}
 
 	public Wildcard attributeWildcard() {
-		return attributeWildcard;
+		return attributeWildcard != null ? attributeWildcard.get() : null;
 	}
 
 	public Deque<Block> prohibitedSubstitutions() {

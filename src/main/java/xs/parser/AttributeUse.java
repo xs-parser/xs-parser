@@ -81,10 +81,11 @@ public class AttributeUse implements AnnotatedComponent {
 		} else {
 			final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 			final QName typeName = result.value(AttrParser.TYPE);
-			final SimpleType simpleTypeChild = result.parse(TagParser.SIMPLE_TYPE);
+			final Deferred<SimpleType> simpleTypeChild = result.parse(TagParser.SIMPLE_TYPE);
 			final Deferred<SimpleType> simpleType = typeName != null
 					? result.schema().find(typeName, SimpleType.class)
-					: simpleTypeChild != null ? () -> simpleTypeChild : SimpleType::xsAnySimpleType;
+					: simpleTypeChild != null
+							? simpleTypeChild : SimpleType::xsAnySimpleType;
 			final Attribute attr = new Attribute(node, annotations, name, targetNamespace, simpleType, scope, valueConstraint.apply(simpleType), inheritable);
 			attributeDecl = () -> attr;
 		}

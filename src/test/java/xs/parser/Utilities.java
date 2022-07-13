@@ -8,7 +8,7 @@ import org.xml.sax.*;
 import xs.parser.Schema.*;
 import xs.parser.internal.util.*;
 
-public class Utilities {
+public final class Utilities {
 
 	public static final String PROLOG_UTF8 = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
 

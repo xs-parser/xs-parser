@@ -78,11 +78,10 @@ public class Alternative implements AnnotatedComponent {
 		if (typeName != null) {
 			typeDefinition = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final TypeDefinition type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
-			if (type == null) {
+			typeDefinition = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
+			if (typeDefinition == null) {
 				throw new Schema.ParseException(result.node(), "Type definition not found");
 			}
-			typeDefinition = () -> type;
 		}
 		return new Alternative(node, annotations, test, typeDefinition);
 	}

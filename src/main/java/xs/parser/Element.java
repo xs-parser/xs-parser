@@ -272,9 +272,9 @@ public class Element implements Term {
 		if (typeName != null) {
 			typeDefinition = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final TypeDefinition type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
+			final Deferred<TypeDefinition> type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
 			typeDefinition = type != null
-					? () -> type
+					? type
 					: substitutionGroup.isEmpty()
 							? ComplexType::xsAnyType
 							: () -> substitutionGroupAffiliations.getFirst().typeDefinition.get();

@@ -39,11 +39,11 @@ public class ModelGroup implements Term {
 	private final Deque<Annotation> annotations;
 	private final String name;
 	private final String targetNamespace;
-	private final ModelGroup modelGroup;
-	private final Compositor compositor;
+	private final Deferred<ModelGroup> modelGroup;
+	private final Deferred<Compositor> compositor;
 	private final Deque<Particle> particles;
 
-	private ModelGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final ModelGroup modelGroup, final Compositor compositor, final Deque<Particle> particles) {
+	private ModelGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<ModelGroup> modelGroup, final Deferred<Compositor> compositor, final Deque<Particle> particles) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -90,11 +90,12 @@ public class ModelGroup implements Term {
 	private static ModelGroup parseDecl(final Result result) {
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
-		final Particle particle = result.parse(TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE);
+		final Deferred<Particle> particle = result.parse(TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE);
 		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
-		final ModelGroup term = (ModelGroup) particle.term();
-		return new ModelGroup(node, annotations, name, targetNamespace, term, term.compositor(), term.particles());
+		final Deferred<ModelGroup> term = particle.map(p -> (ModelGroup) p.term());
+		final Deque<Particle> particles = new DeferredArrayDeque<>(() -> term.get().particles());
+		return new ModelGroup(node, annotations, name, targetNamespace, term, term.map(ModelGroup::compositor), particles);
 	}
 
 	static void register() {
@@ -103,7 +104,7 @@ public class ModelGroup implements Term {
 	}
 
 	static ModelGroup synthetic(final Node node, final Deque<Annotation> annotations, final Compositor compositor, final Deque<Particle> particles) {
-		return new ModelGroup(node, annotations, null, null, null, compositor, particles) {
+		return new ModelGroup(node, annotations, null, null, null, () -> compositor, particles) {
 
 			@Override
 			public ModelGroup modelGroup() {
@@ -122,11 +123,11 @@ public class ModelGroup implements Term {
 	}
 
 	public ModelGroup modelGroup() {
-		return modelGroup;
+		return modelGroup.get();
 	}
 
 	public Compositor compositor() {
-		return compositor;
+		return compositor.get();
 	}
 
 	public Deque<Particle> particles() {

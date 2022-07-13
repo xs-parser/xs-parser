@@ -301,7 +301,7 @@ public class Attribute implements AnnotatedComponent {
 		final Node xsiNilNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "nil");
 		xsiNil = new Attribute(xsiNilNode, Deques.emptyDeque(), "nil", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsBoolean, new Scope(Scope.Variety.GLOBAL, null), null, null);
 		final Node xsiSchemaLocationNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "schemaLocation");
-		xsiSchemaLocation = new Attribute(xsiSchemaLocationNode, Deques.emptyDeque(), "schemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(() -> new SimpleType(SimpleType.xsAnySimpleType().node(), Deques.emptyDeque(), null, XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deques.emptyDeque(), null, SimpleType::xsAnySimpleType, () -> SimpleType.Variety.LIST, Deques.emptyDeque(), null, new SimpleType.List(AnnotationSet.EMPTY, SimpleType::xsAnyURI), null)), new Scope(Scope.Variety.GLOBAL, null), null, null);
+		xsiSchemaLocation = new Attribute(xsiSchemaLocationNode, Deques.emptyDeque(), "schemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deferred.of(() -> new SimpleType(SimpleType.xsAnySimpleType().node(), Deques.emptyDeque(), null, XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Deques.emptyDeque(), null, SimpleType::xsAnySimpleType, () -> SimpleType.Variety.LIST, Deques.emptyDeque(), null, Deferred.of(() -> new SimpleType.List(AnnotationSet.EMPTY, SimpleType::xsAnyURI)), null)), new Scope(Scope.Variety.GLOBAL, null), null, null);
 		final Node xsiNoNamespaceSchemaLocationNode = NodeHelper.newSchemaNode(xsiSchemaDocument, TagParser.Names.ATTRIBUTE, "noNamespaceSchemaLocation");
 		xsiNoNamespaceSchemaLocation = new Attribute(xsiNoNamespaceSchemaLocationNode, Deques.emptyDeque(), "noNamespaceSchemaLocation", XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, SimpleType::xsAnyURI, new Scope(Scope.Variety.GLOBAL, null), null, null);
 	}
@@ -353,10 +353,11 @@ public class Attribute implements AnnotatedComponent {
 			scope = new Scope(Scope.Variety.LOCAL, n);
 		}
 		final QName typeName = result.value(AttrParser.TYPE);
-		final SimpleType simpleTypeChild = result.parse(TagParser.SIMPLE_TYPE);
+		final Deferred<SimpleType> simpleTypeChild = result.parse(TagParser.SIMPLE_TYPE);
 		final Deferred<SimpleType> simpleType = typeName != null
 				? result.schema().find(typeName, SimpleType.class)
-				: simpleTypeChild != null ? () -> simpleTypeChild : SimpleType::xsAnySimpleType;
+				: simpleTypeChild != null
+						? simpleTypeChild : SimpleType::xsAnySimpleType;
 		final ValueConstraint valueConstraint = defaultValue != null ? new ValueConstraint(result.schema(), simpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
 				: fixedValue != null ? new ValueConstraint(result.schema(), simpleType, ValueConstraint.Variety.FIXED, fixedValue)
 				: null;

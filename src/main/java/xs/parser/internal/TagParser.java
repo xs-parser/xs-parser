@@ -62,7 +62,7 @@ public class TagParser<T> {
 
 	}
 
-	public static class Names {
+	public static final class Names {
 
 		private Names() { }
 
@@ -272,7 +272,7 @@ public class TagParser<T> {
 
 	}
 
-	public static class ShParsers {
+	public static final class ShParsers {
 
 		private ShParsers() { }
 

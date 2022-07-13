@@ -69,9 +69,9 @@ public class AttributeGroup implements AnnotatedComponent {
 	private final String name;
 	private final String targetNamespace;
 	private final Deque<AttributeUse> attributeUses;
-	private final Wildcard attributeWildcard;
+	private final Deferred<Wildcard> attributeWildcard;
 
-	private AttributeGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<AttributeUse> attributeUses, final Wildcard attributeWildcard) {
+	private AttributeGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<AttributeUse> attributeUses, final Deferred<Wildcard> attributeWildcard) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -110,7 +110,7 @@ public class AttributeGroup implements AnnotatedComponent {
 		final Deque<AttributeUse> attributes = result.parseAll(TagParser.ATTRIBUTE.use());
 		final Deque<AttributeGroup> attributeGroups = result.parseAll(TagParser.ATTRIBUTE_GROUP);
 		final Deque<AttributeUse> attributeUses = findAttributeUses(attributes, attributeGroups);
-		final Wildcard attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
+		final Deferred<Wildcard> attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
 		return new AttributeGroup(node, annotations, name, targetNamespace, attributeUses, attributeWildcard);
 	}
 
@@ -149,7 +149,7 @@ public class AttributeGroup implements AnnotatedComponent {
 
 	/** @return The Wildcard determined by applying the attribute-wildcard mapping described in Common Rules for Attribute Wildcards (§3.6.2.2) to the &lt;attributeGroup&gt; element information item. */
 	public Wildcard attributeWildcard() {
-		return attributeWildcard;
+		return attributeWildcard != null ? attributeWildcard.get() : null;
 	}
 
 	@Override

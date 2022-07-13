@@ -84,6 +84,16 @@ public class Annotation implements SchemaComponent {
 			return this;
 		}
 
+		AnnotationSet add(final Deferred<? extends AnnotatedComponent> a) {
+			this.annotations.addAll(a.map(AnnotatedComponent::annotations));
+			return this;
+		}
+
+		<T> AnnotationSet add(final Deferred<T> a, final Function<T, AnnotationSet> fn) {
+			this.annotations.addAll(a.map(t -> fn.apply(t).annotations));
+			return this;
+		}
+
 		AnnotationSet addAll(final Deque<? extends AnnotatedComponent> annotatedComponents) {
 			return addAll(annotatedComponents, a -> new AnnotationSet(a.annotations()));
 		}
@@ -178,6 +188,7 @@ public class Annotation implements SchemaComponent {
 		final Deque<Node> userInformation = new DeferredArrayDeque<>(() -> documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new)));
 		final Node component = result.node();
 		final Deferred<Set<Attr>> attributes = Deferred.of(() -> {
+			// https://www.w3.org/TR/xmlschema11-1/#as
 			// TODO: this logic is not correct
 			final Node enclosingItem = component.getParentNode();
 			final NamedNodeMap attrs = enclosingItem.getAttributes();

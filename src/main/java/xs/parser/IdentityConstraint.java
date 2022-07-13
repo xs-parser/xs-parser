@@ -62,17 +62,17 @@ public class IdentityConstraint implements AnnotatedComponent {
 	private final String name;
 	private final String targetNamespace;
 	private final Category category;
-	private final XPathExpression selector;
+	private final Deferred<XPathExpression> selector;
 	private final Deque<XPathExpression> fields;
 	private final IdentityConstraint referencedKey;
 
-	private IdentityConstraint(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Category category, final XPathExpression selector, final Deque<XPathExpression> fields, final IdentityConstraint referencedKey) {
+	private IdentityConstraint(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Category category, final Deferred<XPathExpression> selector, final Deque<XPathExpression> fields, final IdentityConstraint referencedKey) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
 		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.category = category;
-		this.selector = selector;
+		this.selector = Objects.requireNonNull(selector);
 		this.fields = Objects.requireNonNull(fields);
 		this.referencedKey = referencedKey;
 	}
@@ -97,9 +97,9 @@ public class IdentityConstraint implements AnnotatedComponent {
 			if (ref == null) {
 				throw new Schema.ParseException(node, "No sibling key for identity constraint @ref");
 			}
-			return new IdentityConstraint(node, annotations, ref.name(), ref.targetNamespace(), category, ref.selector(), ref.fields(), ref.referencedKey());
+			return new IdentityConstraint(node, annotations, ref.name(), ref.targetNamespace(), category, ref.selector, ref.fields(), ref.referencedKey());
 		}
-		final XPathExpression selector = result.parse(TagParser.SELECTOR);
+		final Deferred<XPathExpression> selector = result.parse(TagParser.SELECTOR);
 		final Deque<XPathExpression> fields = result.parseAll(TagParser.FIELD);
 		final QName refer = result.value(AttrParser.REFER);
 		IdentityConstraint referencedKey = null;
@@ -138,7 +138,7 @@ public class IdentityConstraint implements AnnotatedComponent {
 	}
 
 	public XPathExpression selector() {
-		return selector;
+		return selector.get();
 	}
 
 	public Deque<XPathExpression> fields() {
