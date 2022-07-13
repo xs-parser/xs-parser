@@ -41,7 +41,7 @@ import xs.parser.internal.util.SequenceParser.*;
  *       <td>An XPath Expression property record. Optional.</td>
  *     </tr>
  *     <tr>
- *       <td>{@link Alternative#type()}</td>
+ *       <td>{@link Alternative#typeDefinition()}</td>
  *       <td>{type definition}</td>
  *       <td>A Type Definition component. Required.</td>
  *     </tr>
@@ -58,31 +58,31 @@ public class Alternative implements AnnotatedComponent {
 	private final Node node;
 	private final Deque<Annotation> annotations;
 	private final XPathExpression test;
-	private final Deferred<? extends TypeDefinition> type;
+	private final Deferred<? extends TypeDefinition> typeDefinition;
 
-	Alternative(final Node node, final Deque<Annotation> annotations, final XPathExpression test, final Deferred<? extends TypeDefinition> type) {
+	Alternative(final Node node, final Deque<Annotation> annotations, final XPathExpression test, final Deferred<? extends TypeDefinition> typeDefinition) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.test = test;
-		this.type = Objects.requireNonNull(type);
+		this.typeDefinition = Objects.requireNonNull(typeDefinition);
 	}
 
 	private static Alternative parse(final Result result) {
 		final String expression = result.value(AttrParser.TEST);
 		final String xpathDefaultNamespace = result.value(AttrParser.XPATH_DEFAULT_NAMESPACE);
 		final XPathExpression test = expression != null ? new XPathExpression(result, xpathDefaultNamespace, expression) : null;
-		final Deferred<? extends TypeDefinition> type;
+		final Deferred<? extends TypeDefinition> typeDefinition;
 		final QName typeName = result.value(AttrParser.TYPE);
 		if (typeName != null) {
-			type = result.schema().find(typeName, TypeDefinition.class);
+			typeDefinition = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final TypeDefinition typeDefinition = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
-			if (typeDefinition == null) {
+			final TypeDefinition type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
+			if (type == null) {
 				throw new Schema.ParseException(result.node(), "Type definition not found");
 			}
-			type = () -> typeDefinition;
+			typeDefinition = () -> type;
 		}
-		return new Alternative(result.node(), result.annotations(), test, type);
+		return new Alternative(result.node(), result.annotations(), test, typeDefinition);
 	}
 
 	static void register() {
@@ -95,8 +95,8 @@ public class Alternative implements AnnotatedComponent {
 	}
 
 	/** @return The type definition ·resolved· to by the ·actual value· of the type [attribute], if one is present, otherwise the type definition corresponding to the complexType or simpleType among the [children] of the &lt;alternative&gt; element. */
-	public TypeDefinition type() {
-		return type.get();
+	public TypeDefinition typeDefinition() {
+		return typeDefinition.get();
 	}
 
 	@Override

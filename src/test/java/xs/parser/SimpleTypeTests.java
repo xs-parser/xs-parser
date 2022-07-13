@@ -87,19 +87,19 @@ public class SimpleTypeTests {
 		Assert.assertEquals(true, fractionDigits.fixed());
 		Assert.assertEquals(0, fractionDigits.value().intValue());
 		final SimpleType testA = (SimpleType) schema.typeDefinitions().stream().filter(s -> s.name().equals("TestA")).findAny().get();
-		Assert.assertEquals(intType, testA.baseType().baseType());
+		Assert.assertEquals(intType, testA.baseTypeDefinition().baseTypeDefinition());
 		final SimpleType decimalType = SimpleType.xsDecimal();
-		Assert.assertEquals(decimalType, testA.primitiveType());
+		Assert.assertEquals(decimalType, testA.primitiveTypeDefinition());
 		final SimpleType testB = (SimpleType) schema.typeDefinitions().stream().filter(s -> s.name().equals("TestB")).findAny().get();
-		Assert.assertEquals(testA, testB.baseType());
-		Assert.assertEquals(decimalType, testB.primitiveType());
+		Assert.assertEquals(testA, testB.baseTypeDefinition());
+		Assert.assertEquals(decimalType, testB.primitiveTypeDefinition());
 	}
 
 	@Test
 	public void testBooleanPrimitive() {
 		final SimpleType booleanType = SimpleType.xsBoolean();
 		final SimpleType testC = (SimpleType) schema.typeDefinitions().stream().filter(s -> s.name().equals("TestC")).findAny().get();
-		Assert.assertEquals(booleanType, testC.primitiveType());
+		Assert.assertEquals(booleanType, testC.primitiveTypeDefinition());
 		Assert.assertEquals(4, booleanType.fundamentalFacets().size());
 		Assert.assertEquals(booleanType.fundamentalFacets(), testC.fundamentalFacets());
 	}

@@ -263,7 +263,7 @@ public class Wildcard implements Term {
 					ls.add(v);
 					break;
 				default:
-					ls.add(NodeHelper.getAttrValueAsAnyUri(attr, v));
+					ls.add(NodeHelper.getNodeValueAsAnyUri(attr, v));
 					break;
 				}
 			}
@@ -282,7 +282,7 @@ public class Wildcard implements Term {
 				notNamespace.add(v);
 				break;
 			default:
-				notNamespace.add(NodeHelper.getAttrValueAsAnyUri(attr, v));
+				notNamespace.add(NodeHelper.getNodeValueAsAnyUri(attr, v));
 				break;
 			}
 		}
@@ -305,7 +305,7 @@ public class Wildcard implements Term {
 				}
 				// fallthrough
 			default:
-				NodeHelper.getAttrValueAsQName(attr, v);
+				NodeHelper.getNodeValueAsQName(attr, v);
 				notQName.add(v);
 				break;
 			}

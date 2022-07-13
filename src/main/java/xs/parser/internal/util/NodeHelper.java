@@ -16,11 +16,30 @@ import javax.xml.transform.stream.*;
 import org.w3c.dom.*;
 import xs.parser.*;
 import xs.parser.Element;
+import xs.parser.Notation;
 
 public final class NodeHelper {
 
 	private static final String XML_NAME_FIRST_CHAR = "A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD"; // First character of an XML name, see below regular expressions
 	private static final String XML_NAME_CHARS = "-.0-9A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD"; // Any subsequent character of an XML name, see below regular expressions
+	private static final Pattern INTEGER_PATTERN = Pattern.compile("[-+]?\\d+");
+	private static final Pattern DECIMAL_PATTERN = Pattern.compile("[-+]?(\\d+(\\.\\d*)?|\\.\\d+)");
+	private static final Pattern DURATION_PATTERN = Pattern.compile("-?P(((\\d+Y(\\d+M)?(\\d+D)?|(\\d+M)(\\d+D)?|(\\d+D))(T((\\d+H)(\\d+M)?(\\d+(\\.\\d+)?S)?|(\\d+M)(\\d+(\\.\\d+)?S)?|(\\d+(\\.\\d+)?S)))?)|(T((\\d+H)(\\d+M)?(\\d+(\\.\\d+)?S)?|(\\d+M)(\\d+(\\.\\d+)?S)?|(\\d+(\\.\\d+)?S))))");
+	private static final Pattern DATE_TIME_PATTERN = Pattern.compile(
+			"-?([1-9]\\d{3,}|0\\d{3})"
+			+ "-(0[1-9]|1[0-2])"
+			+ "-(0[1-9]|[12]\\d|3[01])"
+			+ "T(([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(\\.\\d+)?|(24:00:00(\\.0+)?))"
+			+ "(Z|[-+]((0\\d|1[0-3]):[0-5]\\d|14:00))?");
+	private static final Pattern TIME_PATTERN = Pattern.compile("(([01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(\\.\\d+)?|(24:00:00(\\.0+)?))(Z|[-+]((0\\d|1[0-3]):[0-5]\\d|14:00))?");
+	private static final Pattern DATE_PATTERN = Pattern.compile("-?([1-9]\\d{3,}|0\\d{3})-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])(Z|[-+]((0\\d|1[0-3]):[0-5]\\d|14:00))?");
+	private static final Pattern HEX_BINARY_PATTERN = Pattern.compile("([0-9a-fA-F]{2})*");
+	private static final Pattern BASE_64_BINARY_PATTERN = Pattern.compile("((([A-Za-z0-9+/] ?){4})*+(([A-Za-z0-9+/] ?){3}[A-Za-z0-9+/]|([A-Za-z0-9+/] ?){2}[AEIMQUYcgkosw048] ?=|[A-Za-z0-9+/] ?[AQgw] ?= ?=))?");
+	private static final Pattern G_YEAR_MONTH_PATTERN = Pattern.compile("-?([1-9]\\d{3,}|0\\d{3})-(0[1-9]|1[0-2])(Z|[-+]((0\\d|1[0-3]):[0-5]\\d|14:00))?");
+	private static final Pattern G_YEAR_PATTERN = Pattern.compile("-?([1-9]\\d{3,}|0\\d{3})(Z|[-+]((0\\d|1[0-3]):[0-5]\\d|14:00))?");
+	private static final Pattern G_MONTH_DAY_PATTERN = Pattern.compile("--(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])(Z|[-+]((0\\d|1[0-3]):[0-5]\\d|14:00))?");
+	private static final Pattern G_DAY_PATTERN = Pattern.compile("---(0[1-9]|[12]\\d|3[01])(Z|[-+]((0\\d|1[0-3]):[0-5]\\d|14:00))?");
+	private static final Pattern G_MONTH_PATTERN = Pattern.compile("--(0[1-9]|1[0-2])(Z|[-+]((0\\d|1[0-3]):[0-5]\\d|14:00))?");
 	private static final Pattern LANGUAGE_PATTERN = Pattern.compile("[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*+");
 	private static final Pattern NCNAME_PATTERN = Pattern.compile("^[" + XML_NAME_FIRST_CHAR + "][" + XML_NAME_CHARS + "]*$");
 	private static final Pattern NON_NEGATIVE_INTEGER_PATTERN = Pattern.compile("^((-0+)|([+]?\\d+))$");
@@ -107,6 +126,10 @@ public final class NodeHelper {
 
 	public static boolean equalsName(final QName q, final ModelGroup m) {
 		return equalsQualifiedName(q, m.name(), m.targetNamespace());
+	}
+
+	public static boolean equalsName(final QName q, final Notation n) {
+		return equalsQualifiedName(q, n.name(), n.targetNamespace());
 	}
 
 	/**
@@ -218,20 +241,23 @@ public final class NodeHelper {
 	}
 
 	public static String getAttrValueAsAnyUri(final Attr attr) {
-		return getAttrValueAsAnyUri(attr, collapseWhitespace(attr.getValue()));
+		return getNodeValueAsAnyUri(attr, collapseWhitespace(attr.getValue()));
 	}
 
-	public static String getAttrValueAsAnyUri(final Attr attr, final String value) {
+	public static String getNodeValueAsAnyUri(final Node node, final String value) {
 		try {
 			new URI(value); // TODO: parse as IRI, RFC3987
 			return value;
 		} catch (final URISyntaxException e) {
-			throw newFacetException(attr, value, SimpleType.xsAnyURI().name());
+			throw newFacetException(node, value, SimpleType.xsAnyURI().name());
 		}
 	}
 
 	public static boolean getAttrValueAsBoolean(final Attr attr) {
-		final String value = collapseWhitespace(attr.getValue());
+		return getNodeValueAsBoolean(attr, collapseWhitespace(attr.getValue()));
+	}
+
+	public static boolean getNodeValueAsBoolean(final Node node, final String value) {
 		switch (value) {
 		case "true":
 		case "1":
@@ -240,7 +266,7 @@ public final class NodeHelper {
 		case "0":
 			return false;
 		default:
-			throw newFacetException(attr, value, SimpleType.xsBoolean().name());
+			throw newFacetException(node, value, SimpleType.xsBoolean().name());
 		}
 	}
 
@@ -261,36 +287,36 @@ public final class NodeHelper {
 	}
 
 	public static QName getAttrValueAsQName(final Attr attr) {
-		return getAttrValueAsQName(attr, collapseWhitespace(attr.getValue()));
+		return getNodeValueAsQName(attr, collapseWhitespace(attr.getValue()));
 	}
 
-	public static QName getAttrValueAsQName(final Attr attr, final String value) {
+	public static QName getNodeValueAsQName(final Node node, final String value) {
 		final Matcher m = QNAME_PATTERN.matcher(value);
 		if (m.find()) {
 			final String prefix = m.group(2);
 			final String localName = m.group(3);
-			String uri = attr.lookupNamespaceURI(prefix);
+			String uri = node.lookupNamespaceURI(prefix);
 			if (XMLConstants.XML_NS_PREFIX.equals(prefix)) {
 				// "xml" must always be bound to its usual namespace, or is otherwise implicitly declared
 				if (uri != null && !XMLConstants.XML_NS_URI.equals(uri)) {
-					throw newParseException(attr, "'xml' prefix must be bound to its usual namespace, '" + XMLConstants.XML_NS_URI + "', but was bound to '" + uri + '\'');
+					throw newParseException(node, "'xml' prefix must be bound to its usual namespace, '" + XMLConstants.XML_NS_URI + "', but was bound to '" + uri + '\'');
 				}
 				uri = XMLConstants.XML_NS_URI;
 			} else if (uri == null && prefix != null) {
-				throw newParseException(attr, '\'' + value + "' does not name a valid namespace URI for prefix '" + prefix + '\'');
+				throw newParseException(node, '\'' + value + "' does not name a valid namespace URI for prefix '" + prefix + '\'');
 			}
 			return new QName(uri == null ? XMLConstants.NULL_NS_URI : uri,
 					localName,
 					prefix == null ? XMLConstants.DEFAULT_NS_PREFIX : prefix);
 		} else {
-			throw newFacetException(attr, value, SimpleType.xsQName().name());
+			throw newFacetException(node, value, SimpleType.xsQName().name());
 		}
 	}
 
 	public static Deque<QName> getAttrValueAsQNames(final Attr attr) {
 		final String[] values = collapseWhitespace(attr.getValue()).split(LIST_SEP);
 		final Deque<QName> names = Stream.of(values)
-				.map(name -> NodeHelper.getAttrValueAsQName(attr, name))
+				.map(name -> NodeHelper.getNodeValueAsQName(attr, name))
 				.collect(Collectors.toCollection(ArrayDeque::new));
 		return Deques.unmodifiableDeque(names);
 	}
@@ -303,15 +329,15 @@ public final class NodeHelper {
 		throw newFacetException(attr, value, SimpleType.xsPositiveInteger().name());
 	}
 
-	public static BigInteger getAttrValueAsNonNegativeInteger(final Attr attr, final String value) {
+	public static BigInteger getAttrValueAsNonNegativeInteger(final Attr attr) {
+		return getNodeValueAsNonNegativeInteger(attr, collapseWhitespace(attr.getValue()));
+	}
+
+	public static BigInteger getNodeValueAsNonNegativeInteger(final Node node, final String value) {
 		if (NON_NEGATIVE_INTEGER_PATTERN.matcher(value).matches()) {
 			return new BigInteger(value);
 		}
-		throw newFacetException(attr, value, SimpleType.xsNonNegativeInteger().name());
-	}
-
-	public static BigInteger getAttrValueAsNonNegativeInteger(final Attr attr) {
-		return getAttrValueAsNonNegativeInteger(attr, collapseWhitespace(attr.getValue()));
+		throw newFacetException(node, value, SimpleType.xsNonNegativeInteger().name());
 	}
 
 	public static String getAttrValueAsString(final Attr attr) {
@@ -320,6 +346,97 @@ public final class NodeHelper {
 
 	public static String getAttrValueAsToken(final Attr attr) {
 		return collapseWhitespace(attr.getValue());
+	}
+
+	public static BigInteger getNodeValueAsInteger(final Node node, final String value) {
+		if (INTEGER_PATTERN.matcher(value).matches()) {
+			return new BigInteger(value);
+		}
+		throw newFacetException(node, value, SimpleType.xsInteger().name());
+	}
+
+	public static BigDecimal getNodeValueAsDecimal(final Node node, final String value) {
+		if (DECIMAL_PATTERN.matcher(value).matches()) {
+			return new BigDecimal(value);
+		}
+		throw newFacetException(node, value, SimpleType.xsDecimal().name());
+	}
+
+	public static String getNodeValueAsDuration(final Node node, final String value) {
+		if (DURATION_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsDuration().name());
+	}
+
+	public static String getNodeValueAsDateTime(final Node node, final String value) {
+		if (DATE_TIME_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsDateTime().name());
+	}
+
+	public static String getNodeValueAsTime(final Node node, final String value) {
+		if (TIME_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsTime().name());
+	}
+
+	public static String getNodeValueAsDate(final Node node, final String value) {
+		if (DATE_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsDate().name());
+	}
+
+	public static String getNodeValueAsHexBinary(final Node node, final String value) {
+		if (HEX_BINARY_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsHexBinary().name());
+	}
+
+	public static String getNodeValueAsBase64Binary(final Node node, final String value) {
+		if (BASE_64_BINARY_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsBase64Binary().name());
+	}
+
+	public static String getNodeValueAsGYearMonth(final Node node, final String value) {
+		if (G_YEAR_MONTH_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsGYearMonth().name());
+	}
+
+	public static String getNodeValueAsGYear(final Node node, final String value) {
+		if (G_YEAR_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsGYear().name());
+	}
+
+	public static String getNodeValueAsGMonthDay(final Node node, final String value) {
+		if (G_MONTH_DAY_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsGMonthDay().name());
+	}
+
+	public static String getNodeValueAsGDay(final Node node, final String value) {
+		if (G_DAY_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsGDay().name());
+	}
+
+	public static String getNodeValueAsGMonth(final Node node, final String value) {
+		if (G_MONTH_PATTERN.matcher(value).matches()) {
+			return value;
+		}
+		throw newFacetException(node, value, SimpleType.xsGMonth().name());
 	}
 
 }

@@ -140,9 +140,9 @@ public class Annotation implements SchemaComponent {
 	private final Node node;
 	private final Deque<Node> applicationInformation;
 	private final Deque<Node> userInformation;
-	private final Deferred<Set<Node>> attributes;
+	private final Deferred<Set<Attr>> attributes;
 
-	private Annotation(final Node node, final Deque<Node> applicationInformation, final Deque<Node> userInformation, final Deferred<Set<Node>> attributes) {
+	private Annotation(final Node node, final Deque<Node> applicationInformation, final Deque<Node> userInformation, final Deferred<Set<Attr>> attributes) {
 		this.node = Objects.requireNonNull(node);
 		this.applicationInformation = Objects.requireNonNull(applicationInformation);
 		this.userInformation = Objects.requireNonNull(userInformation);
@@ -154,7 +154,9 @@ public class Annotation implements SchemaComponent {
 		final Deque<Node> applicationInformation = appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new));
 		final Deque<Documentation> documentation = result.parseAll(TagParser.ANNOTATION.documentation());
 		final Deque<Node> userInformation = documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new));
-		return new Annotation(result.node(), applicationInformation, userInformation, Collections::emptySet /*TODO*/);
+		// TODO: Get non-xsd schema attributes
+		final Deferred<Set<Attr>> attributes = Collections::emptySet;
+		return new Annotation(result.node(), applicationInformation, userInformation, attributes);
 	}
 
 	static void register() {
@@ -176,7 +178,7 @@ public class Annotation implements SchemaComponent {
 	}
 
 	/** @return A set of attribute information items, namely those allowed by the attribute wildcard in the type definition for the &lt;annotation&gt; item itself or for the enclosing items which correspond to the component within which the annotation component is located. */
-	public Set<Node> attributes() {
+	public Set<Attr> attributes() {
 		return Collections.unmodifiableSet(attributes.get());
 	}
 

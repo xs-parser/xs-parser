@@ -66,7 +66,7 @@ public interface TypeDefinition extends AnnotatedComponent {
 
 	public String targetNamespace();
 
-	public TypeDefinition baseType();
+	public TypeDefinition baseTypeDefinition();
 
 	public Deque<Final> finals();
 

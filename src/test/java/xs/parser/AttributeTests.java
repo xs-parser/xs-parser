@@ -44,16 +44,16 @@ public class AttributeTests {
 	public void testXsiAttributes() {
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Attribute.xsiNil().targetNamespace());
 		Assert.assertEquals("nil", Attribute.xsiNil().name());
-		Assert.assertNotNull(Attribute.xsiNil().type());
+		Assert.assertNotNull(Attribute.xsiNil().typeDefinition());
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Attribute.xsiNoNamespaceSchemaLocation().targetNamespace());
 		Assert.assertEquals("noNamespaceSchemaLocation", Attribute.xsiNoNamespaceSchemaLocation().name());
-		Assert.assertNotNull(Attribute.xsiNoNamespaceSchemaLocation().type());
+		Assert.assertNotNull(Attribute.xsiNoNamespaceSchemaLocation().typeDefinition());
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Attribute.xsiSchemaLocation().targetNamespace());
 		Assert.assertEquals("schemaLocation", Attribute.xsiSchemaLocation().name());
-		Assert.assertNotNull(Attribute.xsiSchemaLocation().type());
+		Assert.assertNotNull(Attribute.xsiSchemaLocation().typeDefinition());
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI, Attribute.xsiType().targetNamespace());
 		Assert.assertEquals("type", Attribute.xsiType().name());
-		Assert.assertNotNull(Attribute.xsiType().type());
+		Assert.assertNotNull(Attribute.xsiType().typeDefinition());
 	}
 
 }

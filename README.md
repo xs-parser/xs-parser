@@ -65,6 +65,20 @@ public class Runner {
 }
 ```
 
+## XSD Datatypes Mapping
+
+XSD Primitive Datatypes | Java class
+-- | --
+`xs:string`, `xs:duration`, `xs:dateTime`, `xs:time`, `xs:date`, `xs:gYearMonth`, `xs:gYear`, `xs:gMonthDay`, `xs:gDay`, `xs:gMonth`, `xs:hexBinary`, `xs:base64Binary`, `xs:anyURI` | `java.lang.String`
+`xs:boolean` | `java.lang.Boolean`
+`xs:decimal`, `xs:float`, `xs:double` | `java.math.BigDecimal`
+`xs:QName`, `xs:NOTATION` | `javax.xml.namespace.QName`
+
+XSD Other Built-in Datatypes | Java class
+-- | --
+`xs:normalizedString`, `xs:token`, `xs:language`, `xs:NMTOKEN`, `xs:NMTOKENS`, `xs:Name`, `xs:NCName`, `xs:ID`, `xs:IDREF`, `xs:IDREFS`, `xs:ENTITY`, `xs:ENTITIES`, `xs:yearMonthDuration`, `xs:dayTimeDuration`, `xs:dateTimeStamp` | `java.lang.String`
+`xs:integer`, `xs:nonPositiveInteger`, `xs:negativeInteger`, `xs:long`, `xs:int`, `xs:short`, `xs:byte`, `xs:nonNegativeInteger`, `xs:unsignedLong`, `xs:unsignedInt`, `xs:unsignedShort`, `xs:unsignedByte`, `xs:positiveInteger` | `java.lang.BigInteger`
+
 ## XPath & XQuery
 
 ```java

@@ -993,24 +993,24 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 			final SimpleType s;
 			if (t instanceof ComplexType) {
 				final ComplexType c = (ComplexType) t;
-				s = c.contentType().simpleType();
+				s = c.contentType().simpleTypeDefinition();
 				if (s == null) {
 					throw NodeHelper.newFacetException(attr, value, (c.targetNamespace() != null ? '{' + c.targetNamespace() + '}' : "") + c.name());
 				}
 			} else {
 				s = (SimpleType) t;
 			}
-			if (SimpleType.xsDouble() == s.primitiveType() || SimpleType.xsFloat() == s.primitiveType()) {
+			if (SimpleType.xsDouble() == s.primitiveTypeDefinition() || SimpleType.xsFloat() == s.primitiveTypeDefinition()) {
 				return new BigDecimal(value);
-			} else if (SimpleType.xsDecimal() == s.primitiveType()) {
-				TypeDefinition base = s.baseType();
+			} else if (SimpleType.xsDecimal() == s.primitiveTypeDefinition()) {
+				TypeDefinition base = s.baseTypeDefinition();
 				while (ComplexType.xsAnyType() != base) {
 					if (SimpleType.xsInteger() == base) {
 						return new BigInteger(value);
 					} else if (SimpleType.xsDecimal() == base) {
 						return new BigDecimal(value);
 					}
-					base = base.baseType();
+					base = base.baseTypeDefinition();
 				}
 			}
 			throw new AssertionError();

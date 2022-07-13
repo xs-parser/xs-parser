@@ -78,7 +78,7 @@ public class Particle implements AnnotatedComponent {
 		final String value = NodeHelper.collapseWhitespace(attr.getValue());
 		return UNBOUNDED.equals(value)
 				? Unbounded.INSTANCE
-				: NodeHelper.getAttrValueAsNonNegativeInteger(attr, value);
+				: NodeHelper.getNodeValueAsNonNegativeInteger(attr, value);
 	}
 
 	static void register() {

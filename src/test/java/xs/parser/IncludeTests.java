@@ -27,8 +27,8 @@ public class IncludeTests {
 		final SimpleType a = (SimpleType) schema.typeDefinitions().getFirst();
 		Assert.assertEquals("https://my.test", a.targetNamespace());
 		Assert.assertEquals("A", a.name());
-		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, a.baseType().targetNamespace());
-		Assert.assertEquals("string", a.baseType().name());
+		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, a.baseTypeDefinition().targetNamespace());
+		Assert.assertEquals("string", a.baseTypeDefinition().name());
 	}
 
 	@Test
@@ -55,13 +55,13 @@ public class IncludeTests {
 		final Schema schema = new Schema(new File("src/test/resources/include/selfref.xsd"));
 		Assert.assertEquals(4, schema.elementDeclarations().size());
 		final Element element = schema.elementDeclarations().stream().filter(e -> "Example".equals(e.name())).findAny().get();
-		Assert.assertEquals(ComplexType.xsAnyType(), element.type());
+		Assert.assertEquals(ComplexType.xsAnyType(), element.typeDefinition());
 		final Element elementA = schema.elementDeclarations().stream().filter(e -> "ExampleA".equals(e.name())).findAny().get();
-		Assert.assertEquals(ComplexType.xsAnyType(), elementA.type());
+		Assert.assertEquals(ComplexType.xsAnyType(), elementA.typeDefinition());
 		final Element elementB = schema.elementDeclarations().stream().filter(e -> "ExampleB".equals(e.name())).findAny().get();
-		Assert.assertEquals(ComplexType.xsAnyType(), elementB.type());
+		Assert.assertEquals(ComplexType.xsAnyType(), elementB.typeDefinition());
 		final Element elementC = schema.elementDeclarations().stream().filter(e -> "ExampleC".equals(e.name())).findAny().get();
-		Assert.assertEquals(ComplexType.xsAnyType(), elementC.type());
+		Assert.assertEquals(ComplexType.xsAnyType(), elementC.typeDefinition());
 	}
 
 	@Test

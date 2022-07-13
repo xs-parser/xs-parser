@@ -60,7 +60,7 @@ import xs.parser.internal.util.SequenceParser.*;
  *       <td>An xs:anyURI value. Optional.</td>
  *     </tr>
  *     <tr>
- *       <td>{@link Element#type()}</td>
+ *       <td>{@link Element#typeDefinition()}</td>
  *       <td>{type definition}</td>
  *       <td>A Type Definition component. Required.</td>
  *     </tr>
@@ -85,7 +85,7 @@ import xs.parser.internal.util.SequenceParser.*;
  *       <td>An xs:boolean value. Required.</td>
  *     </tr>
  *     <tr>
- *       <td>{@link Element#identityConstraints()}</td>
+ *       <td>{@link Element#identityConstraintDefinitions()}</td>
  *       <td>{identity-constraint definitions}</td>
  *       <td>A set of Identity-Constraint Definition components.</td>
  *     </tr>
@@ -131,7 +131,7 @@ public class Element implements Term {
 	 *       <td>A sequence of Type Alternative components.</td>
 	 *     </tr>
 	 *     <tr>
-	 *       <td>{@link TypeTable#defaultType()}</td>
+	 *       <td>{@link TypeTable#defaultTypeDefinition()}</td>
 	 *       <td>{default type definition}</td>
 	 *       <td>A Type Alternative component. Required.</td>
 	 *     </tr>
@@ -141,7 +141,7 @@ public class Element implements Term {
 	public static class TypeTable {
 
 		private final Deque<Alternative> alternatives;
-		private final Alternative defaultType;
+		private final Alternative defaultTypeDefinition;
 
 		private TypeTable(final Deque<Alternative> alternatives, final Element parent) {
 			if (alternatives.isEmpty()) {
@@ -149,17 +149,17 @@ public class Element implements Term {
 			}
 			this.alternatives = Objects.requireNonNull(alternatives);
 			final Alternative last = alternatives.getFirst();
-			this.defaultType = last.test() == null
+			this.defaultTypeDefinition = last.test() == null
 					? last
-					: new Alternative(parent.node(), Deques.emptyDeque(), null, last::type);
+					: new Alternative(parent.node(), Deques.emptyDeque(), null, last::typeDefinition);
 		}
 
 		public Deque<Alternative> alternatives() {
 			return alternatives;
 		}
 
-		public Alternative defaultType() {
-			return defaultType;
+		public Alternative defaultTypeDefinition() {
+			return defaultTypeDefinition;
 		}
 
 	}
@@ -177,28 +177,28 @@ public class Element implements Term {
 	private final Deque<Annotation> annotations;
 	private final String name;
 	private final String targetNamespace;
-	private final Deferred<? extends TypeDefinition> type;
+	private final Deferred<? extends TypeDefinition> typeDefinition;
 	private final TypeTable typeTable;
 	private final Scope scope;
 	private final boolean nillable;
 	private final Deferred<ValueConstraint> valueConstraint;
-	private final Deque<IdentityConstraint> identityConstraints;
+	private final Deque<IdentityConstraint> identityConstraintDefinitions;
 	private final Deque<Element> substitutionGroupAffiliations;
 	private final Set<Block> disallowedSubstitutions;
 	private final Set<Final> substitutionGroupExclusions;
 	private final boolean isAbstract;
 
-	private Element(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<? extends TypeDefinition> type, final Deque<Alternative> alternatives, final Scope scope, final boolean nillable, final Deferred<ValueConstraint> valueConstraint, final Deque<IdentityConstraint> identityConstraints, final Deque<Element> substitutionGroupAffiliations, final Set<Block> disallowedSubstitutions, final Set<Final> substitutionGroupExclusions, final boolean isAbstract) {
+	private Element(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<? extends TypeDefinition> typeDefinition, final Deque<Alternative> alternatives, final Scope scope, final boolean nillable, final Deferred<ValueConstraint> valueConstraint, final Deque<IdentityConstraint> identityConstraintDefinitions, final Deque<Element> substitutionGroupAffiliations, final Set<Block> disallowedSubstitutions, final Set<Final> substitutionGroupExclusions, final boolean isAbstract) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
 		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
-		this.type = Objects.requireNonNull(type);
+		this.typeDefinition = Objects.requireNonNull(typeDefinition);
 		this.typeTable = alternatives.isEmpty() ? null : new TypeTable(alternatives, this);
 		this.scope = scope;
 		this.nillable = nillable;
 		this.valueConstraint = Objects.requireNonNull(valueConstraint);
-		this.identityConstraints = Objects.requireNonNull(identityConstraints);
+		this.identityConstraintDefinitions = Objects.requireNonNull(identityConstraintDefinitions);
 		this.substitutionGroupAffiliations = Objects.requireNonNull(substitutionGroupAffiliations);
 		this.disallowedSubstitutions = Objects.requireNonNull(disallowedSubstitutions);
 		this.substitutionGroupExclusions = Objects.requireNonNull(substitutionGroupExclusions);
@@ -265,34 +265,34 @@ public class Element implements Term {
 			substitutionGroup = Deques.emptyDeque();
 		}
 		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>(substitutionGroup.size());
-		final Deferred<? extends TypeDefinition> type;
+		final Deferred<? extends TypeDefinition> typeDefinition;
 		final QName typeName = result.value(AttrParser.TYPE);
 		if (typeName != null) {
-			type = result.schema().find(typeName, TypeDefinition.class);
+			typeDefinition = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final TypeDefinition typeDefinition = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
-			type = typeDefinition != null
-					? () -> typeDefinition
+			final TypeDefinition type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
+			typeDefinition = type != null
+					? () -> type
 					: substitutionGroupAffiliations.isEmpty()
 							? ComplexType::xsAnyType
-							: substitutionGroupAffiliations.getFirst().type;
+							: substitutionGroupAffiliations.getFirst().typeDefinition;
 		}
 		final Deferred<ValueConstraint> valueConstraint;
 		if (defaultValue != null || fixedValue != null) {
-			valueConstraint = type.map(t -> {
+			valueConstraint = typeDefinition.map(t -> {
 				final Deferred<SimpleType> effectiveSimpleType;
 				if (t instanceof SimpleType) {
 					effectiveSimpleType = () -> (SimpleType) t;
 				} else {
 					final ContentType contentType = ((ComplexType) t).contentType();
 					effectiveSimpleType = ComplexType.Variety.SIMPLE.equals(contentType.variety())
-							? contentType::simpleType
+							? contentType::simpleTypeDefinition
 							: SimpleType::xsString;
 				}
 				return defaultValue != null
-						? new ValueConstraint(effectiveSimpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
+						? new ValueConstraint(result.schema(), effectiveSimpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
 						: fixedValue != null
-								? new ValueConstraint(effectiveSimpleType, ValueConstraint.Variety.FIXED, fixedValue)
+								? new ValueConstraint(result.schema(), effectiveSimpleType, ValueConstraint.Variety.FIXED, fixedValue)
 								: null;
 			});
 		} else {
@@ -300,7 +300,7 @@ public class Element implements Term {
 		}
 		substitutionGroup.forEach(s -> substitutionGroupAffiliations.add(result.schema().find(s, Element.class)));
 		final String name = result.value(AttrParser.NAME);
-		return new Element(result.node(), result.annotations(), name, targetNamespace, type, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
+		return new Element(result.node(), result.annotations(), name, targetNamespace, typeDefinition, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
 	}
 
 	private static Particle parse(final Result result) {
@@ -335,8 +335,8 @@ public class Element implements Term {
 		return targetNamespace;
 	}
 
-	public TypeDefinition type() {
-		return type.get();
+	public TypeDefinition typeDefinition() {
+		return typeDefinition.get();
 	}
 
 	public TypeTable typeTable() {
@@ -355,8 +355,8 @@ public class Element implements Term {
 		return valueConstraint.get();
 	}
 
-	public Deque<IdentityConstraint> identityConstraints() {
-		return Deques.unmodifiableDeque(identityConstraints);
+	public Deque<IdentityConstraint> identityConstraintDefinitions() {
+		return Deques.unmodifiableDeque(identityConstraintDefinitions);
 	}
 
 	public Deque<Element> substitutionGroupAffiliations() {

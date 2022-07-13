@@ -28,7 +28,7 @@ public class ComplexTypeTests {
 	@Test
 	public void test() {
 		for (final TypeDefinition type : schema.typeDefinitions()) {
-			for (TypeDefinition base = type; base != ComplexType.xsAnyType(); base = base.baseType()) {
+			for (TypeDefinition base = type; base != ComplexType.xsAnyType(); base = base.baseTypeDefinition()) {
 				assertNotNull(base);
 			}
 		}

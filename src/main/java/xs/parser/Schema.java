@@ -8,6 +8,7 @@ import java.util.AbstractMap.*;
 import java.util.function.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
+import javax.xml.parsers.*;
 import javax.xml.transform.stream.*;
 import org.w3c.dom.*;
 import org.xml.sax.*;
@@ -208,7 +209,7 @@ public class Schema implements AnnotatedComponent {
 			return new DefaultOpenContent(result.annotations(), appliesToEmpty, mode, wildcard);
 		}
 
-		public boolean appliesToEmpty() {
+		boolean appliesToEmpty() {
 			return appliesToEmpty;
 		}
 
@@ -326,7 +327,7 @@ public class Schema implements AnnotatedComponent {
 		private Schema includeSchema() {
 			try {
 				final String expectedTargetNamespace = schema.targetNamespace();
-				final Schema resultSchema = schema.findSchema(new DocumentResolver() {
+				final Schema resultSchema = schema.findSchema(new DefaultDocumentResolver() {
 
 					@Override
 					public URI resolveUri(final String baseUri, final String namespace, final String schemaLocation) {
@@ -537,9 +538,13 @@ public class Schema implements AnnotatedComponent {
 
 		public Document resolve(URI resourceUri) throws Exception;
 
+		public Document newDocument(final InputSource source) throws Exception;
+
 	}
 
 	public static class DefaultDocumentResolver implements DocumentResolver {
+
+		private final DocumentBuilder documentBuilder = NodeHelper.newDocumentBuilder();
 
 		public URI resolveUri(final String baseUri, final String namespace, final String schemaLocation) {
 			if (schemaLocation != null) {
@@ -561,14 +566,14 @@ public class Schema implements AnnotatedComponent {
 				return null;
 			} else if (resourceUri.getScheme() != null) {
 				final InputSource source = new InputSource(resourceUri.toString());
-				return NodeHelper.newDocumentBuilder().parse(source);
+				return newDocument(source);
 			} else {
 				final Path path = Paths.get(resourceUri.toString());
 				if (Files.isRegularFile(path)) {
 					try (final FileInputStream stream = new FileInputStream(path.toFile())) {
 						final InputSource source = new InputSource(stream);
 						source.setSystemId(resourceUri.toString());
-						return NodeHelper.newDocumentBuilder().parse(source);
+						return newDocument(source);
 					}
 				} else {
 					final InputStream stream = getClass().getResourceAsStream(resourceUri.toString());
@@ -577,9 +582,14 @@ public class Schema implements AnnotatedComponent {
 					}
 					final InputSource source = new InputSource(stream);
 					source.setSystemId(resourceUri.toString());
-					return NodeHelper.newDocumentBuilder().parse(source);
+					return newDocument(source);
 				}
 			}
+		}
+
+		@Override
+		public Document newDocument(final InputSource source) throws Exception {
+			return documentBuilder.parse(source);
 		}
 
 	}
@@ -816,12 +826,12 @@ public class Schema implements AnnotatedComponent {
 				n -> checkIfUnique(n, Notation::name, Notation::targetNamespace));
 		this.identityConstraintDefinitions = Deferred.of(() -> {
 			final Deque<IdentityConstraint> id = new ArrayDeque<>();
-			this.elementDeclarations().forEach(e -> id.addAll(e.identityConstraints()));
+			this.elementDeclarations().forEach(e -> id.addAll(e.identityConstraintDefinitions()));
 			this.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
 				if (c.contentType() != null && c.contentType().particle() != null) {
 					final Particle p = c.contentType().particle();
 					if (p.term() instanceof Element) {
-						id.addAll(((Element) p.term()).identityConstraints());
+						id.addAll(((Element) p.term()).identityConstraintDefinitions());
 					} else if (p.term() instanceof ModelGroup) {
 						final Deque<ModelGroup> d = new ArrayDeque<>(Collections.singleton((ModelGroup) p.term()));
 						while (!d.isEmpty()) {
@@ -830,7 +840,7 @@ public class Schema implements AnnotatedComponent {
 								if (p2.term() instanceof ModelGroup) {
 									d.push((ModelGroup) p2.term());
 								} else if (p2.term() instanceof Element) {
-									id.addAll(((Element) p2.term()).identityConstraints());
+									id.addAll(((Element) p2.term()).identityConstraintDefinitions());
 								}
 							});
 						}
@@ -913,7 +923,7 @@ public class Schema implements AnnotatedComponent {
 		case "##targetNamespace":
 			return value;
 		default:
-			return NodeHelper.getAttrValueAsAnyUri(attr, value);
+			return NodeHelper.getNodeValueAsAnyUri(attr, value);
 		}
 	}
 

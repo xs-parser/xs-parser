@@ -52,10 +52,10 @@ public class SchemaTests {
 			if (ComplexType.Variety.EMPTY.equals(c.contentType().variety())) {
 				Assert.assertEquals(ComplexType.DerivationMethod.RESTRICTION, c.derivationMethod());
 				Assert.assertNull(c.contentType().openContent());
-				Assert.assertNull(c.contentType().simpleType());
+				Assert.assertNull(c.contentType().simpleTypeDefinition());
 				Assert.assertNull(c.contentType().particle());
 			} else {
-				Assert.assertNull(c.contentType().simpleType());
+				Assert.assertNull(c.contentType().simpleTypeDefinition());
 				Assert.assertNotNull(c.contentType().variety() + ", " + c.toString(), c.contentType().particle());
 				Assert.assertTrue(c.toString(), c.contentType().particle().term() instanceof ModelGroup);
 				final ModelGroup m = (ModelGroup) c.contentType().particle().term();
@@ -162,14 +162,14 @@ public class SchemaTests {
 		final Optional<SimpleType> mySimpleType = schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).map(SimpleType.class::cast).filter(s -> "mySimpleType".equals(s.name())).findAny();
 		Assert.assertTrue("Did not find mySimpleType in schema: " + schema.typeDefinitions(), mySimpleType.isPresent());
 		Assert.assertEquals(SimpleType.Variety.ATOMIC, mySimpleType.get().variety());
-		final SimpleType base = (SimpleType) mySimpleType.get().baseType();
+		final SimpleType base = (SimpleType) mySimpleType.get().baseTypeDefinition();
 		Assert.assertEquals(base.toString(), SimpleType.Variety.ATOMIC, base.variety());
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, base.targetNamespace());
 		Assert.assertEquals("int", base.name());
 		final Optional<SimpleType> mySimpleType2 = schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).map(SimpleType.class::cast).filter(s -> "mySimpleType2".equals(s.name())).findAny();
 		Assert.assertTrue("Did not find mySimpleType2 in schema: " + schema.typeDefinitions(), mySimpleType2.isPresent());
 		Assert.assertEquals(SimpleType.Variety.ATOMIC, mySimpleType2.get().variety());
-		final SimpleType base2 = (SimpleType) mySimpleType2.get().baseType();
+		final SimpleType base2 = (SimpleType) mySimpleType2.get().baseTypeDefinition();
 		Assert.assertEquals(SimpleType.Variety.ATOMIC, base2.variety());
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, base2.targetNamespace());
 		Assert.assertEquals("string", base2.name());
@@ -182,14 +182,14 @@ public class SchemaTests {
 		final Optional<SimpleType> mySimpleType = schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).map(SimpleType.class::cast).filter(s -> "mySimpleType".equals(s.name())).findAny();
 		Assert.assertTrue("Did not find mySimpleType in schema: " + schema.typeDefinitions(), mySimpleType.isPresent());
 		Assert.assertEquals(SimpleType.Variety.ATOMIC, mySimpleType.get().variety());
-		final SimpleType base = (SimpleType) mySimpleType.get().baseType();
+		final SimpleType base = (SimpleType) mySimpleType.get().baseTypeDefinition();
 		Assert.assertEquals(SimpleType.Variety.ATOMIC, base.variety());
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, base.targetNamespace());
 		Assert.assertEquals("string", base.name());
 		final Optional<SimpleType> mySimpleType2 = schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).map(SimpleType.class::cast).filter(s -> "mySimpleType2".equals(s.name())).findAny();
 		Assert.assertTrue("Did not find mySimpleType2 in schema: " + schema.typeDefinitions(), mySimpleType2.isPresent());
 		Assert.assertEquals(SimpleType.Variety.ATOMIC, mySimpleType2.get().variety());
-		final SimpleType base2 = (SimpleType) mySimpleType2.get().baseType();
+		final SimpleType base2 = (SimpleType) mySimpleType2.get().baseTypeDefinition();
 		Assert.assertEquals(SimpleType.Variety.ATOMIC, base2.variety());
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, base2.targetNamespace());
 		Assert.assertEquals("string", base2.name());
@@ -243,8 +243,8 @@ public class SchemaTests {
 			Assert.assertEquals("xs:maxLength", 222, SimpleTypeTests.facetOf(mySimpleType2, ConstrainingFacet.MaxLength.class).value().intValue());
 			final SimpleType anotherSimpleType = (SimpleType) schema.typeDefinitions().stream().filter(s -> "anotherSimpleType".equals(s.name()) && "https://my.test".equals(s.targetNamespace())).findAny().get();
 			Assert.assertEquals(SimpleType.Variety.ATOMIC, anotherSimpleType.variety());
-			Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, anotherSimpleType.baseType().targetNamespace());
-			Assert.assertEquals("int", anotherSimpleType.baseType().name());
+			Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, anotherSimpleType.baseTypeDefinition().targetNamespace());
+			Assert.assertEquals("int", anotherSimpleType.baseTypeDefinition().name());
 			Assert.assertEquals("xs:complexType", 5, schema.typeDefinitions().stream().filter(ComplexType.class::isInstance).count());
 		}
 		// xs:complexType redefinition
@@ -256,10 +256,10 @@ public class SchemaTests {
 			Assert.assertEquals(1, grp.particles().size());
 			final Particle pElem = grp.particles().getFirst();
 			final Element elem = (Element) pElem.term();
-			Assert.assertNotEquals(c1, elem.type());
+			Assert.assertNotEquals(c1, elem.typeDefinition());
 			Assert.assertEquals("e2", elem.name());
 			final ComplexType originalC1 = (ComplexType) schema.typeDefinitions().stream().filter(t -> ("_" + c1.name()).equals(t.name())).findFirst().get();
-			Assert.assertEquals(originalC1, elem.type());
+			Assert.assertEquals(originalC1, elem.typeDefinition());
 		}
 		// xs:attributeGroup redefinition
 		{
@@ -279,8 +279,8 @@ public class SchemaTests {
 			Assert.assertEquals("e2", e2.name());
 			final ComplexType c2 = (ComplexType) schema.typeDefinitions().stream().filter(t -> "c2".equals(t.name())).findFirst().get();
 			final ModelGroup g2 = schema.modelGroupDefinitions().stream().filter(g -> "g2".equals(g.name())).findFirst().get();
-			Assert.assertEquals(c2, ((Element) g2.particles().getFirst().term()).type());
-			Assert.assertEquals(c2, e2.type());
+			Assert.assertEquals(c2, ((Element) g2.particles().getFirst().term()).typeDefinition());
+			Assert.assertEquals(c2, e2.typeDefinition());
 			final ModelGroup originalG1 = schema.modelGroupDefinitions().stream().filter(g -> ("_" + g1.name()).equals(g.name())).findFirst().get();
 			Assert.assertEquals(ModelGroup.Compositor.CHOICE, originalG1.compositor());
 			Assert.assertEquals(Wildcard.class, originalG1.particles().getFirst().term().getClass());

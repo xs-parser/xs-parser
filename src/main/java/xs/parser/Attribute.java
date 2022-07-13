@@ -52,7 +52,7 @@ import xs.parser.internal.util.SequenceParser.*;
  *       <td>An xs:anyURI value. Optional.</td>
  *     </tr>
  *     <tr>
- *       <td>{@link Attribute#type()}</td>
+ *       <td>{@link Attribute#typeDefinition()}</td>
  *       <td>{type definition}</td>
  *       <td>A Simple Type Definition component. Required.</td>
  *     </tr>
@@ -112,7 +112,7 @@ public class Attribute implements AnnotatedComponent {
 		private final Variety variety;
 		private final Node parent;
 
-		public Scope(final Variety variety, final Node parent) {
+		Scope(final Variety variety, final Node parent) {
 			if ((Variety.LOCAL.equals(variety) && parent == null) || (Variety.GLOBAL.equals(variety) && parent != null)) {
 				throw new IllegalArgumentException(variety.toString());
 			}
@@ -140,7 +140,7 @@ public class Attribute implements AnnotatedComponent {
 
 		private final String name;
 
-		private Use(final String name) {
+		Use(final String name) {
 			this.name = name;
 		}
 
@@ -204,13 +204,66 @@ public class Attribute implements AnnotatedComponent {
 		}
 
 		private final Variety variety;
-		private final String value;
+		private final Deferred<Object> value;
 		private final Deferred<String> lexicalForm;
 
-		public ValueConstraint(final Deferred<SimpleType> simpleType, final Variety variety, final String value) {
+		ValueConstraint(final Schema schema, final Deferred<SimpleType> simpleType, final Variety variety, final String value) {
 			Objects.requireNonNull(simpleType);
 			this.variety = variety;
-			this.value = value;
+			this.value = simpleType.map(s -> {
+				if (SimpleType.Variety.ATOMIC.equals(s.variety())) {
+					switch (s.primitiveTypeDefinition().name()) {
+					case SimpleType.STRING_NAME:
+						return lexicalForm();
+					case SimpleType.BOOLEAN_NAME:
+						return NodeHelper.getNodeValueAsBoolean(s.node(), lexicalForm());
+					case SimpleType.DECIMAL_NAME:
+						final OptionalInt fractionDigits = s.facets().stream().filter(ConstrainingFacet.FractionDigits.class::isInstance).mapToInt(f -> ((ConstrainingFacet.FractionDigits) f).value().intValue()).findAny();
+						if (fractionDigits.isPresent() && fractionDigits.getAsInt() == 0) {
+							return NodeHelper.getNodeValueAsInteger(s.node(), lexicalForm());
+						}
+						// fallthrough
+					case SimpleType.FLOAT_NAME:
+					case SimpleType.DOUBLE_NAME:
+						return NodeHelper.getNodeValueAsDecimal(s.node(), lexicalForm());
+					case SimpleType.DURATION_NAME:
+						return NodeHelper.getNodeValueAsDuration(s.node(), lexicalForm());
+					case SimpleType.DATETIME_NAME:
+						return NodeHelper.getNodeValueAsDateTime(s.node(), lexicalForm());
+					case SimpleType.TIME_NAME:
+						return NodeHelper.getNodeValueAsTime(s.node(), lexicalForm());
+					case SimpleType.DATE_NAME:
+						return NodeHelper.getNodeValueAsDate(s.node(), lexicalForm());
+					case SimpleType.GYEARMONTH_NAME:
+						return NodeHelper.getNodeValueAsGYearMonth(s.node(), lexicalForm());
+					case SimpleType.GYEAR_NAME:
+						return NodeHelper.getNodeValueAsGYear(s.node(), lexicalForm());
+					case SimpleType.GMONTHDAY_NAME:
+						return NodeHelper.getNodeValueAsGMonthDay(s.node(), lexicalForm());
+					case SimpleType.GDAY_NAME:
+						return NodeHelper.getNodeValueAsGDay(s.node(), lexicalForm());
+					case SimpleType.GMONTH_NAME:
+						return NodeHelper.getNodeValueAsGMonth(s.node(), lexicalForm());
+					case SimpleType.HEXBINARY_NAME:
+						return NodeHelper.getNodeValueAsHexBinary(s.node(), lexicalForm());
+					case SimpleType.BASE64BINARY_NAME:
+						return NodeHelper.getNodeValueAsBase64Binary(s.node(), lexicalForm());
+					case SimpleType.ANYURI_NAME:
+						return NodeHelper.getNodeValueAsAnyUri(s.node(), lexicalForm());
+					case SimpleType.QNAME_NAME:
+						return NodeHelper.getNodeValueAsQName(s.node(), lexicalForm());
+					case SimpleType.NOTATION_NAME:
+						final QName notation = NodeHelper.getNodeValueAsQName(s.node(), lexicalForm());
+						if (schema.notationDeclarations().stream().noneMatch(n -> NodeHelper.equalsName(notation, n))) {
+							throw NodeHelper.newFacetException(s.node(), value, (s.targetNamespace() != null ? '{' + s.targetNamespace() + '}' : "") + s.name());
+						}
+						return notation;
+					default:
+						throw new AssertionError();
+					}
+				}
+				return lexicalForm();
+			});
 			this.lexicalForm = simpleType.map(s -> s.lexicalMapping(value));
 		}
 
@@ -220,8 +273,8 @@ public class Attribute implements AnnotatedComponent {
 		}
 
 		/** @return the ·actual value· of the [attribute] (with respect to {attribute declaration}.{type definition}) */
-		public String value() {
-			return value;
+		public Object value() {
+			return value.get();
 		}
 
 		/** @return the ·normalized value· of the [attribute] (with respect to {attribute declaration}.{type definition}) */
@@ -256,17 +309,17 @@ public class Attribute implements AnnotatedComponent {
 	private final Deque<Annotation> annotations;
 	private final String name;
 	private final String targetNamespace;
-	private final Deferred<SimpleType> type;
+	private final Deferred<SimpleType> typeDefinition;
 	private final Scope scope;
 	private final ValueConstraint valueConstraint;
 	private final boolean inheritable;
 
-	Attribute(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<SimpleType> type, final Scope scope, final ValueConstraint valueConstraint, final Boolean inheritable) {
+	Attribute(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<SimpleType> typeDefinition, final Scope scope, final ValueConstraint valueConstraint, final Boolean inheritable) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
 		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
-		this.type = Objects.requireNonNull(type);
+		this.typeDefinition = Objects.requireNonNull(typeDefinition);
 		this.scope = scope;
 		this.valueConstraint = valueConstraint;
 		this.inheritable = inheritable != null && inheritable.booleanValue();
@@ -301,8 +354,8 @@ public class Attribute implements AnnotatedComponent {
 		final Deferred<SimpleType> simpleType = typeName != null
 				? result.schema().find(typeName, SimpleType.class)
 				: simpleTypeChild != null ? () -> simpleTypeChild : SimpleType::xsAnySimpleType;
-		final ValueConstraint valueConstraint = defaultValue != null ? new ValueConstraint(simpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
-				: fixedValue != null ? new ValueConstraint(simpleType, ValueConstraint.Variety.FIXED, fixedValue)
+		final ValueConstraint valueConstraint = defaultValue != null ? new ValueConstraint(result.schema(), simpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
+				: fixedValue != null ? new ValueConstraint(result.schema(), simpleType, ValueConstraint.Variety.FIXED, fixedValue)
 				: null;
 		final String name = result.value(AttrParser.NAME);
 		final Boolean inheritable = result.value(AttrParser.INHERITABLE);
@@ -403,8 +456,8 @@ public class Attribute implements AnnotatedComponent {
 	}
 
 	/** @return The simple type definition corresponding to the &lt;simpleType&gt; element information item in the [children], if present, otherwise the simple type definition ·resolved· to by the ·actual value· of the type [attribute], if present, otherwise ·xs:anySimpleType·. */
-	public SimpleType type() {
-		return type.get();
+	public SimpleType typeDefinition() {
+		return typeDefinition.get();
 	}
 
 	@Override

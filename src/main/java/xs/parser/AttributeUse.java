@@ -53,9 +53,9 @@ public class AttributeUse implements AnnotatedComponent {
 		final String fixedValue = result.value(AttrParser.FIXED);
 		final Function<Deferred<SimpleType>, ValueConstraint> valueConstraint = s -> {
 			if (defaultValue != null) {
-				return new ValueConstraint(s, ValueConstraint.Variety.DEFAULT, defaultValue);
+				return new ValueConstraint(result.schema(), s, ValueConstraint.Variety.DEFAULT, defaultValue);
 			} else if (fixedValue != null) {
-				return new ValueConstraint(s, ValueConstraint.Variety.FIXED, fixedValue);
+				return new ValueConstraint(result.schema(), s, ValueConstraint.Variety.FIXED, fixedValue);
 			}
 			return null;
 		};

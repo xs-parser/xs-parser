@@ -123,12 +123,12 @@ public class OtherXsdTests {
 			a.test().baseURI();
 			assertNotNull(a, a.test().expression());
 		}
-		if (a.type() instanceof SimpleType) {
-			visitSimpleType((SimpleType) a.type());
-		} else if (a.type() instanceof ComplexType) {
-			visitComplexType((ComplexType) a.type());
+		if (a.typeDefinition() instanceof SimpleType) {
+			visitSimpleType((SimpleType) a.typeDefinition());
+		} else if (a.typeDefinition() instanceof ComplexType) {
+			visitComplexType((ComplexType) a.typeDefinition());
 		} else {
-			Assert.fail(a.type().getClass().getName());
+			Assert.fail(a.typeDefinition().getClass().getName());
 		}
 	}
 
@@ -197,7 +197,7 @@ public class OtherXsdTests {
 		visitAnnotatedComponent(s);
 		s.name();
 		s.targetNamespace();
-		visitSimpleType((SimpleType) s.baseType());
+		visitSimpleType((SimpleType) s.baseTypeDefinition());
 		s.facets().forEach(this::visitConstrainingFacet);
 		s.fundamentalFacets().forEach(f -> {
 			visitSchemaComponent(f);
@@ -206,16 +206,16 @@ public class OtherXsdTests {
 		switch (s.variety()) {
 		case ATOMIC:
 			if (isPrimitiveType(s)) {
-				Assert.assertEquals(s.name(), s, s.primitiveType());
+				Assert.assertEquals(s.name(), s, s.primitiveTypeDefinition());
 			} else {
-				visitSimpleType(s.primitiveType());
+				visitSimpleType(s.primitiveTypeDefinition());
 			}
 			break;
 		case LIST:
-			visitSimpleType(s.itemType());
+			visitSimpleType(s.itemTypeDefinition());
 			break;
 		case UNION:
-			s.memberTypes().forEach(this::visitSimpleType);
+			s.memberTypeDefinitions().forEach(this::visitSimpleType);
 			break;
 		default:
 			Assert.fail(s.name() + ", " + s.variety().toString());
@@ -256,15 +256,15 @@ public class OtherXsdTests {
 		c.isAbstract();
 		c.derivationMethod();
 		visitContentType(c.contentType());
-		assertNotNull(c, c.baseType());
-		Assert.assertTrue(c.name(), c.baseType() instanceof ComplexType || c.baseType() instanceof SimpleType);
+		assertNotNull(c, c.baseTypeDefinition());
+		Assert.assertTrue(c.name(), c.baseTypeDefinition() instanceof ComplexType || c.baseTypeDefinition() instanceof SimpleType);
 	}
 
 	private void visitContentType(final ComplexType.ContentType c) {
 		switch (c.variety()) {
 		case EMPTY:
 			Assert.assertNull(c.particle());
-			Assert.assertNull(c.simpleType());
+			Assert.assertNull(c.simpleTypeDefinition());
 			Assert.assertNull(c.openContent());
 			break;
 		case MIXED:
@@ -277,8 +277,8 @@ public class OtherXsdTests {
 			}
 			break;
 		case SIMPLE:
-			assertNotNull(c, c.simpleType());
-			visitSimpleType(c.simpleType());
+			assertNotNull(c, c.simpleTypeDefinition());
+			visitSimpleType(c.simpleTypeDefinition());
 			break;
 		default:
 			Assert.fail(c.toString());
@@ -336,23 +336,23 @@ public class OtherXsdTests {
 		e.targetNamespace();
 		if (e.typeTable() != null) {
 			e.typeTable().alternatives().forEach(this::visitAlternative);
-			visitAlternative(e.typeTable().defaultType());
+			visitAlternative(e.typeTable().defaultTypeDefinition());
 		}
 		e.valueConstraint();
 		assertNotNull(e, e.scope());
-		e.identityConstraints().forEach(this::visitIdentityConstraint);
+		e.identityConstraintDefinitions().forEach(this::visitIdentityConstraint);
 		e.nillable();
 		e.substitutionGroupAffiliations().forEach(Assert::assertNotNull);
 		e.disallowedSubstitutions().forEach(Assert::assertNotNull);
 		e.substitutionGroupExclusions().forEach(Assert::assertNotNull);
 		e.isAbstract();
-		assertNotNull(e, e.type());
-		if (e.type() instanceof SimpleType) {
-			visitSimpleType((SimpleType) e.type());
-		} else if (e.type() instanceof ComplexType) {
-			visitComplexType((ComplexType) e.type());
+		assertNotNull(e, e.typeDefinition());
+		if (e.typeDefinition() instanceof SimpleType) {
+			visitSimpleType((SimpleType) e.typeDefinition());
+		} else if (e.typeDefinition() instanceof ComplexType) {
+			visitComplexType((ComplexType) e.typeDefinition());
 		} else {
-			Assert.fail(e.type().getClass().getName());
+			Assert.fail(e.typeDefinition().getClass().getName());
 		}
 	}
 
