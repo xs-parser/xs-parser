@@ -34,16 +34,14 @@ public final class SequenceParser {
 		private final Node node;
 		private final Result parent;
 		private final Map<AttrParser<?>, AttrValue<?>> attributes = new LinkedHashMap<>();
-		private final Set<Attr> nonSchemaAttributes;
 		private final Map<TagParser<?>, Deque<Result>> parserResults = new LinkedHashMap<>();
 		private final Deque<Node> anyContent;
 		private final AtomicReference<Object> value = new AtomicReference<>();
 
-		Result(final Schema schema, final Node node, final Result parent, final boolean allowsNonSchemaAttributes, final boolean allowsAnyContent) {
+		Result(final Schema schema, final Node node, final Result parent, final boolean allowsAnyContent) {
 			this.schema = schema;
 			this.node = node;
 			this.parent = parent;
-			nonSchemaAttributes = allowsNonSchemaAttributes ? new LinkedHashSet<>() : Collections.emptySet();
 			anyContent = allowsAnyContent ? new ArrayDeque<>() : Deques.emptyDeque();
 		}
 
@@ -62,11 +60,6 @@ public final class SequenceParser {
 				throw new IllegalArgumentException("Unregistered attribute \"" + a + '"');
 			}
 			return (T) val.value;
-		}
-
-		// TODO: delete - unused
-		public Set<Attr> nonSchemaAttributes() {
-			return nonSchemaAttributes;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -95,7 +88,7 @@ public final class SequenceParser {
 			final Result r = results.getFirst();
 			checkIfCanParse(r, t);
 			return Deferred.of(() -> {
-				final T v = t.parse(r);
+				final T v = Objects.requireNonNull(t.parse(r));
 				r.setValue(v);
 				return v;
 			});
@@ -192,7 +185,6 @@ public final class SequenceParser {
 
 	private final Map<QName, Map.Entry<AttrParser<?>, Boolean>> attrParsers = new LinkedHashMap<>();
 	private final List<Occur> subParsers = new ArrayList<>();
-	private boolean allowsNonSchemaAttributes = true;
 	private boolean allowsAnyContent = false;
 
 	private static void checkIfCanParse(final Result r, final TagParser<?> t) {
@@ -221,11 +213,6 @@ public final class SequenceParser {
 		return this;
 	}
 
-	public SequenceParser allowsNonSchemaAttributes(final boolean value) {
-		this.allowsNonSchemaAttributes = value;
-		return this;
-	}
-
 	public SequenceParser allowsAnyContent(final boolean value) {
 		this.allowsAnyContent = value;
 		return this;
@@ -236,29 +223,24 @@ public final class SequenceParser {
 	}
 
 	private Result parse(final Schema schema, final Node node, final Result parent) {
-		final Result result = new Result(schema, node, parent, allowsNonSchemaAttributes, allowsAnyContent);
+		final Result result = new Result(schema, node, parent, allowsAnyContent);
 		final NamedNodeMap attributes = node.getAttributes();
-		for (int i = 0; i < attributes.getLength(); ++i) {
+		final int len = attributes.getLength();
+		for (int i = 0; i < len; ++i) {
 			final Attr a = (Attr) attributes.item(i);
-			if (a.getNodeName().startsWith("xmlns")) { // Ignore xmlns= and xmlns:*= attributes
+			if (a.getNodeName().startsWith("xmlns")) {
+				// Ignore 'xmlns' and 'xmlns:*' attributes
 				continue;
 			}
 			final QName attrName = a.getNamespaceURI() != null
 					? new QName(a.getNamespaceURI(), a.getLocalName())
 					: new QName(a.getLocalName());
 			final Map.Entry<AttrParser<?>, Boolean> e = attrParsers.get(attrName);
-			if (Objects.equals(a.getNamespaceURI(), XMLConstants.W3C_XML_SCHEMA_NS_URI) || Objects.equals(a.getNamespaceURI(), XMLConstants.NULL_NS_URI)) {
-				throw NodeHelper.newParseException(node, "Found disallowed attribute present on element " + node.getLocalName() + ": " + a.getLocalName());
-			}
-			if (e == null) {
-				if (allowsNonSchemaAttributes && a.getPrefix() != null && !XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(a.getPrefix())) {
-					result.nonSchemaAttributes.add(a);
-				} else {
-					throw NodeHelper.newParseException(node, "Found disallowed non-schema attribute: " + a);
-				}
-			} else {
+			if (e != null) {
 				final AttrParser<?> v = e.getKey();
 				result.attributes.put(v, new AttrValue<>(a, v.parse(a)));
+			} else if (a.getNamespaceURI() == null || XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(a.getNamespaceURI())) {
+				throw NodeHelper.newParseException(node, "Found disallowed attribute + '" + a.getName() + "'");
 			}
 		}
 		for (final Map.Entry<QName, Map.Entry<AttrParser<?>, Boolean>> a : attrParsers.entrySet()) {
@@ -283,8 +265,7 @@ public final class SequenceParser {
 					while ((tagParser = iter.elementFor(n)) == null) {
 						if (iter.minInclusive > amount || iter.maxInclusive < amount) {
 							throw NodeHelper.newParseException(node, "Invalid occurences for element " + node + ", " + iter.minInclusive + ", " + iter.maxInclusive + " " + amount);
-						}
-						if (parserIndex >= subParsers.size()) {
+						} else if (parserIndex >= subParsers.size()) {
 							throw NodeHelper.newParseException(node, "Disallowed element: " + n + ", " + n.getClass() + ", expecting one of " + subParsers);
 						}
 						iter = subParsers.get(parserIndex++);

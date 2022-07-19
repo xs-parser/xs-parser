@@ -783,7 +783,7 @@ public class Schema implements AnnotatedComponent {
 		this.annotations = new Def<>();
 		this.attributeFormDefault = AttrParser.ATTRIBUTE_FORM_DEFAULT.getDefaultValue();
 		this.blockDefault = AttrParser.BLOCK_DEFAULT.getDefaultValue();
-		this.defaultAttributes = Deferred.none();
+		this.defaultAttributes = null;
 		this.xpathDefaultNamespace = XPATH_DEFAULT_NAMESPACE_SCHEMA_DEFAULT;
 		this.elementFormDefault = AttrParser.ELEMENT_FORM_DEFAULT.getDefaultValue();
 		this.finalDefault = AttrParser.FINAL_DEFAULT.getDefaultValue();
@@ -864,7 +864,7 @@ public class Schema implements AnnotatedComponent {
 		final QName defaultAttributesName = result.value(AttrParser.DEFAULT_ATTRIBUTES);
 		this.defaultAttributes = defaultAttributesName != null
 				? find(defaultAttributesName, AttributeGroup.class)
-				: Deferred.none();
+				: null;
 		this.xpathDefaultNamespace = Optional.ofNullable(result.value(AttrParser.XPATH_DEFAULT_NAMESPACE)).orElse(XPATH_DEFAULT_NAMESPACE_SCHEMA_DEFAULT);
 		this.elementFormDefault = result.value(AttrParser.ELEMENT_FORM_DEFAULT);
 		this.finalDefault = result.value(AttrParser.FINAL_DEFAULT);
@@ -901,7 +901,7 @@ public class Schema implements AnnotatedComponent {
 	}
 
 	private static <T> Deferred<T> deferred(final Optional<T> opt) {
-		return opt.map(t -> (Deferred<T>) () -> t).orElseGet(Deferred::none);
+		return opt.map(t -> (Deferred<T>) () -> t).orElse(null);
 	}
 
 	private static <T extends SchemaComponent> void checkIfUnique(final Deque<T> ls, final Function<T, String> name, final Function<T, String> targetNamespace) {

@@ -317,7 +317,7 @@ public class SimpleType implements TypeDefinition {
 	static {
 		final Document doc = NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI);
 		final Node xsAnySimpleTypeNode = NodeHelper.newSchemaNode(doc, TagParser.Names.SIMPLE_TYPE, ANYSIMPLETYPE_NAME);
-		xsAnySimpleType = new SimpleType(xsAnySimpleTypeNode, Deques.emptyDeque(), ANYSIMPLETYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, ComplexType::xsAnyType, Deferred.none(), Deques.emptyDeque(), null, null, null);
+		xsAnySimpleType = new SimpleType(xsAnySimpleTypeNode, Deques.emptyDeque(), ANYSIMPLETYPE_NAME, XMLConstants.W3C_XML_SCHEMA_NS_URI, Deques.emptyDeque(), null, ComplexType::xsAnyType, null, Deques.emptyDeque(), null, null, null);
 		xsAnyAtomicType = create(doc, ANYATOMICTYPE_NAME, xsAnySimpleType);
 		final Map<String, SimpleType> primitiveTypeDefinitions = new HashMap<>();
 		primitiveTypeDefinitions.put(STRING_NAME, create(doc, STRING_NAME, xsAnyAtomicType));
@@ -397,7 +397,7 @@ public class SimpleType implements TypeDefinition {
 		this.baseTypeDefinition = Objects.requireNonNull(baseTypeDefinition);
 		this.finals = Objects.requireNonNull(finals);
 		this.context = context;
-		this.variety = Objects.requireNonNull(variety);
+		this.variety = variety;
 		this.facets = Objects.requireNonNull(facets);
 		this.facetValues = new DeferredArrayDeque<>(() -> facets.stream().filter(ConstrainingFacet.class::isInstance).map(ConstrainingFacet.class::cast).collect(Collectors.toCollection(ArrayDeque::new)));
 		this.fundamentalFacets = new DeferredArrayDeque<>(() -> {
@@ -411,7 +411,7 @@ public class SimpleType implements TypeDefinition {
 			}
 			return ((SimpleType) baseType).fundamentalFacets();
 		});
-		this.primitiveTypeDefinition = variety.map(v -> {
+		this.primitiveTypeDefinition = variety == null ? null : variety.map(v -> {
 			if (Variety.ATOMIC.equals(v) && this != xsAnyAtomicType) {
 				if (PRIMITIVE_TYPE_DEFINITIONS.containsValue(this)) {
 					return this;
@@ -421,7 +421,7 @@ public class SimpleType implements TypeDefinition {
 			}
 			return null;
 		});
-		this.itemTypeDefinition = variety.map(v -> {
+		this.itemTypeDefinition = variety == null ? null : variety.map(v -> {
 			if (Variety.LIST.equals(v)) {
 				assert restriction != null || list != null;
 				final SimpleType itemSimpleType = restriction != null
@@ -432,7 +432,7 @@ public class SimpleType implements TypeDefinition {
 			}
 			return null;
 		});
-		this.memberTypeDefinitions = new DeferredArrayDeque<>(() -> {
+		this.memberTypeDefinitions = variety == null ? Deques.emptyDeque() : new DeferredArrayDeque<>(() -> {
 			final Variety v = variety.get();
 			if (Variety.UNION.equals(v)) {
 				assert restriction != null || union != null;
@@ -476,7 +476,7 @@ public class SimpleType implements TypeDefinition {
 				throw new Schema.ParseException(node);
 			}
 		}
-		final Deque<Object> facets = new DeferredArrayDeque<Object>(() -> {
+		final Deque<Object> facets = new DeferredArrayDeque<>(() -> {
 			final Variety v = variety.get();
 			switch (v) {
 			case UNION:
@@ -852,7 +852,7 @@ public class SimpleType implements TypeDefinition {
 
 	/** @return If the &lt;list&gt; alternative is chosen, then list, otherwise if the &lt;union&gt; alternative is chosen, then union, otherwise (the &lt;restriction&gt; alternative is chosen), then the {variety} of the {base type definition}. */
 	public Variety variety() {
-		return variety.get();
+		return variety != null ? variety.get() : null;
 	}
 
 	/** @return The appropriate case among the following:

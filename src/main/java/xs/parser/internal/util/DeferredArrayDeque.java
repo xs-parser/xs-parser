@@ -31,7 +31,7 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 	}
 
 	public DeferredArrayDeque(final Deferred<? extends Deque<E>> def) {
-		this.def = def.map(c -> new ArrayDeque<>(c));
+		this.def = def.map(ArrayDeque::new);
 	}
 
 	@Override

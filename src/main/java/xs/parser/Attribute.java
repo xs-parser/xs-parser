@@ -336,6 +336,11 @@ public class Attribute implements AnnotatedComponent {
 		String targetNamespace;
 		final Scope scope;
 		if (isGlobal) {
+			if (form != null) {
+				throw new Schema.ParseException(node, "'form' attribute is only allowed for local attribute declarations");
+			} else if (result.value(AttrParser.TARGET_NAMESPACE) != null) {
+				throw new Schema.ParseException(node, "'targetNamespace' attribute is only allowed for local attribute declarations");
+			}
 			targetNamespace = result.schema().targetNamespace();
 			scope = new Scope(Scope.Variety.GLOBAL, null);
 		} else {

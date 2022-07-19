@@ -7,13 +7,6 @@ import java.util.function.*;
 @FunctionalInterface
 public interface Deferred<T> {
 
-	public static final Deferred<?> NONE = () -> null;
-
-	@SuppressWarnings("unchecked")
-	public static <U> Deferred<U> none() {
-		return (Deferred<U>) NONE;
-	}
-
 	public T get();
 
 	public default <U> Deferred<U> map(final Function<T, U> mapper) {

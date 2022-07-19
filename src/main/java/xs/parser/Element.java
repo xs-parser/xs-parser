@@ -138,20 +138,20 @@ public class Element implements Term {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class TypeTable {
+	public class TypeTable {
 
 		private final Deque<Alternative> alternatives;
 		private final Alternative defaultTypeDefinition;
 
-		private TypeTable(final Deque<Alternative> alternatives, final Element parent) {
+		private TypeTable(final Deque<Alternative> alternatives) {
 			if (alternatives.isEmpty()) {
 				throw new IllegalArgumentException("TypeTable must have at least one alternative");
 			}
 			this.alternatives = Objects.requireNonNull(alternatives);
-			final Alternative last = alternatives.getFirst();
+			final Alternative last = alternatives.getLast();
 			this.defaultTypeDefinition = last.test() == null
 					? last
-					: new Alternative(parent.node(), Deques.emptyDeque(), null, last::typeDefinition);
+					: new Alternative(node, Deques.emptyDeque(), null, typeDefinition);
 		}
 
 		public Deque<Alternative> alternatives() {
@@ -194,10 +194,10 @@ public class Element implements Term {
 		this.name = name;
 		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.typeDefinition = Objects.requireNonNull(typeDefinition);
-		this.typeTable = alternatives.isEmpty() ? null : new TypeTable(alternatives, this);
+		this.typeTable = alternatives.isEmpty() ? null : new TypeTable(alternatives);
 		this.scope = scope;
 		this.nillable = nillable;
-		this.valueConstraint = Objects.requireNonNull(valueConstraint);
+		this.valueConstraint = valueConstraint;
 		this.identityConstraintDefinitions = Objects.requireNonNull(identityConstraintDefinitions);
 		this.substitutionGroupAffiliations = Objects.requireNonNull(substitutionGroupAffiliations);
 		this.disallowedSubstitutions = Objects.requireNonNull(disallowedSubstitutions);
@@ -245,6 +245,11 @@ public class Element implements Term {
 		final Scope scope;
 		String targetNamespace;
 		if (isGlobal) {
+			if (form != null) {
+				throw new Schema.ParseException(node, "'form' attribute is only allowed for local element declarations");
+			} else if (result.value(AttrParser.TARGET_NAMESPACE) != null) {
+				throw new Schema.ParseException(node, "'targetNamespace' attribute is only allowed for local element declarations");
+			}
 			targetNamespace = result.schema().targetNamespace();
 			scope = new Scope(Scope.Variety.GLOBAL, null);
 		} else {
@@ -298,7 +303,7 @@ public class Element implements Term {
 								: null;
 			});
 		} else {
-			valueConstraint = Deferred.none();
+			valueConstraint = null;
 		}
 		substitutionGroup.forEach(s -> substitutionGroupAffiliations.addLast(result.schema().find(s, Element.class)));
 		final String name = result.value(AttrParser.NAME);
@@ -356,7 +361,7 @@ public class Element implements Term {
 	}
 
 	public ValueConstraint valueConstraint() {
-		return valueConstraint.get();
+		return valueConstraint != null ? valueConstraint.get() : null;
 	}
 
 	public Deque<IdentityConstraint> identityConstraintDefinitions() {

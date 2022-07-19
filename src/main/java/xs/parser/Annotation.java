@@ -84,11 +84,6 @@ public class Annotation implements SchemaComponent {
 			return this;
 		}
 
-		AnnotationSet add(final Deferred<? extends AnnotatedComponent> a) {
-			this.annotations.addAll(a.map(AnnotatedComponent::annotations));
-			return this;
-		}
-
 		<T> AnnotationSet add(final Deferred<T> a, final Function<T, AnnotationSet> fn) {
 			this.annotations.addAll(a.map(t -> fn.apply(t).annotations));
 			return this;
@@ -110,21 +105,29 @@ public class Annotation implements SchemaComponent {
 		}
 
 		Deque<Annotation> resolve(final Node component) {
-			return new DeferredArrayDeque<Annotation>(() ->
-					annotations.stream()
-							.map(a -> {
-								final Deferred<Set<Attr>> attributes = Deferred.of(() -> {
-									Node n = a.node;
-									final Set<Attr> attrs = new LinkedHashSet<>();
-									do {
-										// TODO: impl
-										n = n.getParentNode();
-									} while (!component.isSameNode(n));
-									return attrs;
-								});
-								return new Annotation(a.node, a.applicationInformation, a.userInformation, attributes);
-							})
-							.collect(Collectors.toCollection(ArrayDeque::new)));
+			return new DeferredArrayDeque<>(() -> {
+				final ArrayDeque<Annotation> mapped = new ArrayDeque<>();
+				for (final Annotation a : annotations) {
+					final Deferred<Set<Attr>> attributes = Deferred.of(() -> {
+						Node n = a.node;
+						final Set<Attr> attrs = new LinkedHashSet<>();
+						do {
+							final NamedNodeMap nm = n.getAttributes();
+							final int len = nm.getLength();
+							for (int i = 0; i < len; ++i) {
+								final Attr attr = (Attr) nm.item(i);
+								if (attr.getNamespaceURI() != null && !XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(attr.getNamespaceURI())) {
+									attrs.add(attr);
+								}
+							}
+							n = n.getParentNode();
+						} while (!component.isSameNode(n));
+						return attrs;
+					});
+					mapped.add(new Annotation(a.node, a.applicationInformation, a.userInformation, attributes));
+				}
+				return mapped;
+			});
 		}
 
 	}
@@ -186,26 +189,7 @@ public class Annotation implements SchemaComponent {
 		final Deque<Node> applicationInformation = new DeferredArrayDeque<>(() -> appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new)));
 		final Deque<Documentation> documentation = result.parseAll(TagParser.ANNOTATION.documentation());
 		final Deque<Node> userInformation = new DeferredArrayDeque<>(() -> documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new)));
-		final Node component = result.node();
-		final Deferred<Set<Attr>> attributes = Deferred.of(() -> {
-			// https://www.w3.org/TR/xmlschema11-1/#as
-			// TODO: this logic is not correct
-			final Node enclosingItem = component.getParentNode();
-			final NamedNodeMap attrs = enclosingItem.getAttributes();
-			final int attrCount = attrs.getLength();
-			if (attrCount == 0) {
-				return Collections.emptySet();
-			}
-			final Set<Attr> values = new LinkedHashSet<>();
-			for (int i = 0; i < attrCount; ++i) {
-				final Attr a = (Attr) attrs.item(i);
-				if (a.getNamespaceURI() != null && !a.getLocalName().startsWith(XMLConstants.XMLNS_ATTRIBUTE) && !XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(a.getNamespaceURI())) {
-					values.add(a);
-				}
-			}
-			return values;
-		});
-		return new Annotation(result.node(), applicationInformation, userInformation, attributes);
+		return new Annotation(result.node(), applicationInformation, userInformation, Collections::emptySet);
 	}
 
 	static void register() {
