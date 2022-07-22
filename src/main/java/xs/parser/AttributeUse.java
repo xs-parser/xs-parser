@@ -48,6 +48,7 @@ public class AttributeUse implements AnnotatedComponent {
 	}
 
 	private static AttributeUse parse(final Result result) {
+		final Node node = result.node();
 		final Use use = result.value(AttrParser.USE);
 		final String defaultValue = result.value(AttrParser.DEFAULT);
 		final String fixedValue = result.value(AttrParser.FIXED);
@@ -78,15 +79,17 @@ public class AttributeUse implements AnnotatedComponent {
 		if (refName != null) {
 			attributeDecl = result.schema().find(refName, Attribute.class);
 		} else {
+			final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 			final QName typeName = result.value(AttrParser.TYPE);
-			final SimpleType simpleTypeChild = result.parse(TagParser.SIMPLE_TYPE);
+			final Deferred<SimpleType> simpleTypeChild = result.parse(TagParser.SIMPLE_TYPE);
 			final Deferred<SimpleType> simpleType = typeName != null
 					? result.schema().find(typeName, SimpleType.class)
-					: simpleTypeChild != null ? () -> simpleTypeChild : SimpleType::xsAnySimpleType;
-			final Attribute attr = new Attribute(result.node(), result.annotations(), name, targetNamespace, simpleType, scope, valueConstraint.apply(simpleType), inheritable);
+					: simpleTypeChild != null
+							? simpleTypeChild : SimpleType::xsAnySimpleType;
+			final Attribute attr = new Attribute(node, annotations, name, targetNamespace, simpleType, scope, valueConstraint.apply(simpleType), inheritable);
 			attributeDecl = () -> attr;
 		}
-		return new AttributeUse(result.node(), use, attributeDecl, inheritable == null ? attributeDecl.map(Attribute::inheritable) : () -> inheritable);
+		return new AttributeUse(node, use, attributeDecl, inheritable == null ? attributeDecl.map(Attribute::inheritable) : () -> inheritable);
 	}
 
 	static void register() {

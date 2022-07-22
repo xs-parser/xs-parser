@@ -47,7 +47,7 @@ public class IncludeTests {
 						+ "<xs:include schemaLocation=\"Test2.xsd\"/>"
 						+ "</xs:schema>"
 				));
-		Assert.assertThrows(ParseException.class, schema::typeDefinitions); // Force lazy evaluation
+		Assert.assertThrows(ParseException.class, schema.typeDefinitions()::getFirst); // Force lazy evaluation
 	}
 
 	@Test

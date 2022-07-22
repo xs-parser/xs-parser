@@ -11,6 +11,7 @@ public class FooTests {
 		final Schema fooSchema = new Schema(new File("src/test/resources/foo/foo.xsd"));
 		Assert.assertEquals(3, fooSchema.typeDefinitions().size());
 		Assert.assertEquals(2, fooSchema.elementDeclarations().size());
+		Assert.assertEquals(1, ((ComplexType) fooSchema.elementDeclarations().getFirst().typeDefinition()).assertions().size());
 	}
 
 }

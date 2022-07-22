@@ -42,11 +42,13 @@ public class Notation implements AnnotatedComponent {
 	}
 
 	private static Notation parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
 		final String publicId = result.value(AttrParser.PUBLIC);
 		final String systemId = result.value(AttrParser.SYSTEM);
-		return new Notation(result.node(), result.annotations(), name, targetNamespace, publicId, systemId);
+		return new Notation(node, annotations, name, targetNamespace, publicId, systemId);
 	}
 
 	static void register() {

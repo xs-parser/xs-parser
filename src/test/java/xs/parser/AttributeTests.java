@@ -15,6 +15,11 @@ public class AttributeTests {
 				+ "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema' thisNameIsNotAllowed='123'>"
 				+ "</xs:schema>"
 		));
+		Assert.assertThrows(Schema.ParseException.class, () -> Utilities.stringToSchema(
+				Utilities.PROLOG_UTF8
+				+ "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema' xs:thisNameIsNotAllowed='123'>"
+				+ "</xs:schema>"
+		));
 	}
 
 	@Test

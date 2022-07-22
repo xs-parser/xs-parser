@@ -62,7 +62,7 @@ public class TagParser<T> {
 
 	}
 
-	public static class Names {
+	public static final class Names {
 
 		private Names() { }
 
@@ -272,7 +272,7 @@ public class TagParser<T> {
 
 	}
 
-	public static class ShParsers {
+	public static final class ShParsers {
 
 		private ShParsers() { }
 
@@ -373,12 +373,6 @@ public class TagParser<T> {
 		final Key key = new Key(name, cls);
 		if (values.putIfAbsent(key, new Value<>(name, sequenceParser, parseMethod)) != null) {
 			throw new IllegalStateException(name + " is already registered");
-		}
-	}
-
-	public static <T> void register(final String[] elementLocalNames, final SequenceParser sequenceParser, final Class<T> cls, final Function<Result, T> parseMethod) {
-		for (final String e : elementLocalNames) {
-			register(e, sequenceParser, cls, parseMethod);
 		}
 	}
 

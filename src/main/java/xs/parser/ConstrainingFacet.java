@@ -365,6 +365,8 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 		}
 
+		static final WhiteSpace collapseFixed = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.COLLAPSE), Deques.emptyDeque(), true, WhiteSpace.Value.COLLAPSE);
+
 		private final Value value;
 
 		WhiteSpace(final Node node, final Deque<Annotation> annotations, final Boolean fixed, final Value value) {
@@ -874,7 +876,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 		final WhiteSpace preserve = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.PRESERVE), Deques.emptyDeque(), null, WhiteSpace.Value.PRESERVE);
 		final WhiteSpace replace = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.REPLACE), Deques.emptyDeque(), null, WhiteSpace.Value.REPLACE);
 		final WhiteSpace collapse = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.COLLAPSE), Deques.emptyDeque(), null, WhiteSpace.Value.COLLAPSE);
-		final WhiteSpace collapseFixed = new WhiteSpace(createSynthetic(Names.WHITE_SPACE, WhiteSpace.Value.COLLAPSE), Deques.emptyDeque(), true, WhiteSpace.Value.COLLAPSE);
+		final WhiteSpace collapseFixed = WhiteSpace.collapseFixed;
 		final ExplicitTimezone optional = new ExplicitTimezone(createSynthetic(Names.EXPLICIT_TIMEZONE, ExplicitTimezone.Value.OPTIONAL), Deques.emptyDeque(), null, ExplicitTimezone.Value.OPTIONAL);
 		// Primitive
 		df.put(SimpleType.STRING_NAME, asDeque(preserve, Length.class, MinLength.class, MaxLength.class, Pattern.class, Enumeration.class, Assertions.class)); // 3.3.1
@@ -1018,40 +1020,42 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	}
 
 	private static ConstrainingFacet parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Boolean fixed = Boolean.valueOf(result.value(AttrParser.FIXED));
 		final Attr value = result.attr(AttrParser.VALUE);
 		result.parent();
-		switch (result.node().getLocalName()) {
+		switch (node.getLocalName()) {
 		case Names.LENGTH:
-			return new Length(result.node(), result.annotations(), fixed, NodeHelper.getAttrValueAsNonNegativeInteger(value));
+			return new Length(node, annotations, fixed, NodeHelper.getAttrValueAsNonNegativeInteger(value));
 		case Names.MIN_LENGTH:
-			return new MinLength(result.node(), result.annotations(), fixed, NodeHelper.getAttrValueAsNonNegativeInteger(value));
+			return new MinLength(node, annotations, fixed, NodeHelper.getAttrValueAsNonNegativeInteger(value));
 		case Names.MAX_LENGTH:
-			return new MaxLength(result.node(), result.annotations(), fixed, NodeHelper.getAttrValueAsNonNegativeInteger(value));
+			return new MaxLength(node, annotations, fixed, NodeHelper.getAttrValueAsNonNegativeInteger(value));
 		case Names.PATTERN:
-			return new Pattern(result.node(), result.annotations(), Collections.singleton(NodeHelper.getAttrValueAsString(value)));
+			return new Pattern(node, annotations, Collections.singleton(NodeHelper.getAttrValueAsString(value)));
 		case Names.ENUMERATION:
-			return new Enumeration(result.node(), result.annotations(), Collections.singleton(NodeHelper.getAttrValueAsString(value)));
+			return new Enumeration(node, annotations, Collections.singleton(NodeHelper.getAttrValueAsString(value)));
 		case Names.WHITE_SPACE:
-			return new WhiteSpace(result.node(), result.annotations(), fixed, WhiteSpace.Value.getAttrValueAsWhiteSpace(value));
+			return new WhiteSpace(node, annotations, fixed, WhiteSpace.Value.getAttrValueAsWhiteSpace(value));
 		case Names.MAX_INCLUSIVE:
-			return new MaxInclusive(result.node(), result.annotations(), fixed, getAttrValueAsNumber(result, value));
+			return new MaxInclusive(node, annotations, fixed, getAttrValueAsNumber(result, value));
 		case Names.MAX_EXCLUSIVE:
-			return new MaxExclusive(result.node(), result.annotations(), fixed, getAttrValueAsNumber(result, value));
+			return new MaxExclusive(node, annotations, fixed, getAttrValueAsNumber(result, value));
 		case Names.MIN_EXCLUSIVE:
-			return new MinExclusive(result.node(), result.annotations(), fixed, getAttrValueAsNumber(result, value));
+			return new MinExclusive(node, annotations, fixed, getAttrValueAsNumber(result, value));
 		case Names.MIN_INCLUSIVE:
-			return new MinInclusive(result.node(), result.annotations(), fixed, getAttrValueAsNumber(result, value));
+			return new MinInclusive(node, annotations, fixed, getAttrValueAsNumber(result, value));
 		case Names.TOTAL_DIGITS:
-			return new TotalDigits(result.node(), result.annotations(), fixed, NodeHelper.getAttrValueAsPositiveInteger(value));
+			return new TotalDigits(node, annotations, fixed, NodeHelper.getAttrValueAsPositiveInteger(value));
 		case Names.FRACTION_DIGITS:
-			return new FractionDigits(result.node(), result.annotations(), fixed, NodeHelper.getAttrValueAsNonNegativeInteger(value));
+			return new FractionDigits(node, annotations, fixed, NodeHelper.getAttrValueAsNonNegativeInteger(value));
 		case Names.ASSERTION:
-			return new Assertions(result.node(), Deques.singletonDeque(TagParser.ASSERTION.parse(result)));
+			return new Assertions(node, Deques.singletonDeque(TagParser.ASSERTION.parse(result)));
 		case Names.EXPLICIT_TIMEZONE:
-			return new ExplicitTimezone(result.node(), result.annotations(), fixed, ExplicitTimezone.Value.getAttrValueAsExplicitTimezone(value));
+			return new ExplicitTimezone(node, annotations, fixed, ExplicitTimezone.Value.getAttrValueAsExplicitTimezone(value));
 		default:
-			throw new Schema.ParseException(result.node(), "Unknown constraining facet " + result.node().getLocalName());
+			throw new Schema.ParseException(node, "Unknown constraining facet " + node.getLocalName());
 		}
 	}
 
@@ -1087,7 +1091,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	}
 
 	static Deque<Object> combineLikeFacets(final SimpleType baseType, final Deque<Object> baseFacets, final Deque<? extends ConstrainingFacet> declaredFacets) {
-		final Deque<Object> newFacets = new DeferredArrayDeque<>(ConstrainingFacet.class.getClasses().length);
+		final Deque<Object> newFacets = new DeferredArrayDeque<>();
 		boolean patternFound = false;
 		boolean enumerationFound = false;
 		boolean assertionFound = false;

@@ -209,7 +209,6 @@ public class Assertion implements AnnotatedComponent {
 		}
 
 		/**
-		 *
 		 * @return Let D be the ·actual value· of the xpathDefaultNamespace [attribute], if present on the host element, otherwise that of the xpathDefaultNamespace [attribute] of the &lt;schema&gt; ancestor. Then the value is the appropriate case among the following:
 		 * <br>1 If D is ##defaultNamespace, then the appropriate case among the following:
 		 * <br>  1.1 If there is an entry in the [in-scope namespaces] of the host element whose [prefix] is ·absent·, then the corresponding [namespace name];
@@ -252,14 +251,19 @@ public class Assertion implements AnnotatedComponent {
 	}
 
 	private static Assertion parse(final Result result) {
-		final XPathExpression test = XPathExpression.parse(result);
-		return new Assertion(result.node(), result.annotations(), test);
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
+		final String expression = result.value(AttrParser.TEST);
+		final String xpathDefaultNamespace = result.value(AttrParser.XPATH_DEFAULT_NAMESPACE);
+		final XPathExpression test = new XPathExpression(result, xpathDefaultNamespace, expression);
+		return new Assertion(node, annotations, test);
 	}
 
 	static void register() {
 		AttrParser.register(AttrParser.Names.TEST, XPathExpression::getAttrValueAsXPath);
 		AttrParser.register(AttrParser.Names.XPATH, XPathExpression::getAttrValueAsXPath);
-		TagParser.register(new String[] { TagParser.Names.FIELD, TagParser.Names.SELECTOR }, XPathExpression.parser, XPathExpression.class, XPathExpression::parse);
+		TagParser.register(TagParser.Names.FIELD, XPathExpression.parser, XPathExpression.class, XPathExpression::parse);
+		TagParser.register(TagParser.Names.SELECTOR, XPathExpression.parser, XPathExpression.class, XPathExpression::parse);
 		TagParser.register(TagParser.Names.ASSERTION, Assertion.parser, Assertion.class, Assertion::parse);
 	}
 
