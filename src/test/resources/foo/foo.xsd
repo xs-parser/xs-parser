@@ -10,7 +10,11 @@
 				<xs:element ref="alternate"/>
 			</xs:choice>
 			<xs:attribute name="foo"/>
-			<xs:assert test="@foo eq 'foo'"/>
+			<xs:assert test="@foo eq 'foo'">
+				<xs:annotation>
+					<xs:documentation>foo</xs:documentation>
+				</xs:annotation>
+			</xs:assert>
 		</xs:complexType>
 	</xs:element>
 

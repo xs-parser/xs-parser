@@ -95,7 +95,7 @@ public class OtherXsdTests {
 	}
 
 	private void visitSchemaComponent(final SchemaComponent s) {
-		assertNotNull((Object) s, s.node());
+		assertNotNull(s, s.node());
 	}
 
 	private void visitAnnotatedComponent(final AnnotatedComponent a) {

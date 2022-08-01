@@ -138,20 +138,20 @@ public class Element implements Term {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static class TypeTable {
+	public class TypeTable {
 
 		private final Deque<Alternative> alternatives;
 		private final Alternative defaultTypeDefinition;
 
-		private TypeTable(final Deque<Alternative> alternatives, final Element parent) {
+		private TypeTable(final Deque<Alternative> alternatives) {
 			if (alternatives.isEmpty()) {
 				throw new IllegalArgumentException("TypeTable must have at least one alternative");
 			}
 			this.alternatives = Objects.requireNonNull(alternatives);
-			final Alternative last = alternatives.getFirst();
+			final Alternative last = alternatives.getLast();
 			this.defaultTypeDefinition = last.test() == null
 					? last
-					: new Alternative(parent.node(), Deques.emptyDeque(), null, last::typeDefinition);
+					: new Alternative(node, Deques.emptyDeque(), null, typeDefinition);
 		}
 
 		public Deque<Alternative> alternatives() {
@@ -194,10 +194,10 @@ public class Element implements Term {
 		this.name = name;
 		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.typeDefinition = Objects.requireNonNull(typeDefinition);
-		this.typeTable = alternatives.isEmpty() ? null : new TypeTable(alternatives, this);
+		this.typeTable = alternatives.isEmpty() ? null : new TypeTable(alternatives);
 		this.scope = scope;
 		this.nillable = nillable;
-		this.valueConstraint = Objects.requireNonNull(valueConstraint);
+		this.valueConstraint = valueConstraint;
 		this.identityConstraintDefinitions = Objects.requireNonNull(identityConstraintDefinitions);
 		this.substitutionGroupAffiliations = Objects.requireNonNull(substitutionGroupAffiliations);
 		this.disallowedSubstitutions = Objects.requireNonNull(disallowedSubstitutions);
@@ -206,6 +206,8 @@ public class Element implements Term {
 	}
 
 	private static Element parseDecl(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String defaultValue = result.value(AttrParser.DEFAULT);
 		final String fixedValue = result.value(AttrParser.FIXED);
 		Deque<Block> effectiveBlockValue = result.value(AttrParser.BLOCK);
@@ -241,12 +243,16 @@ public class Element implements Term {
 		final Form form = result.value(AttrParser.FORM);
 		final boolean isGlobal = NodeHelper.isParentSchemaElement(result);
 		final Scope scope;
-		String targetNamespace;
+		String targetNamespace = result.value(AttrParser.TARGET_NAMESPACE);
 		if (isGlobal) {
+			if (form != null) {
+				throw new Schema.ParseException(node, "'form' attribute is only allowed for local element declarations");
+			} else if (targetNamespace != null) {
+				throw new Schema.ParseException(node, "'targetNamespace' attribute is only allowed for local element declarations");
+			}
 			targetNamespace = result.schema().targetNamespace();
 			scope = new Scope(Scope.Variety.GLOBAL, null);
 		} else {
-			targetNamespace = result.value(AttrParser.TARGET_NAMESPACE);
 			if (targetNamespace == null && (Form.QUALIFIED.equals(form) || (form == null && Form.QUALIFIED.equals(result.schema().elementFormDefault())))) { // 3.3.2.3
 				targetNamespace = result.schema().targetNamespace();
 			}
@@ -264,18 +270,18 @@ public class Element implements Term {
 		} else if (substitutionGroup == null) {
 			substitutionGroup = Deques.emptyDeque();
 		}
-		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>(substitutionGroup.size());
+		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>();
 		final Deferred<? extends TypeDefinition> typeDefinition;
 		final QName typeName = result.value(AttrParser.TYPE);
 		if (typeName != null) {
 			typeDefinition = result.schema().find(typeName, TypeDefinition.class);
 		} else {
-			final TypeDefinition type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
+			final Deferred<TypeDefinition> type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
 			typeDefinition = type != null
-					? () -> type
-					: substitutionGroupAffiliations.isEmpty()
+					? type
+					: substitutionGroup.isEmpty()
 							? ComplexType::xsAnyType
-							: substitutionGroupAffiliations.getFirst().typeDefinition;
+							: () -> substitutionGroupAffiliations.getFirst().typeDefinition.get();
 		}
 		final Deferred<ValueConstraint> valueConstraint;
 		if (defaultValue != null || fixedValue != null) {
@@ -296,14 +302,16 @@ public class Element implements Term {
 								: null;
 			});
 		} else {
-			valueConstraint = Deferred.none();
+			valueConstraint = null;
 		}
-		substitutionGroup.forEach(s -> substitutionGroupAffiliations.add(result.schema().find(s, Element.class)));
+		substitutionGroup.forEach(s -> substitutionGroupAffiliations.addLast(result.schema().find(s, Element.class)));
 		final String name = result.value(AttrParser.NAME);
-		return new Element(result.node(), result.annotations(), name, targetNamespace, typeDefinition, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
+		return new Element(node, annotations, name, targetNamespace, typeDefinition, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
 	}
 
 	private static Particle parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
 		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final QName refName = result.value(AttrParser.REF);
@@ -314,7 +322,7 @@ public class Element implements Term {
 			final Element elem = parseDecl(result);
 			decl = () -> elem;
 		}
-		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, decl);
+		return new Particle(node, annotations, maxOccurs, minOccurs, decl);
 	}
 
 	static void register() {
@@ -352,7 +360,7 @@ public class Element implements Term {
 	}
 
 	public ValueConstraint valueConstraint() {
-		return valueConstraint.get();
+		return valueConstraint != null ? valueConstraint.get() : null;
 	}
 
 	public Deque<IdentityConstraint> identityConstraintDefinitions() {

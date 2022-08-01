@@ -4,106 +4,60 @@ import java.util.*;
 
 public class DeferredArrayDeque<E> implements Deque<E> {
 
-	private final int capacity;
-	private final ArrayDeque<Object> arr;
+	private static class DeferredValue<V> implements Deferred<V> {
 
-	public DeferredArrayDeque(final int capacity) {
-		this.capacity = capacity;
-		this.arr = new ArrayDeque<>(capacity);
+		private final V value;
+
+		DeferredValue(final V value) {
+			this.value = value;
+		}
+
+		@Override
+		public V get() {
+			return value;
+		}
+
 	}
 
-	public DeferredArrayDeque(final int additionalCapacity, final Collection<E> c) {
-		this(additionalCapacity + c.size());
+	private Deferred<? extends Deque<E>> def;
+
+	public DeferredArrayDeque() {
+		this.def = new DeferredValue<>(new ArrayDeque<>());
+	}
+
+	public DeferredArrayDeque(final Collection<? extends E> c) {
+		this();
 		addAll(c);
 	}
 
-	private boolean inBounds(final int index, final int increment) {
-		return index < 0 || index + increment > capacity || index + increment < 0 || capacity < 0;
-	}
-
-	private void checkBounds(final int index, final int increment) {
-		if (inBounds(index, increment)) {
-			throw new IndexOutOfBoundsException(String.valueOf(index));
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private E resolve(final Object o) {
-		if (o instanceof Deferred) {
-			// TODO Replace Deferred with E instance in deque
-			return (E) ((Deferred<?>) o).get();
-			// final Deferred<?> d = (Deferred<?>) o;
-			// final E e = (E) d.get();
-		} else {
-			return (E) o;
-		}
-	}
-
-	public static <T> DeferredArrayDeque<T> of(final Collection<Deferred<T>> c) {
-		final DeferredArrayDeque<T> ls = new DeferredArrayDeque<>(c.size());
-		for (final Deferred<T> d : c) {
-			ls.add(d);
-		}
-		return ls;
-	}
-
-	public void add(final Deferred<E> d) {
-		checkBounds(arr.size(), 1);
-		arr.add(d);
+	public DeferredArrayDeque(final Deferred<? extends Deque<E>> def) {
+		this.def = def.map(ArrayDeque::new);
 	}
 
 	@Override
 	public boolean add(final E e) {
-		checkBounds(arr.size(), 1);
-		return arr.add(e);
-	}
-
-	public Iterator<Object> rawIterator() {
-		return arr.iterator();
+		addLast(e);
+		return true;
 	}
 
 	@Override
 	public int size() {
-		return arr.size();
+		return def.get().size();
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return arr.isEmpty();
+		return def.get().isEmpty();
 	}
 
 	@Override
 	public boolean contains(final Object o) {
-		final Iterator<E> iter = iterator();
-		while (iter.hasNext()) {
-			if (Objects.equals(o, iter.next())) {
-				return true;
-			}
-		}
-		return false;
+		return def.get().contains(o);
 	}
 
 	@Override
 	public Iterator<E> iterator() {
-		final Iterator<Object> iter = arr.iterator();
-		return new Iterator<E>() {
-
-			@Override
-			public boolean hasNext() {
-				return iter.hasNext();
-			}
-
-			@Override
-			public E next() {
-				return resolve(iter.next());
-			}
-
-			@Override
-			public void remove() {
-				iter.remove();
-			}
-
-		};
+		return def.get().iterator();
 	}
 
 	@Override
@@ -119,141 +73,136 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 
 	@Override
 	public <T> T[] toArray(final T[] a) {
-		throw new UnsupportedOperationException();
+		return def.get().toArray(a);
 	}
 
 	@Override
 	public boolean containsAll(final Collection<?> c) {
-		// TODO special case for DeferredArrayList
-		for (final Object o : c) {
-			if (!contains(o)) {
-				return false;
-			}
-		}
-		return true;
+		return def.get().containsAll(c);
+	}
+
+	public void addAll(final Deferred<? extends Collection<? extends E>> d) {
+		def = def.map(x -> {
+			x.addAll(d.get());
+			return x;
+		});
 	}
 
 	@Override
 	public boolean addAll(final Collection<? extends E> c) {
-		checkBounds(arr.size(), c.size());
-		if (c instanceof DeferredArrayDeque) {
-			final DeferredArrayDeque<?> d = (DeferredArrayDeque<?>) c;
-			final Iterator<?> iter = d.iterator();
-			while (iter.hasNext()) {
-				arr.offer(iter.next());
-			}
-			return !c.isEmpty();
-		} else {
-			return arr.addAll(c);
-		}
+		def = def.map(x -> {
+			x.addAll(c);
+			return x;
+		});
+		return true;
 	}
 
 	@Override
 	public boolean removeAll(final Collection<?> c) {
-		// TODO special case for DeferredArrayDeque
-		boolean changed = false;
-		for (final Object o : c) {
-			changed |= remove(o);
-		}
-		return changed;
+		return def.get().removeAll(c);
 	}
 
 	@Override
 	public boolean retainAll(final Collection<?> c) {
-		// TODO special case for DeferredArrayDeque
-		boolean changed = false;
-		final Iterator<E> iter = iterator();
-		while (iter.hasNext()) {
-			final E e = iter.next();
-			if (!c.contains(e)) {
-				iter.remove();
-				changed = true;
-			}
-		}
-		return changed;
+		return def.get().retainAll(c);
 	}
 
 	@Override
 	public void clear() {
-		arr.clear();
+		def = new DeferredValue<>(new ArrayDeque<>());
 	}
 
 	@Override
 	public void addFirst(final E e) {
-		checkBounds(arr.size(), 1);
-		arr.addFirst(e);
+		def = def.map(x -> {
+			x.addFirst(e);
+			return x;
+		});
+	}
+
+	public void addLast(final Deferred<E> d) {
+		def = def.map(x -> {
+			x.addLast(d.get());
+			return x;
+		});
 	}
 
 	@Override
 	public void addLast(final E e) {
-		checkBounds(arr.size(), 1);
-		arr.addLast(e);
+		def = def.map(x -> {
+			x.addLast(e);
+			return x;
+		});
 	}
 
 	@Override
 	public boolean offerFirst(final E e) {
-		if (inBounds(arr.size(), 1)) {
-			return arr.offerFirst(e);
-		}
-		return false;
+		addFirst(e);
+		return true;
 	}
 
 	@Override
 	public boolean offerLast(final E e) {
-		if (inBounds(arr.size(), 1)) {
-			return arr.offerLast(e);
-		}
-		return false;
+		addLast(e);
+		return true;
 	}
 
 	@Override
 	public E removeFirst() {
-		return resolve(arr.removeFirst());
+		final E first = pollFirst();
+		if (first == null) {
+			throw new NoSuchElementException();
+		}
+		return first;
 	}
 
 	@Override
 	public E removeLast() {
-		return resolve(arr.removeLast());
+		final E last = pollLast();
+		if (last == null) {
+			throw new NoSuchElementException();
+		}
+		return last;
 	}
 
 	@Override
 	public E pollFirst() {
-		return resolve(arr.pollFirst());
+		return def.get().pollFirst();
 	}
 
 	@Override
 	public E pollLast() {
-		return resolve(arr.pollLast());
+		return def.get().pollLast();
 	}
 
 	@Override
 	public E getFirst() {
-		return resolve(arr.getFirst());
+		return def.get().getFirst();
 	}
 
 	@Override
 	public E getLast() {
-		return resolve(arr.getLast());
+		return def.get().getLast();
 	}
 
 	@Override
 	public E peekFirst() {
-		return resolve(arr.peekFirst());
+		return def.get().peekFirst();
 	}
 
 	@Override
 	public E peekLast() {
-		return resolve(arr.peekLast());
+		return def.get().peekLast();
 	}
 
 	@Override
 	public boolean removeFirstOccurrence(final Object o) {
-		return arr.removeFirstOccurrence(o);
+		return def.get().removeFirstOccurrence(o);
 	}
 
 	@Override
 	public boolean removeLastOccurrence(final Object o) {
-		return arr.removeLastOccurrence(o);
+		return def.get().removeLastOccurrence(o);
 	}
 
 	@Override
@@ -268,15 +217,7 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 
 	@Override
 	public boolean remove(final Object o) {
-		final Iterator<E> iter = iterator();
-		while (iter.hasNext()) {
-			final E e = iter.next();
-			if (Objects.equals(e, o)) {
-				iter.remove();
-				return true;
-			}
-		}
-		return false;
+		return removeFirstOccurrence(o);
 	}
 
 	@Override
@@ -306,25 +247,7 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 
 	@Override
 	public Iterator<E> descendingIterator() {
-		final Iterator<Object> iter = arr.descendingIterator();
-		return new Iterator<E>() {
-
-			@Override
-			public boolean hasNext() {
-				return iter.hasNext();
-			}
-
-			@Override
-			public E next() {
-				return resolve(iter.next());
-			}
-
-			@Override
-			public void remove() {
-				iter.remove();
-			}
-
-		};
+		return def.get().descendingIterator();
 	}
 
 	@Override

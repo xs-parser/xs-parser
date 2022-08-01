@@ -39,11 +39,11 @@ public class ModelGroup implements Term {
 	private final Deque<Annotation> annotations;
 	private final String name;
 	private final String targetNamespace;
-	private final ModelGroup modelGroup;
-	private final Compositor compositor;
+	private final Deferred<ModelGroup> modelGroup;
+	private final Deferred<Compositor> compositor;
 	private final Deque<Particle> particles;
 
-	private ModelGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final ModelGroup modelGroup, final Compositor compositor, final Deque<Particle> particles) {
+	private ModelGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<ModelGroup> modelGroup, final Deferred<Compositor> compositor, final Deque<Particle> particles) {
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -54,12 +54,14 @@ public class ModelGroup implements Term {
 	}
 
 	private static Particle parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
 		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final QName refName = result.value(AttrParser.REF);
 		final ModelGroup term;
 		if (refName != null) {
-			term = new ModelGroup(result.node(), result.annotations(), refName.getLocalPart(), result.schema().targetNamespace(), null, null, Deques.emptyDeque()) {
+			term = new ModelGroup(node, annotations, refName.getLocalPart(), result.schema().targetNamespace(), null, null, Deques.emptyDeque()) {
 
 				final Deferred<ModelGroup> ref = result.schema().find(refName, ModelGroup.class);
 
@@ -82,15 +84,19 @@ public class ModelGroup implements Term {
 		} else {
 			term = parseDecl(result);
 		}
-		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, term);
+		return new Particle(node, annotations, maxOccurs, minOccurs, term);
 	}
 
 	private static ModelGroup parseDecl(final Result result) {
-		final Particle particle = result.parse(TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE);
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
+		final Deferred<Particle> particle = result.parse(TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE);
 		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
-		final ModelGroup term = (ModelGroup) particle.term();
-		return new ModelGroup(result.node(), result.annotations(), name, targetNamespace, term, term.compositor(), term.particles());
+		final Deferred<ModelGroup> modelGroup = particle.map(p -> (ModelGroup) p.term());
+		final Deferred<Compositor> compositor = modelGroup.map(ModelGroup::compositor);
+		final Deque<Particle> particles = modelGroup.mapToDeque(ModelGroup::particles);
+		return new ModelGroup(node, annotations, name, targetNamespace, modelGroup, compositor, particles);
 	}
 
 	static void register() {
@@ -99,7 +105,7 @@ public class ModelGroup implements Term {
 	}
 
 	static ModelGroup synthetic(final Node node, final Deque<Annotation> annotations, final Compositor compositor, final Deque<Particle> particles) {
-		return new ModelGroup(node, annotations, null, null, null, compositor, particles) {
+		return new ModelGroup(node, annotations, null, null, null, () -> compositor, particles) {
 
 			@Override
 			public ModelGroup modelGroup() {
@@ -118,11 +124,11 @@ public class ModelGroup implements Term {
 	}
 
 	public ModelGroup modelGroup() {
-		return modelGroup;
+		return modelGroup.get();
 	}
 
 	public Compositor compositor() {
-		return compositor;
+		return compositor.get();
 	}
 
 	public Deque<Particle> particles() {

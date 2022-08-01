@@ -3,6 +3,7 @@ package xs.parser;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
+import javax.xml.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
@@ -60,39 +61,73 @@ import xs.parser.internal.util.SequenceParser.*;
  */
 public class Annotation implements SchemaComponent {
 
-	static class AnnotationsBuilder {
+	static class AnnotationSet {
 
-		private final Result result;
-		private final Deque<Deque<Annotation>> annotations = new ArrayDeque<>();
+		public static final AnnotationSet EMPTY = new AnnotationSet();
 
-		AnnotationsBuilder(final Result result) {
-			this.result = result;
+		private final DeferredArrayDeque<Annotation> annotations;
+
+		private AnnotationSet() {
+			this.annotations = new DeferredArrayDeque<>();
 		}
 
-		AnnotationsBuilder add(final Supplier<Deque<Annotation>> annotations) {
-			this.annotations.add(annotations.get());
+		private AnnotationSet(final Result result) {
+			this(result.parseAll(TagParser.ANNOTATION));
+		}
+
+		private AnnotationSet(final Deque<Annotation> annotations) {
+			this.annotations = new DeferredArrayDeque<>(annotations);
+		}
+
+		AnnotationSet add(final AnnotationSet a) {
+			this.annotations.addAll(a.annotations);
 			return this;
 		}
 
-		AnnotationsBuilder add(final Deque<? extends AnnotatedComponent> annotations) {
-			for (final AnnotatedComponent a : annotations) {
-				this.annotations.add(a.annotations());
-			}
+		<T> AnnotationSet add(final Deferred<T> a, final Function<T, AnnotationSet> fn) {
+			this.annotations.addAll(a.map(t -> fn.apply(t).annotations));
 			return this;
 		}
 
-		Deque<Annotation> build() {
-			final Deque<Annotation> baseAnnotations = result.annotations();
-			int size = baseAnnotations.size();
-			for (final Deque<Annotation> a : annotations) {
-				size += a.size();
-			}
-			final Deque<Annotation> build = new DeferredArrayDeque<>(size);
-			build.addAll(baseAnnotations);
-			for (final Deque<Annotation> a : annotations) {
-				build.addAll(a);
-			}
-			return build;
+		AnnotationSet addAll(final Deque<? extends AnnotatedComponent> annotatedComponents) {
+			return addAll(annotatedComponents, a -> new AnnotationSet(a.annotations()));
+		}
+
+		<T> AnnotationSet addAll(final Deque<T> annotated, final Function<T, AnnotationSet> fn) {
+			this.annotations.addAll(Deferred.of(() -> {
+				final Deque<Annotation> x = new ArrayDeque<>();
+				for (final T a : annotated) {
+					x.addAll(fn.apply(a).annotations);
+				}
+				return x;
+			}));
+			return this;
+		}
+
+		Deque<Annotation> resolve(final Node component) {
+			return new DeferredArrayDeque<>(() -> {
+				final ArrayDeque<Annotation> mapped = new ArrayDeque<>();
+				for (final Annotation a : annotations) {
+					final Deferred<Set<Attr>> attributes = Deferred.of(() -> {
+						Node n = a.node;
+						final Set<Attr> attrs = new LinkedHashSet<>();
+						do {
+							final NamedNodeMap nm = n.getAttributes();
+							final int len = nm.getLength();
+							for (int i = 0; i < len; ++i) {
+								final Attr attr = (Attr) nm.item(i);
+								if (attr.getNamespaceURI() != null && !XMLConstants.W3C_XML_SCHEMA_NS_URI.equals(attr.getNamespaceURI())) {
+									attrs.add(attr);
+								}
+							}
+							n = n.getParentNode();
+						} while (!component.isSameNode(n));
+						return attrs;
+					});
+					mapped.add(new Annotation(a.node, a.applicationInformation, a.userInformation, attributes));
+				}
+				return mapped;
+			});
 		}
 
 	}
@@ -151,12 +186,10 @@ public class Annotation implements SchemaComponent {
 
 	private static Annotation parse(final Result result) {
 		final Deque<Appinfo> appinfo = result.parseAll(TagParser.ANNOTATION.appinfo());
-		final Deque<Node> applicationInformation = appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new));
+		final Deque<Node> applicationInformation = new DeferredArrayDeque<>(() -> appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new)));
 		final Deque<Documentation> documentation = result.parseAll(TagParser.ANNOTATION.documentation());
-		final Deque<Node> userInformation = documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new));
-		// TODO: Get non-xsd schema attributes
-		final Deferred<Set<Attr>> attributes = Collections::emptySet;
-		return new Annotation(result.node(), applicationInformation, userInformation, attributes);
+		final Deque<Node> userInformation = new DeferredArrayDeque<>(() -> documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new)));
+		return new Annotation(result.node(), applicationInformation, userInformation, Collections::emptySet);
 	}
 
 	static void register() {
@@ -165,6 +198,10 @@ public class Annotation implements SchemaComponent {
 		TagParser.register(TagParser.Names.APPINFO, Appinfo.parser, Appinfo.class, Appinfo::parse);
 		TagParser.register(TagParser.Names.DOCUMENTATION, Documentation.parser, Documentation.class, Documentation::parse);
 		TagParser.register(TagParser.Names.ANNOTATION, Annotation.parser, Annotation.class, Annotation::parse);
+	}
+
+	static AnnotationSet of(final Result result) {
+		return new AnnotationSet(result);
 	}
 
 	/** @return A sequence of the &lt;appinfo&gt; element information items from among the [children], in order, if any, otherwise the empty sequence. */

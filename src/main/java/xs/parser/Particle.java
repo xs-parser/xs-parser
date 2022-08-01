@@ -63,15 +63,17 @@ public class Particle implements AnnotatedComponent {
 	}
 
 	private static Particle parse(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
 		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
-		final Compositor compositor = TagParser.ALL.equalsName(result.node()) ? Compositor.ALL
-				: TagParser.CHOICE.equalsName(result.node()) ? Compositor.CHOICE
-				: TagParser.SEQUENCE.equalsName(result.node()) ? Compositor.SEQUENCE
+		final Compositor compositor = TagParser.ALL.equalsName(node) ? Compositor.ALL
+				: TagParser.CHOICE.equalsName(node) ? Compositor.CHOICE
+				: TagParser.SEQUENCE.equalsName(node) ? Compositor.SEQUENCE
 				: null;
 		final Deque<Particle> particles = result.parseAll(TagParser.ELEMENT.use(), TagParser.GROUP.use(), TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE, TagParser.ANY);
-		final ModelGroup term = ModelGroup.synthetic(result.node(), result.annotations(), compositor, particles);
-		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, term);
+		final ModelGroup term = ModelGroup.synthetic(node, annotations, compositor, particles);
+		return new Particle(node, annotations, maxOccurs, minOccurs, term);
 	}
 
 	private static Number getAttrValueAsMaxOccurs(final Attr attr) {
@@ -84,7 +86,9 @@ public class Particle implements AnnotatedComponent {
 	static void register() {
 		AttrParser.register(AttrParser.Names.MAX_OCCURS, Number.class, 1, Particle::getAttrValueAsMaxOccurs);
 		AttrParser.register(AttrParser.Names.MIN_OCCURS, Number.class, 1, NodeHelper::getAttrValueAsNonNegativeInteger);
-		TagParser.register(new String[] { TagParser.Names.ALL, TagParser.Names.CHOICE, TagParser.Names.SEQUENCE }, parser, Particle.class, Particle::parse);
+		TagParser.register(TagParser.Names.ALL, parser, Particle.class, Particle::parse);
+		TagParser.register(TagParser.Names.CHOICE, parser, Particle.class, Particle::parse);
+		TagParser.register(TagParser.Names.SEQUENCE, parser, Particle.class, Particle::parse);
 	}
 
 	/**

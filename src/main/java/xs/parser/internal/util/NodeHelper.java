@@ -108,11 +108,11 @@ public final class NodeHelper {
 		}
 	}
 
-	public static boolean equalsName(final QName q, final TypeDefinition t) {
-		return equalsQualifiedName(q, t.name(), t.targetNamespace());
+	public static boolean equalsName(final QName q, final Attribute a) {
+		return equalsQualifiedName(q, a.name(), a.targetNamespace());
 	}
 
-	public static boolean equalsName(final QName q, final Attribute a) {
+	public static boolean equalsName(final QName q, final AttributeGroup a) {
 		return equalsQualifiedName(q, a.name(), a.targetNamespace());
 	}
 
@@ -120,8 +120,8 @@ public final class NodeHelper {
 		return equalsQualifiedName(q, e.name(), e.targetNamespace());
 	}
 
-	public static boolean equalsName(final QName q, final AttributeGroup a) {
-		return equalsQualifiedName(q, a.name(), a.targetNamespace());
+	public static boolean equalsName(final QName q, final IdentityConstraint i) {
+		return equalsQualifiedName(q, i.name(), i.targetNamespace());
 	}
 
 	public static boolean equalsName(final QName q, final ModelGroup m) {
@@ -130,6 +130,10 @@ public final class NodeHelper {
 
 	public static boolean equalsName(final QName q, final Notation n) {
 		return equalsQualifiedName(q, n.name(), n.targetNamespace());
+	}
+
+	public static boolean equalsName(final QName q, final TypeDefinition t) {
+		return equalsQualifiedName(q, t.name(), t.targetNamespace());
 	}
 
 	/**

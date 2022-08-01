@@ -12,12 +12,14 @@ import xs.parser.internal.util.*;
 /**
  * Processor for XPath and XSLT.
  */
-public class SaxonProcessor {
+public final class SaxonProcessor {
 
 	private static final class SaxonHolder {
 
 		private static final net.sf.saxon.s9api.Processor processor = new net.sf.saxon.s9api.Processor(false);
 		private static final net.sf.saxon.s9api.XsltCompiler xsltCompiler = processor.newXsltCompiler();
+
+		private SaxonHolder() { }
 
 		@SuppressWarnings("unchecked")
 		private static <X extends Exception> net.sf.saxon.s9api.XsltExecutable compileTemplate(final Source source) throws X {

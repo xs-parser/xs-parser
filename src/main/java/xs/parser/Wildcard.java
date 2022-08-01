@@ -227,6 +227,8 @@ public class Wildcard implements Term {
 	}
 
 	private static Particle parseAny(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String schemaTargetNamespace = result.schema().targetNamespace();
 		final Deque<String> namespace = result.value(AttrParser.ANY_NAMESPACE);
 		final Deque<String> notNamespace = result.value(AttrParser.NOT_NAMESPACE);
@@ -234,17 +236,19 @@ public class Wildcard implements Term {
 		final ProcessContents processContents = result.value(AttrParser.PROCESS_CONTENTS);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
 		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
-		final Wildcard wildcard = new Wildcard(result.node(), result.annotations(), schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
-		return new Particle(result.node(), result.annotations(), maxOccurs, minOccurs, wildcard);
+		final Wildcard wildcard = new Wildcard(node, annotations, schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
+		return new Particle(node, annotations, maxOccurs, minOccurs, wildcard);
 	}
 
 	private static Wildcard parseAnyAttribute(final Result result) {
+		final Node node = result.node();
+		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String schemaTargetNamespace = result.schema().targetNamespace();
 		final Deque<String> namespace = result.value(AttrParser.ANY_NAMESPACE);
 		final Deque<String> notNamespace = result.value(AttrParser.NOT_NAMESPACE);
 		final Deque<String> notQName = result.value(AttrParser.NOT_QNAME);
 		final ProcessContents processContents = result.value(AttrParser.PROCESS_CONTENTS);
-		return new Wildcard(result.node(), result.annotations(), schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
+		return new Wildcard(node, annotations, schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
 	}
 
 	private static Deque<String> getAttrValueAsNamespace(final Attr attr) {
