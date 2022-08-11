@@ -6,6 +6,7 @@ import org.w3c.dom.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -73,8 +74,8 @@ public class Assertion implements AnnotatedComponent {
 		private final String namespace;
 
 		private NamespaceBinding(final String prefix, final String namespace) {
-			this.prefix = prefix;
-			this.namespace = namespace;
+			this.prefix = Objects.requireNonNull(prefix);
+			this.namespace = Objects.requireNonNull(namespace);
 		}
 
 		public String prefix() {
@@ -164,16 +165,15 @@ public class Assertion implements AnnotatedComponent {
 					}
 				}
 			} while ((iter = iter.getParentNode()) != null);
-			final Map<String, String> xmlns = new LinkedHashMap<>();
+			this.namespaceBindings = new LinkedHashSet<>();
 			while (!xmlnsAttrs.isEmpty()) {
 				final Node attr = xmlnsAttrs.removeLast();
-				final String key = XMLConstants.XMLNS_ATTRIBUTE.equals(attr.getNodeName())
+				final String prefix = XMLConstants.XMLNS_ATTRIBUTE.equals(attr.getNodeName())
 						? XMLConstants.DEFAULT_NS_PREFIX
 						: attr.getNodeName().substring(XMLConstants.XMLNS_ATTRIBUTE.length() + 1);
-				xmlns.put(key, ((Attr) attr).getValue());
+				final String namespace = ((Attr) attr).getValue();
+				this.namespaceBindings.add(new NamespaceBinding(prefix, namespace));
 			}
-			this.namespaceBindings = new LinkedHashSet<>();
-			xmlns.forEach((prefix, namespace) -> this.namespaceBindings.add(new NamespaceBinding(prefix, namespace)));
 			final String defaultNs = xpathDefaultNamespace != null ? xpathDefaultNamespace : result.schema().xpathDefaultNamespace();
 			switch (defaultNs) {
 			case "##defaultNamespace":
@@ -189,7 +189,7 @@ public class Assertion implements AnnotatedComponent {
 				this.defaultNamespace = defaultNs;
 			}
 			this.baseURI = result.node().getBaseURI();
-			this.expression = expression;
+			this.expression = Objects.requireNonNull(expression);
 		}
 
 		private static XPathExpression parse(final Result result) {
@@ -240,23 +240,26 @@ public class Assertion implements AnnotatedComponent {
 			.optionalAttributes(AttrParser.ID, AttrParser.XPATH_DEFAULT_NAMESPACE)
 			.elements(0, 1, TagParser.ANNOTATION);
 
+	private final Deferred<? extends AnnotatedComponent> context;
 	private final Node node;
 	private final Deque<Annotation> annotations;
 	private final XPathExpression test;
 
-	Assertion(final Node node, final Deque<Annotation> annotations, final XPathExpression test) {
+	Assertion(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final XPathExpression test) {
+		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.test = test;
 	}
 
 	private static Assertion parse(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String expression = result.value(AttrParser.TEST);
 		final String xpathDefaultNamespace = result.value(AttrParser.XPATH_DEFAULT_NAMESPACE);
 		final XPathExpression test = new XPathExpression(result, xpathDefaultNamespace, expression);
-		return new Assertion(node, annotations, test);
+		return new Assertion(context, node, annotations, test);
 	}
 
 	static void register() {
@@ -265,16 +268,19 @@ public class Assertion implements AnnotatedComponent {
 		TagParser.register(TagParser.Names.FIELD, XPathExpression.parser, XPathExpression.class, XPathExpression::parse);
 		TagParser.register(TagParser.Names.SELECTOR, XPathExpression.parser, XPathExpression.class, XPathExpression::parse);
 		TagParser.register(TagParser.Names.ASSERTION, Assertion.parser, Assertion.class, Assertion::parse);
+		VisitorHelper.register(Assertion.class, Assertion::visit);
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context.get(), node, this)) {
+			visitor.onAssertion(context.get(), node, this);
+			annotations.forEach(a -> a.visit(visitor));
+		}
 	}
 
 	/** @return An XPath Expression property record, as described below, with &lt;assert&gt; as the "host element" and test as the designated expression [attribute]. */
 	public XPathExpression test() {
 		return test;
-	}
-
-	@Override
-	public Node node() {
-		return node;
 	}
 
 	/** @return The ·annotation mapping· of the &lt;assert&gt; element, as defined in XML Representation of Annotation Schema Components (§3.15.2). */

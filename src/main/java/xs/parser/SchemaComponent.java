@@ -1,10 +1,8 @@
 package xs.parser;
 
-import org.w3c.dom.*;
-
+/**
+ * Schema component is the generic term for the building blocks that make up the abstract data model of the schema.
+ */
 public interface SchemaComponent {
-
-	/** @return The underlying XDM node that this Schema Component was constructed from. */
-	public Node node();
 
 }

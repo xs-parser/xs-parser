@@ -2,7 +2,6 @@ package xs.parser.internal.util;
 
 import java.util.*;
 import java.util.AbstractMap.*;
-import java.util.concurrent.atomic.*;
 import java.util.stream.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
@@ -31,17 +30,24 @@ public final class SequenceParser {
 	public class Result {
 
 		private final Schema schema;
+		private final Deferred<Result> context;
 		private final Node node;
-		private final Result parent;
 		private final Map<AttrParser<?>, AttrValue<?>> attributes = new LinkedHashMap<>();
 		private final Map<TagParser<?>, Deque<Result>> parserResults = new LinkedHashMap<>();
 		private final Deque<Node> anyContent;
-		private final AtomicReference<Object> value = new AtomicReference<>();
+		private final DeferredValue<Object> value = new DeferredValue<>();
 
-		Result(final Schema schema, final Node node, final Result parent, final boolean allowsAnyContent) {
+		Result(final Schema schema, final Result parent, final Node node, final boolean allowsAnyContent) {
 			this.schema = schema;
+			this.context = Deferred.of(() -> {
+				for (Result ctx = parent; ctx != null; ctx = ctx.context.get()) {
+					if (ctx.value.get() instanceof SchemaComponent) {
+						return ctx;
+					}
+				}
+				return null;
+			});
 			this.node = node;
-			this.parent = parent;
 			anyContent = allowsAnyContent ? new ArrayDeque<>() : Deques.emptyDeque();
 		}
 
@@ -89,7 +95,7 @@ public final class SequenceParser {
 			checkIfCanParse(r, t);
 			return Deferred.of(() -> {
 				final T v = Objects.requireNonNull(t.parse(r));
-				r.setValue(v);
+				r.value.set(v);
 				return v;
 			});
 		}
@@ -117,7 +123,7 @@ public final class SequenceParser {
 				final ArrayDeque<T> x = new ArrayDeque<>();
 				for (final Result r : results) {
 					final T v = t.parse(r);
-					r.setValue(v);
+					r.value.set(v);
 					x.addLast(v);
 				}
 				return x;
@@ -136,16 +142,9 @@ public final class SequenceParser {
 			return node;
 		}
 
-		public Result parent() {
-			return parent;
-		}
-
-		public Deferred<Object> defer() {
-			return value::get;
-		}
-
-		public void setValue(final Object value) {
-			this.value.set(value);
+		@SuppressWarnings("unchecked")
+		public <T extends SchemaComponent> Deferred<T> context() {
+			return context.map(p -> (T) (p != null ? p.value.get() : schema));
 		}
 
 	}
@@ -219,11 +218,11 @@ public final class SequenceParser {
 	}
 
 	public Result parse(final Schema schema, final Node node) {
-		return parse(schema, node, null);
+		return parse(schema, null, node);
 	}
 
-	private Result parse(final Schema schema, final Node node, final Result parent) {
-		final Result result = new Result(schema, node, parent, allowsAnyContent);
+	private Result parse(final Schema schema, final Result parent, final Node node) {
+		final Result result = new Result(schema, parent, node, allowsAnyContent);
 		final NamedNodeMap attributes = node.getAttributes();
 		final int len = attributes.getLength();
 		for (int i = 0; i < len; ++i) {
@@ -272,7 +271,7 @@ public final class SequenceParser {
 						result.parserResults.put(tagParser, null);
 						amount = 0;
 					}
-					final Result r = tagParser.getSequenceParser().parse(schema, n, result);
+					final Result r = tagParser.getSequenceParser().parse(schema, result, n);
 					result.parserResults.computeIfAbsent(tagParser, e -> new ArrayDeque<>()).add(r);
 					++amount;
 				}

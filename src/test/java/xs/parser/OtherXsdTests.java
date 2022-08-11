@@ -5,13 +5,17 @@ import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
+import javax.xml.*;
 import org.junit.*;
 import org.junit.runner.*;
 import org.junit.runners.*;
 import org.junit.runners.Parameterized.*;
-import xs.parser.Attribute.*;
+import org.w3c.dom.*;
+import xs.parser.Assertion.*;
 import xs.parser.Schema.*;
+import xs.parser.Wildcard.*;
 import xs.parser.internal.util.*;
+import xs.parser.v.*;
 
 @RunWith(Parameterized.class)
 public class OtherXsdTests {
@@ -45,33 +49,10 @@ public class OtherXsdTests {
 		System.setProperty("XS_PARSER_VERBOSE", Boolean.TRUE.toString());
 	}
 
-	private final Set<SchemaComponent> visited = new HashSet<>();
 	private final Path schemaFile;
 
 	public OtherXsdTests(final Path schemaFile) {
 		this.schemaFile = schemaFile;
-	}
-
-	private static boolean isPrimitiveType(final SimpleType s) {
-		return SimpleType.xsAnyURI().equals(s)
-				|| SimpleType.xsBase64Binary().equals(s)
-				|| SimpleType.xsBoolean().equals(s)
-				|| SimpleType.xsDate().equals(s)
-				|| SimpleType.xsDateTime().equals(s)
-				|| SimpleType.xsDecimal().equals(s)
-				|| SimpleType.xsDouble().equals(s)
-				|| SimpleType.xsDuration().equals(s)
-				|| SimpleType.xsFloat().equals(s)
-				|| SimpleType.xsGDay().equals(s)
-				|| SimpleType.xsGMonth().equals(s)
-				|| SimpleType.xsGMonthDay().equals(s)
-				|| SimpleType.xsGYear().equals(s)
-				|| SimpleType.xsGYearMonth().equals(s)
-				|| SimpleType.xsHexBinary().equals(s)
-				|| SimpleType.xsNOTATION().equals(s)
-				|| SimpleType.xsQName().equals(s)
-				|| SimpleType.xsString().equals(s)
-				|| SimpleType.xsTime().equals(s);
 	}
 
 	@Parameters(name = "{0}")
@@ -82,316 +63,209 @@ public class OtherXsdTests {
 				.collect(Collectors.toList());
 	}
 
-	private void assertNotNull(final Object o, final Object value) {
-		if (value == null) {
-			throw new AssertionError(Objects.toString(o));
-		}
-	}
-
-	private void assertNotNull(final SchemaComponent s, final Object value) {
-		if (value == null) {
-			throw new AssertionError(NodeHelper.toString(s.node()));
-		}
-	}
-
-	private void visitSchemaComponent(final SchemaComponent s) {
-		assertNotNull(s, s.node());
-	}
-
-	private void visitAnnotatedComponent(final AnnotatedComponent a) {
-		visitSchemaComponent(a);
-		a.annotations().forEach(this::visitAnnotation);
-	}
-
-	private void visitAnnotation(final Annotation a) {
-		if (!visited.add(a)) {
-			return;
-		}
-		visitSchemaComponent(a);
-		a.applicationInformation().forEach(Assert::assertNotNull);
-		a.userInformation().forEach(Assert::assertNotNull);
-		a.attributes().forEach(Assert::assertNotNull); // TODO
-	}
-
-	private void visitAlternative(final Alternative a) {
-		if (!visited.add(a)) {
-			return;
-		}
-		if (a.test() != null) {
-			a.test().defaultNamespace();
-			a.test().namespaceBindings().forEach(Assert::assertNotNull);
-			a.test().baseURI();
-			assertNotNull(a, a.test().expression());
-		}
-		if (a.typeDefinition() instanceof SimpleType) {
-			visitSimpleType((SimpleType) a.typeDefinition());
-		} else if (a.typeDefinition() instanceof ComplexType) {
-			visitComplexType((ComplexType) a.typeDefinition());
-		} else {
-			Assert.fail(a.typeDefinition().getClass().getName());
-		}
-	}
-
-	private void visitAttributeUse(final AttributeUse a) {
-		if (!visited.add(a)) {
-			return;
-		}
-		visitAnnotatedComponent(a);
-		a.inheritable();
-		a.required();
-		if (a.valueConstraint() != null) {
-			visitValueConstraint(a.valueConstraint());
-		}
-		visitAttribute(a.attributeDeclaration());
-	}
-
-	private void visitAttribute(final Attribute a) {
-		if (!visited.add(a)) {
-			return;
-		}
-		visitAnnotatedComponent(a);
-		a.name();
-		a.targetNamespace();
-		visitScope(a.scope());
-		if (a.valueConstraint() != null) {
-			visitValueConstraint(a.valueConstraint());
-		}
-		assertNotNull(a, a.scope());
-		visitScope(a.scope());
-		if (a.valueConstraint() != null) {
-			visitValueConstraint(a.valueConstraint());
-		}
-		a.inheritable();
-	}
-
-	private void visitScope(final Scope s) {
-		Assert.assertTrue((Scope.Variety.GLOBAL.equals(s.variety()) && s.parent() == null) || (Scope.Variety.LOCAL.equals(s.variety()) && s.parent() != null));
-	}
-
-	private void visitValueConstraint(final ValueConstraint v) {
-		assertNotNull(v, v.variety());
-		assertNotNull(v, v.value());
-		assertNotNull(v, v.lexicalForm());
-	}
-
-	private void visitAttributeGroup(final AttributeGroup a) {
-		if (!visited.add(a)) {
-			return;
-		}
-		visitAnnotatedComponent(a);
-		a.name();
-		a.targetNamespace();
-		a.attributeWildcard();
-		a.attributeUses().forEach(this::visitAttributeUse);
-	}
-
-	private void visitSimpleType(final SimpleType s) {
-		if (!visited.add(s)) {
-			return;
-		}
-		if (SimpleType.xsAnySimpleType() == s) {
-			return; // TODO: handle this separately
-		} else if (SimpleType.xsAnyAtomicType() == s) {
-			return; // TODO: handle this separately
-		}
-		visitAnnotatedComponent(s);
-		s.name();
-		s.targetNamespace();
-		visitSimpleType((SimpleType) s.baseTypeDefinition());
-		s.facets().forEach(this::visitConstrainingFacet);
-		s.fundamentalFacets().forEach(f -> {
-			visitSchemaComponent(f);
-			f.value();
-		});
-		switch (s.variety()) {
-		case ATOMIC:
-			if (isPrimitiveType(s)) {
-				Assert.assertEquals(s.name(), s, s.primitiveTypeDefinition());
-			} else {
-				visitSimpleType(s.primitiveTypeDefinition());
-			}
-			break;
-		case LIST:
-			visitSimpleType(s.itemTypeDefinition());
-			break;
-		case UNION:
-			s.memberTypeDefinitions().forEach(this::visitSimpleType);
-			break;
-		default:
-			Assert.fail(s.name() + ", " + s.variety().toString());
-		}
-	}
-
-	private void visitConstrainingFacet(final ConstrainingFacet f) {
-		visitAnnotatedComponent(f);
-		f.fixed();
-		f.value();
-	}
-
-	private void visitWildcard(final Wildcard w) {
-		visitAnnotatedComponent(w);
-		assertNotNull(w, w.namespaceConstraint().variety());
-		w.namespaceConstraint().namespaces().forEach(Assert::assertNotNull);
-		w.namespaceConstraint().disallowedNames().forEach(Assert::assertNotNull);
-		assertNotNull(w, w.processContents());
-	}
-
-	private void visitComplexType(final ComplexType c) {
-		if (!visited.add(c)) {
-			return;
-		}
-		if (ComplexType.xsAnyType() == c) {
-			return; // TODO check this independently
-		}
-		visitAnnotatedComponent(c);
-		c.name();
-		c.targetNamespace();
-		c.attributeUses().forEach(this::visitAttributeUse);
-		if (c.attributeWildcard() != null) {
-			visitWildcard(c.attributeWildcard());
-		}
-		c.prohibitedSubstitutions().forEach(Assert::assertNotNull);
-		c.finals().forEach(Assert::assertNotNull);
-		c.prohibitedSubstitutions().forEach(Assert::assertNotNull);
-		c.isAbstract();
-		c.derivationMethod();
-		visitContentType(c.contentType());
-		assertNotNull(c, c.baseTypeDefinition());
-		Assert.assertTrue(c.name(), c.baseTypeDefinition() instanceof ComplexType || c.baseTypeDefinition() instanceof SimpleType);
-	}
-
-	private void visitContentType(final ComplexType.ContentType c) {
-		switch (c.variety()) {
-		case EMPTY:
-			Assert.assertNull(c.particle());
-			Assert.assertNull(c.simpleTypeDefinition());
-			Assert.assertNull(c.openContent());
-			break;
-		case MIXED:
-		case ELEMENT_ONLY:
-			if (c.openContent() != null) {
-				visitOpenContent(c.openContent());
-			}
-			if (c.particle() != null) {
-				visitParticle(c.particle());
-			}
-			break;
-		case SIMPLE:
-			assertNotNull(c, c.simpleTypeDefinition());
-			visitSimpleType(c.simpleTypeDefinition());
-			break;
-		default:
-			Assert.fail(c.toString());
-		}
-	}
-
-	private void visitOpenContent(final ComplexType.OpenContent o) {
-		assertNotNull(o, o.mode());
-		visitParticle(o.wildcard());
-	}
-
-	private void visitGroup(final ModelGroup g) {
-		if (!visited.add(g)) {
-			return;
-		}
-		visitAnnotatedComponent(g);
-		g.name();
-		g.targetNamespace();
-		assertNotNull(g, g.compositor());
-		assertNotNull(g, g.modelGroup());
-		if (g.modelGroup() != g) {
-			visitGroup(g.modelGroup());
-		}
-		for (final Particle p : g.particles()) {
-			assertNotNull(g, p);
-			visitParticle(p);
-		}
-	}
-
-	private void visitParticle(final Particle p) {
-		if (!visited.add(p)) {
-			return;
-		}
-		visitAnnotatedComponent(p);
-		p.maxOccurs();
-		p.minOccurs();
-		assertNotNull(p, p.term());
-		if (p.term() instanceof Element) {
-			visitElement((Element) p.term());
-		} else if (p.term() instanceof ModelGroup) {
-			visitGroup((ModelGroup) p.term());
-		} else if (p.term() instanceof Wildcard) {
-			visitWildcard((Wildcard) p.term());
-		} else {
-			Assert.fail(p.term().getClass().getName());
-		}
-	}
-
-	private void visitElement(final Element e) {
-		if (!visited.add(e)) {
-			return;
-		}
-		visitAnnotatedComponent(e);
-		e.name();
-		e.targetNamespace();
-		if (e.typeTable() != null) {
-			e.typeTable().alternatives().forEach(this::visitAlternative);
-			visitAlternative(e.typeTable().defaultTypeDefinition());
-		}
-		e.valueConstraint();
-		assertNotNull(e, e.scope());
-		e.identityConstraintDefinitions().forEach(this::visitIdentityConstraint);
-		e.nillable();
-		e.substitutionGroupAffiliations().forEach(Assert::assertNotNull);
-		e.disallowedSubstitutions().forEach(Assert::assertNotNull);
-		e.substitutionGroupExclusions().forEach(Assert::assertNotNull);
-		e.isAbstract();
-		assertNotNull(e, e.typeDefinition());
-		if (e.typeDefinition() instanceof SimpleType) {
-			visitSimpleType((SimpleType) e.typeDefinition());
-		} else if (e.typeDefinition() instanceof ComplexType) {
-			visitComplexType((ComplexType) e.typeDefinition());
-		} else {
-			Assert.fail(e.typeDefinition().getClass().getName());
-		}
-	}
-
-	private void visitIdentityConstraint(final IdentityConstraint i) {
-		if (!visited.add(i)) {
-			return;
-		}
-		visitAnnotatedComponent(i);
-		// TODO
-		i.name();
-		i.targetNamespace();
-		i.category();
-		i.referencedKey();
-		i.selector();
-		i.fields();
-	}
-
-	private void visitNotation(final Notation n) {
-		if (!visited.add(n)) {
-			return;
-		}
-		visitAnnotatedComponent(n);
-		n.name();
-		n.targetNamespace();
-		n.publicIdentiifer();
-		n.systemIdentifier();
-	}
-
 	@Test
 	public void testOtherXsds() throws Exception {
 		final Schema schema = new Schema(resolver, NodeHelper.newDocumentBuilder().parse(schemaFile.toFile()));
-		visitAnnotatedComponent(schema);
-		schema.attributeDeclarations().forEach(this::visitAttribute);
-		schema.attributeGroupDefinitions().forEach(this::visitAttributeGroup);
-		schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).map(SimpleType.class::cast).forEach(this::visitSimpleType);
-		schema.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(this::visitComplexType);
-		schema.elementDeclarations().forEach(this::visitElement);
-		schema.notationDeclarations().forEach(this::visitNotation);
-		schema.identityConstraintDefinitions().forEach(this::visitIdentityConstraint);
+		Visitors.visit(schema, new DefaultVisitor() {
+
+			void checkTargetNamespace(final String targetNamespace) {
+				Assert.assertNotEquals(XMLConstants.NULL_NS_URI, targetNamespace);
+			}
+
+			void checkValueConstraint(final Attribute.ValueConstraint valueConstraint) {
+				Assert.assertNotNull(valueConstraint);
+				Assert.assertNotNull(valueConstraint.variety());
+				Assert.assertNotNull(valueConstraint.value());
+				Assert.assertNotNull(valueConstraint.lexicalForm());
+			}
+
+			void checkXPathExpression(final XPathExpression test) {
+				Assert.assertNotNull(test);
+				test.defaultNamespace();
+				test.namespaceBindings().forEach(namespaceBinding -> {
+					Assert.assertNotNull(namespaceBinding);
+					Assert.assertNotNull(namespaceBinding.prefix());
+					Assert.assertNotNull(namespaceBinding.namespace());
+				});
+				test.baseURI();
+				Assert.assertNotNull(test.expression());
+			}
+
+			@Override
+			public void onAlternative(final AnnotatedComponent context, final Node node,final Alternative alternative) {
+				Assert.assertNotNull(node);
+				final XPathExpression test = alternative.test();
+				if (test != null) {
+					checkXPathExpression(test);
+				}
+			}
+
+			@Override
+			public void onAnnotation(final AnnotatedComponent context, final Node node,final Annotation annotation) {
+				Assert.assertNotNull(node);
+				annotation.applicationInformation().forEach(Assert::assertNotNull);
+				annotation.userInformation().forEach(Assert::assertNotNull);
+				annotation.attributes().forEach(Assert::assertNotNull);
+			}
+
+			@Override
+			public void onAssertion(final AnnotatedComponent context, final Node node,final Assertion assertion) {
+				Assert.assertNotNull(node);
+				final XPathExpression test = assertion.test();
+				if (test != null) {
+					checkXPathExpression(test);
+				}
+			}
+
+			@Override
+			public void onAttribute(final AnnotatedComponent context, final Node node,final Attribute attribute) {
+				Assert.assertNotNull(node);
+				attribute.name();
+				checkTargetNamespace(attribute.targetNamespace());
+				attribute.inheritable();
+				Assert.assertNotNull(attribute.scope());
+				if (Attribute.Scope.Variety.LOCAL.equals(attribute.scope().variety())) {
+					Assert.assertNotNull(attribute.scope().parent());
+				} else {
+					Assert.assertNull(attribute.scope().parent());
+				}
+				if (attribute.valueConstraint() != null) {
+					checkValueConstraint(attribute.valueConstraint());
+				}
+			}
+
+			@Override
+			public void onAttributeGroup(final AnnotatedComponent context, final Node node,final AttributeGroup attributeGroup) {
+				Assert.assertNotNull(node);
+				attributeGroup.name();
+				checkTargetNamespace(attributeGroup.targetNamespace());
+			}
+
+			@Override
+			public void onAttributeUse(final AnnotatedComponent context, final Node node,final AttributeUse attributeUse) {
+				Assert.assertNotNull(node);
+				attributeUse.inheritable();
+				attributeUse.required();
+				if (attributeUse.valueConstraint() != null) {
+					checkValueConstraint(attributeUse.valueConstraint());
+				}
+			}
+
+			@Override
+			public void onComplexType(final AnnotatedComponent context, final Node node,final ComplexType complexType) {
+				Assert.assertNotNull(node);
+				complexType.name();
+				checkTargetNamespace(complexType.targetNamespace());
+				complexType.prohibitedSubstitutions().forEach(Assert::assertNotNull);
+				complexType.finals().forEach(Assert::assertNotNull);
+				complexType.isAbstract();
+				Assert.assertNotNull(complexType.derivationMethod());
+				Assert.assertNotNull(complexType.contentType());
+				if (complexType.contentType().openContent() != null) {
+					complexType.contentType().openContent().mode();
+				}
+				complexType.prohibitedSubstitutions().forEach(Assert::assertNotNull);
+				if (complexType.name() == null) {
+					Assert.assertNotNull(complexType.context());
+				} else {
+					Assert.assertNull(complexType.context());
+				}
+			}
+
+			@Override
+			public void onConstrainingFacet(final SimpleType context, final Node node,final ConstrainingFacet constrainingFacet) {
+				Assert.assertNotNull(node);
+				constrainingFacet.fixed();
+				Assert.assertNotNull(constrainingFacet.value());
+			}
+
+			@Override
+			public void onElement(final AnnotatedComponent context, final Node node,final Element element) {
+				Assert.assertNotNull(node);
+				element.name();
+				checkTargetNamespace(element.targetNamespace());
+				element.typeTable();
+				Assert.assertNotNull(element.scope());
+				if (Element.Scope.Variety.LOCAL.equals(element.scope().variety())) {
+					Assert.assertNotNull(element.scope().parent());
+				} else {
+					Assert.assertNull(element.scope().parent());
+				}
+				element.nillable();
+				if (element.valueConstraint() != null) {
+					checkValueConstraint(element.valueConstraint());
+				}
+				element.disallowedSubstitutions().forEach(Assert::assertNotNull);
+				element.substitutionGroupExclusions().forEach(Assert::assertNotNull);
+				element.isAbstract();
+			}
+
+			@Override
+			public void onFundamentalFacet(final SimpleType context, final Node node,final FundamentalFacet fundamentalFacet) {
+				Assert.assertNotNull(node);
+				Assert.assertNotNull(fundamentalFacet.value());
+			}
+
+			@Override
+			public void onIdentityConstraint(final AnnotatedComponent context, final Node node,final IdentityConstraint identityConstraint) {
+				Assert.assertNotNull(node);
+				identityConstraint.name();
+				checkTargetNamespace(identityConstraint.targetNamespace());
+				Assert.assertNotNull(identityConstraint.category());
+				checkXPathExpression(identityConstraint.selector());
+				identityConstraint.fields().forEach(field -> checkXPathExpression(field));
+			}
+
+			@Override
+			public void onModelGroup(final AnnotatedComponent context, final Node node,final ModelGroup modelGroup) {
+				Assert.assertNotNull(node);
+				modelGroup.name();
+				checkTargetNamespace(modelGroup.targetNamespace());
+				Assert.assertNotNull(modelGroup.compositor());
+			}
+
+			@Override
+			public void onNotation(final AnnotatedComponent context, final Node node,final Notation notation) {
+				Assert.assertNotNull(node);
+				notation.name();
+				checkTargetNamespace(notation.targetNamespace());
+				notation.publicIdentiifer();
+				notation.systemIdentifier();
+			}
+
+			@Override
+			public void onParticle(final AnnotatedComponent context, final Node node,final Particle particle) {
+				Assert.assertNotNull(node);
+				Assert.assertNotNull(particle.maxOccurs());
+				Assert.assertNotNull(particle.minOccurs());
+			}
+
+			@Override
+			public void onSimpleType(final AnnotatedComponent context, final Node node,final SimpleType simpleType) {
+				Assert.assertNotNull(node);
+				simpleType.name();
+				checkTargetNamespace(simpleType.targetNamespace());
+				simpleType.finals().forEach(Assert::assertNotNull);
+				if (simpleType.name() == null) {
+					Assert.assertNotNull(simpleType.context());
+				} else {
+					Assert.assertNull(simpleType.context());
+				}
+				Assert.assertTrue(simpleType.variety() != null || simpleType == SimpleType.xsAnySimpleType());
+			}
+
+			@Override
+			public void onWildcard(final AnnotatedComponent context, final Node node,final Wildcard wildcard) {
+				Assert.assertNotNull(node);
+				final NamespaceConstraint namespaceConstraint = wildcard.namespaceConstraint();
+				Assert.assertNotNull(namespaceConstraint);
+				Assert.assertNotNull(namespaceConstraint.variety());
+				namespaceConstraint.namespaces().forEach(Assert::assertNotNull);
+				namespaceConstraint.disallowedNames().forEach(Assert::assertNotNull);
+				Assert.assertNotNull(wildcard.processContents());
+			}
+
+		});
 	}
 
 }

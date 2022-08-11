@@ -7,6 +7,7 @@ import xs.parser.Assertion.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -55,12 +56,14 @@ public class Alternative implements AnnotatedComponent {
 			.elements(0, 1, TagParser.ANNOTATION)
 			.elements(0, 1, TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
 
+	private final Deferred<? extends AnnotatedComponent> context;
 	private final Node node;
 	private final Deque<Annotation> annotations;
 	private final XPathExpression test;
 	private final Deferred<? extends TypeDefinition> typeDefinition;
 
-	Alternative(final Node node, final Deque<Annotation> annotations, final XPathExpression test, final Deferred<? extends TypeDefinition> typeDefinition) {
+	Alternative(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final XPathExpression test, final Deferred<? extends TypeDefinition> typeDefinition) {
+		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.test = test;
@@ -68,6 +71,7 @@ public class Alternative implements AnnotatedComponent {
 	}
 
 	private static Alternative parse(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String expression = result.value(AttrParser.TEST);
@@ -83,11 +87,20 @@ public class Alternative implements AnnotatedComponent {
 				throw new Schema.ParseException(result.node(), "Type definition not found");
 			}
 		}
-		return new Alternative(node, annotations, test, typeDefinition);
+		return new Alternative(context, node, annotations, test, typeDefinition);
 	}
 
 	static void register() {
 		TagParser.register(TagParser.Names.ALTERNATIVE, parser, Alternative.class, Alternative::parse);
+		VisitorHelper.register(Alternative.class, Alternative::visit);
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context.get(), node, this)) {
+			visitor.onAlternative(context.get(), node, this);
+			annotations.forEach(a -> a.visit(visitor));
+			ComplexType.visitTypeDefinition(typeDefinition(), visitor);
+		}
 	}
 
 	/** @return If the test [attribute] is not present, then ·absent·; otherwise an XPath Expression property record, as described in section XML Representation of Assertion Schema Components (§3.13.2), with &lt;alternative&gt; as the "host element" and test as the designated expression [attribute]. */
@@ -98,11 +111,6 @@ public class Alternative implements AnnotatedComponent {
 	/** @return The type definition ·resolved· to by the ·actual value· of the type [attribute], if one is present, otherwise the type definition corresponding to the complexType or simpleType among the [children] of the &lt;alternative&gt; element. */
 	public TypeDefinition typeDefinition() {
 		return typeDefinition.get();
-	}
-
-	@Override
-	public Node node() {
-		return node;
 	}
 
 	/** @return The ·annotation mapping· of the &lt;alternative&gt; element, as defined in XML Representation of Annotation Schema Components (§3.15.2). */

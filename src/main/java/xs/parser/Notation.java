@@ -5,6 +5,7 @@ import org.w3c.dom.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -25,6 +26,7 @@ public class Notation implements AnnotatedComponent {
 			.optionalAttributes(AttrParser.ID, AttrParser.PUBLIC, AttrParser.SYSTEM)
 			.elements(0, 1, TagParser.ANNOTATION);
 
+	private final Deferred<? extends AnnotatedComponent> context;
 	private final Node node;
 	private final Deque<Annotation> annotations;
 	private final String name;
@@ -32,7 +34,8 @@ public class Notation implements AnnotatedComponent {
 	private final String publicIdentiifer;
 	private final String systemIdentifier;
 
-	private Notation(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final String publicId, final String systemId) {
+	private Notation(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final String publicId, final String systemId) {
+		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -42,19 +45,28 @@ public class Notation implements AnnotatedComponent {
 	}
 
 	private static Notation parse(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String name = result.value(AttrParser.NAME);
 		final String targetNamespace = result.schema().targetNamespace();
 		final String publicId = result.value(AttrParser.PUBLIC);
 		final String systemId = result.value(AttrParser.SYSTEM);
-		return new Notation(node, annotations, name, targetNamespace, publicId, systemId);
+		return new Notation(context, node, annotations, name, targetNamespace, publicId, systemId);
 	}
 
 	static void register() {
 		AttrParser.register(AttrParser.Names.PUBLIC, NodeHelper::getAttrValueAsToken);
 		AttrParser.register(AttrParser.Names.SYSTEM, NodeHelper::getAttrValueAsAnyUri);
 		TagParser.register(TagParser.Names.NOTATION, parser, Notation.class, Notation::parse);
+		VisitorHelper.register(Notation.class, Notation::visit);
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context.get(), node, this)) {
+			visitor.onNotation(context.get(), node, this);
+			annotations.forEach(a -> a.visit(visitor));
+		}
 	}
 
 	/** @return The ·actual value· of the name [attribute] */
@@ -75,11 +87,6 @@ public class Notation implements AnnotatedComponent {
 	/** @return The ·actual value· of the public [attribute], if present, otherwise ·absent·. */
 	public String publicIdentiifer() {
 		return publicIdentiifer;
-	}
-
-	@Override
-	public Node node() {
-		return node;
 	}
 
 	/** @return The ·annotation mapping· of the &lt;notation&gt; element, as defined in XML Representation of Annotation Schema Components (§3.15.2). */

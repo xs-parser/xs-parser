@@ -3,73 +3,9 @@ package xs.parser;
 import java.util.*;
 import org.w3c.dom.*;
 import xs.parser.internal.util.*;
+import xs.parser.v.*;
 
 public abstract class FundamentalFacet implements SchemaComponent {
-
-	private static final Document fundamentalFacetsDocument;
-	/** Derived from the table https://www.w3.org/TR/2012/REC-xmlschema11-2-20120405/datatypes.html#app-fundamental-facets */
-	private static final Map<SimpleType, Deque<FundamentalFacet>> fundamentalFacets;
-
-	private final Node node;
-
-	static {
-		fundamentalFacetsDocument = NodeHelper.newDocument();
-		final Map<SimpleType, Deque<FundamentalFacet>> f = new HashMap<>();
-		// Primitive
-		f.put(SimpleType.xsString(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsBoolean(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.FINITE, false));
-		f.put(SimpleType.xsFloat(), fundamentalFacets(Ordered.Value.PARTIAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsDouble(), fundamentalFacets(Ordered.Value.PARTIAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsDecimal(), fundamentalFacets(Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true));
-		f.put(SimpleType.xsDuration(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsDateTime(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsTime(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsDate(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsGYearMonth(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsGYear(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsGMonthDay(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsGDay(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsGMonth(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsHexBinary(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsBase64Binary(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsAnyURI(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsQName(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsNOTATION(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		// Built-in
-		f.put(SimpleType.xsNormalizedString(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsToken(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsLanguage(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsIDREFS(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsENTITIES(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsNMTOKEN(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsNMTOKENS(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsName(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsNCName(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsID(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsIDREF(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsENTITY(), fundamentalFacets(Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsInteger(), fundamentalFacets(Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true));
-		f.put(SimpleType.xsNonPositiveInteger(), fundamentalFacets(Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true));
-		f.put(SimpleType.xsNegativeInteger(), fundamentalFacets(Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true));
-		f.put(SimpleType.xsLong(), fundamentalFacets(Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsInt(), fundamentalFacets(Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsShort(), fundamentalFacets(Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsByte(), fundamentalFacets(Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsNonNegativeInteger(), fundamentalFacets(Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true));
-		f.put(SimpleType.xsUnsignedLong(), fundamentalFacets(Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsUnsignedInt(), fundamentalFacets(Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsUnsignedShort(), fundamentalFacets(Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsUnsignedByte(), fundamentalFacets(Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true));
-		f.put(SimpleType.xsPositiveInteger(), fundamentalFacets(Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true));
-		f.put(SimpleType.xsYearMonthDuration(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsDayTimeDuration(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		f.put(SimpleType.xsDateTimeStamp(), fundamentalFacets(Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false));
-		fundamentalFacets = Collections.unmodifiableMap(f);
-	}
-
-	private FundamentalFacet(final Node node) {
-		this.node = Objects.requireNonNull(node);
-	}
 
 	/**
 	 * <table>
@@ -119,8 +55,8 @@ public abstract class FundamentalFacet implements SchemaComponent {
 
 		private final Value value;
 
-		private Ordered(final Node node, final Value value) {
-			super(node);
+		private Ordered(final SimpleType context, final Node node, final Value value) {
+			super(context, node);
 			this.value = Objects.requireNonNull(value);
 		}
 
@@ -156,8 +92,8 @@ public abstract class FundamentalFacet implements SchemaComponent {
 
 		private final boolean value;
 
-		private Bounded(final Node node, final boolean value) {
-			super(node);
+		private Bounded(final SimpleType context, final Node node, final boolean value) {
+			super(context, node);
 			this.value = value;
 		}
 
@@ -215,8 +151,8 @@ public abstract class FundamentalFacet implements SchemaComponent {
 
 		private final Value value;
 
-		private Cardinality(final Node node, final Value value) {
-			super(node);
+		private Cardinality(final SimpleType context, final Node node, final Value value) {
+			super(context, node);
 			this.value = Objects.requireNonNull(value);
 		}
 
@@ -252,8 +188,8 @@ public abstract class FundamentalFacet implements SchemaComponent {
 
 		private final boolean value;
 
-		private Numeric(final Node node, final boolean value) {
-			super(node);
+		private Numeric(final SimpleType context, final Node node, final boolean value) {
+			super(context, node);
 			this.value = value;
 		}
 
@@ -272,23 +208,95 @@ public abstract class FundamentalFacet implements SchemaComponent {
 		return elem;
 	}
 
-	private static Deque<FundamentalFacet> fundamentalFacets(final Ordered.Value ordered, final boolean bounded, final Cardinality.Value cardinality, final boolean numeric) {
+	private static final Document fundamentalFacetsDocument;
+	/** Derived from the table https://www.w3.org/TR/2012/REC-xmlschema11-2-20120405/datatypes.html#app-fundamental-facets */
+	private static final Map<SimpleType, Deque<FundamentalFacet>> fundamentalFacets;
+
+	static {
+		fundamentalFacetsDocument = NodeHelper.newDocument();
+		final Map<SimpleType, Deque<FundamentalFacet>> f = new HashMap<>();
+		// Primitive
+		putFundamentalFacets(f, SimpleType.xsString(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsBoolean(), Ordered.Value.FALSE, false, Cardinality.Value.FINITE, false);
+		putFundamentalFacets(f, SimpleType.xsFloat(), Ordered.Value.PARTIAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsDouble(), Ordered.Value.PARTIAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsDecimal(), Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true);
+		putFundamentalFacets(f, SimpleType.xsDuration(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsDateTime(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsTime(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsDate(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsGYearMonth(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsGYear(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsGMonthDay(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsGDay(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsGMonth(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsHexBinary(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsBase64Binary(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsAnyURI(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsQName(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsNOTATION(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		// Built-in
+		putFundamentalFacets(f, SimpleType.xsNormalizedString(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsToken(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsLanguage(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsIDREFS(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsENTITIES(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsNMTOKEN(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsNMTOKENS(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsName(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsNCName(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsID(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsIDREF(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsENTITY(), Ordered.Value.FALSE, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsInteger(), Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true);
+		putFundamentalFacets(f, SimpleType.xsNonPositiveInteger(), Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true);
+		putFundamentalFacets(f, SimpleType.xsNegativeInteger(), Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true);
+		putFundamentalFacets(f, SimpleType.xsLong(), Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsInt(), Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsShort(), Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsByte(), Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsNonNegativeInteger(), Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true);
+		putFundamentalFacets(f, SimpleType.xsUnsignedLong(), Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsUnsignedInt(), Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsUnsignedShort(), Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsUnsignedByte(), Ordered.Value.TOTAL, true, Cardinality.Value.FINITE, true);
+		putFundamentalFacets(f, SimpleType.xsPositiveInteger(), Ordered.Value.TOTAL, false, Cardinality.Value.COUNTABLY_INFINITE, true);
+		putFundamentalFacets(f, SimpleType.xsYearMonthDuration(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsDayTimeDuration(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		putFundamentalFacets(f, SimpleType.xsDateTimeStamp(), Ordered.Value.PARTIAL, false, Cardinality.Value.COUNTABLY_INFINITE, false);
+		fundamentalFacets = Collections.unmodifiableMap(f);
+	}
+
+	private final Node node;
+	private final SimpleType context;
+
+	private FundamentalFacet(final SimpleType context, final Node node) {
+		this.context = Objects.requireNonNull(context);
+		this.node = Objects.requireNonNull(node);
+	}
+
+	private static Deque<FundamentalFacet> fundamentalFacets(final SimpleType simpleType, final Ordered.Value ordered, final boolean bounded, final Cardinality.Value cardinality, final boolean numeric) {
 		final Node orderedNode = createElementNS(Ordered.NAME, ordered.getName());
 		final Node boundedNode = createElementNS(Bounded.NAME, Boolean.toString(bounded));
 		final Node cardinalityNode = createElementNS(Cardinality.NAME, cardinality.getName());
 		final Node numericNode = createElementNS(Numeric.NAME, Boolean.toString(numeric));
-		return Deques.asDeque(new Ordered(orderedNode, ordered), new Bounded(boundedNode, bounded), new Cardinality(cardinalityNode, cardinality), new Numeric(numericNode, numeric));
+		return Deques.asDeque(new Ordered(simpleType, orderedNode, ordered), new Bounded(simpleType, boundedNode, bounded), new Cardinality(simpleType, cardinalityNode, cardinality), new Numeric(simpleType, numericNode, numeric));
+	}
+
+	private static void putFundamentalFacets(final Map<SimpleType, Deque<FundamentalFacet>> f, final SimpleType simpleType, final Ordered.Value ordered, final boolean bounded, final Cardinality.Value cardinality, final boolean numeric) {
+		f.put(simpleType, fundamentalFacets(simpleType, ordered, bounded, cardinality, numeric));
 	}
 
 	static Deque<FundamentalFacet> find(final SimpleType simpleType) {
 		return fundamentalFacets.get(simpleType);
 	}
 
-	public abstract Object value();
-
-	@Override
-	public Node node() {
-		return node;
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context, node, this)) {
+			visitor.onFundamentalFacet(context, node, this);
+		}
 	}
+
+	public abstract Object value();
 
 }

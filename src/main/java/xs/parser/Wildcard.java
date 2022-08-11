@@ -6,6 +6,7 @@ import org.w3c.dom.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -171,12 +172,14 @@ public class Wildcard implements Term {
 			.optionalAttributes(AttrParser.ID, AttrParser.ANY_NAMESPACE, AttrParser.NOT_NAMESPACE, AttrParser.NOT_QNAME, AttrParser.PROCESS_CONTENTS)
 			.elements(0, 1, TagParser.ANNOTATION);
 
+	private final Deferred<? extends AnnotatedComponent> context;
 	private final Node node;
 	private final Deque<Annotation> annotations;
 	private final NamespaceConstraint namespaceConstraint;
 	private final ProcessContents processContents;
 
-	private Wildcard(final Node node, final Deque<Annotation> annotations, final String schemaTargetNamespace, final Deque<String> namespace, final Deque<String> notNamespace, final Deque<String> notQName, final ProcessContents processContents) {
+	private Wildcard(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String schemaTargetNamespace, final Deque<String> namespace, final Deque<String> notNamespace, final Deque<String> notQName, final ProcessContents processContents) {
+		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		final Variety variety;
@@ -227,6 +230,7 @@ public class Wildcard implements Term {
 	}
 
 	private static Particle parseAny(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String schemaTargetNamespace = result.schema().targetNamespace();
@@ -236,11 +240,12 @@ public class Wildcard implements Term {
 		final ProcessContents processContents = result.value(AttrParser.PROCESS_CONTENTS);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
 		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
-		final Wildcard wildcard = new Wildcard(node, annotations, schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
-		return new Particle(node, annotations, maxOccurs, minOccurs, wildcard);
+		final Wildcard wildcard = new Wildcard(context, node, annotations, schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
+		return new Particle(context, node, annotations, maxOccurs, minOccurs, wildcard);
 	}
 
 	private static Wildcard parseAnyAttribute(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String schemaTargetNamespace = result.schema().targetNamespace();
@@ -248,7 +253,7 @@ public class Wildcard implements Term {
 		final Deque<String> notNamespace = result.value(AttrParser.NOT_NAMESPACE);
 		final Deque<String> notQName = result.value(AttrParser.NOT_QNAME);
 		final ProcessContents processContents = result.value(AttrParser.PROCESS_CONTENTS);
-		return new Wildcard(node, annotations, schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
+		return new Wildcard(context, node, annotations, schemaTargetNamespace, namespace, notNamespace, notQName, processContents);
 	}
 
 	private static Deque<String> getAttrValueAsNamespace(final Attr attr) {
@@ -324,6 +329,14 @@ public class Wildcard implements Term {
 		AttrParser.register(AttrParser.Names.PROCESS_CONTENTS, ProcessContents.class, ProcessContents.STRICT, ProcessContents::getAttrValueAsProcessContents);
 		TagParser.register(TagParser.Names.ANY, anyParser, Particle.class, Wildcard::parseAny);
 		TagParser.register(TagParser.Names.ANY_ATTRIBUTE, anyAttributeParser, Wildcard.class, Wildcard::parseAnyAttribute);
+		VisitorHelper.register(Wildcard.class, Wildcard::visit);
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context.get(), node, this)) {
+			visitor.onWildcard(context.get(), node, this);
+			annotations.forEach(a -> a.visit(visitor));
+		}
 	}
 
 	public NamespaceConstraint namespaceConstraint() {
@@ -333,11 +346,6 @@ public class Wildcard implements Term {
 	/** @return The ·actual value· of the processContents [attribute], if present, otherwise strict. */
 	public ProcessContents processContents() {
 		return processContents;
-	}
-
-	@Override
-	public Node node() {
-		return node;
 	}
 
 	/** @return The ·annotation mapping· of the &lt;any&gt; element, as defined in XML Representation of Annotation Schema Components (§3.15.2). Note: When this rule is used for an attribute wildcard (see XML Representation of Complex Type Definition Schema Components (§3.4.2)), the {annotations} is the ·annotation mapping· of the &lt;anyAttribute&gt; element. */

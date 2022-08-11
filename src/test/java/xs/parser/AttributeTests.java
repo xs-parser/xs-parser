@@ -5,6 +5,7 @@ import javax.xml.*;
 import javax.xml.namespace.*;
 import org.junit.*;
 import org.w3c.dom.*;
+import xs.parser.internal.util.*;
 
 public class AttributeTests {
 
@@ -29,7 +30,7 @@ public class AttributeTests {
 				+ "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:t='https://test' t:thisNameIsAllowed='123'>"
 				+ "</xs:schema>"
 		);
-		final Node attr = schema.node().getAttributes().getNamedItemNS("https://test", "thisNameIsAllowed");
+		final Node attr = NodeHelper.ownerDocument(schema).getDocumentElement().getAttributes().getNamedItemNS("https://test", "thisNameIsAllowed");
 		Assert.assertEquals(
 				Collections.singletonMap(new QName("https://test", "thisNameIsAllowed"), "123"),
 				Collections.singletonMap(new QName(attr.getNamespaceURI(), attr.getLocalName()), attr.getNodeValue()));

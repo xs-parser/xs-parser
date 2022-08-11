@@ -118,7 +118,7 @@ final class SaxonNodeSet extends NodeSet {
 	}
 
 	SaxonNodeSet(final NamespaceContext namespaceContext, final Schema schema) {
-		this(namespaceContext, new LinkedHashMap<>(), "", schema.node().getOwnerDocument().getDocumentURI(), wrap(schema.node().getOwnerDocument()), new DefaultCollection(wrap(schema), schema.node().getOwnerDocument().getDocumentURI()));
+		this(namespaceContext, new LinkedHashMap<>(), "", NodeHelper.ownerDocument(schema).getDocumentURI(), wrap(NodeHelper.ownerDocument(schema)), new DefaultCollection(wrap(schema), NodeHelper.ownerDocument(schema).getDocumentURI()));
 	}
 
 	private static String getUri(final XdmValue xdmValue, final String fallbackUri) {
@@ -141,7 +141,7 @@ final class SaxonNodeSet extends NodeSet {
 
 	private static XdmValue wrap(final Schema schema) {
 		try {
-			return new XdmValue(constituentSchemas(schema).stream().map(s -> wrap(s.node().getOwnerDocument())));
+			return new XdmValue(constituentSchemas(schema).stream().map(s -> wrap(NodeHelper.ownerDocument(s))));
 		} catch (final SaxonApiException e) {
 			throw new SaxonApiUncheckedException(e);
 		}

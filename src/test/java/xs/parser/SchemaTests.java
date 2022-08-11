@@ -28,8 +28,8 @@ public class SchemaTests {
 		System.out.println("xs:element        " + schema.elementDeclarations().size());
 		System.out.println("xs:notation       " + schema.notationDeclarations().size());
 		System.out.println("xs:annotation     " + schema.annotations().size());
-		System.out.println("@version          " + schema.node().getAttributes().getNamedItem("version"));
-		System.out.println("@targetNamespace  " + schema.node().getAttributes().getNamedItem("targetNamespace"));
+		System.out.println("@version          " + NodeHelper.ownerDocument(schema).getDocumentElement().getAttributes().getNamedItem("version"));
+		System.out.println("@targetNamespace  " + NodeHelper.ownerDocument(schema).getDocumentElement().getAttributes().getNamedItem("targetNamespace"));
 		// Test no global duplicates
 		Assert.assertEquals(schema.typeDefinitions().stream().distinct().count(), schema.typeDefinitions().size());
 		Assert.assertEquals(schema.attributeDeclarations().stream().distinct().count(), schema.attributeDeclarations().size());
@@ -83,23 +83,21 @@ public class SchemaTests {
 		Assert.assertEquals(3, schema.typeDefinitions().stream().filter(ComplexType.class::isInstance).count());
 		// Test particle term
 		schema.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
-			if (c.contentType() != null) { // It is legal for contentType to be null
-				final Particle root = c.contentType().particle();
-				if (root != null) { // It is also legal for the particle to be null (TODO: is it?)
-					final Deque<Particle> d = new ArrayDeque<>();
-					d.add(root);
-					while (!d.isEmpty()) {
-						final Particle p = d.removeFirst();
-						Assert.assertNotNull("{" + c.targetNamespace() + "}" + c.name(), p.term());
-						if (p.term() instanceof ModelGroup) {
-							d.addAll(((ModelGroup) p.term()).particles());
-						} else if (p.term() instanceof Element) {
-							// Do nothing
-						} else if (p.term() instanceof Wildcard) {
-							Assert.fail();
-						} else {
-							Assert.fail(p.term().getClass().getName());
-						}
+			final Particle root = c.contentType().particle();
+			if (root != null) { // The particle may be be null
+				final Deque<Particle> d = new ArrayDeque<>();
+				d.add(root);
+				while (!d.isEmpty()) {
+					final Particle p = d.removeFirst();
+					Assert.assertNotNull("{" + c.targetNamespace() + "}" + c.name(), p.term());
+					if (p.term() instanceof ModelGroup) {
+						d.addAll(((ModelGroup) p.term()).particles());
+					} else if (p.term() instanceof Element) {
+						// Do nothing
+					} else if (p.term() instanceof Wildcard) {
+						Assert.fail();
+					} else {
+						Assert.fail(p.term().getClass().getName());
 					}
 				}
 			}

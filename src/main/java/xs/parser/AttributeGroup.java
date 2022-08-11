@@ -6,6 +6,7 @@ import org.w3c.dom.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -64,6 +65,7 @@ public class AttributeGroup implements AnnotatedComponent {
 			.elements(0, Integer.MAX_VALUE, TagParser.ATTRIBUTE.use(), TagParser.ATTRIBUTE_GROUP)
 			.elements(0, 1, TagParser.ANY_ATTRIBUTE);
 
+	private final Deferred<? extends AnnotatedComponent> context;
 	private final Node node;
 	private final Deque<Annotation> annotations;
 	private final String name;
@@ -71,7 +73,8 @@ public class AttributeGroup implements AnnotatedComponent {
 	private final Deque<AttributeUse> attributeUses;
 	private final Deferred<Wildcard> attributeWildcard;
 
-	private AttributeGroup(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<AttributeUse> attributeUses, final Deferred<Wildcard> attributeWildcard) {
+	private AttributeGroup(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<AttributeUse> attributeUses, final Deferred<Wildcard> attributeWildcard) {
+		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
@@ -81,23 +84,14 @@ public class AttributeGroup implements AnnotatedComponent {
 	}
 
 	private static AttributeGroup parse(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String targetNamespace = result.schema().targetNamespace();
 		final QName refAttr = result.value(AttrParser.REF);
 		if (refAttr != null) {
 			final Deferred<AttributeGroup> ref = result.schema().find(refAttr, AttributeGroup.class);
-			return new AttributeGroup(node, annotations, null, targetNamespace, Deques.emptyDeque(), null) {
-
-				@Override
-				public Deque<AttributeUse> attributeUses() {
-					return ref.get().attributeUses();
-				}
-
-				@Override
-				public Wildcard attributeWildcard() {
-					return ref.get().attributeWildcard();
-				}
+			return new AttributeGroup(context, node, annotations, null, targetNamespace, ref.mapToDeque(AttributeGroup::attributeUses), ref.map(AttributeGroup::attributeWildcard)) {
 
 				@Override
 				public String name() {
@@ -111,11 +105,12 @@ public class AttributeGroup implements AnnotatedComponent {
 		final Deque<AttributeGroup> attributeGroups = result.parseAll(TagParser.ATTRIBUTE_GROUP);
 		final Deque<AttributeUse> attributeUses = findAttributeUses(attributes, attributeGroups);
 		final Deferred<Wildcard> attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
-		return new AttributeGroup(node, annotations, name, targetNamespace, attributeUses, attributeWildcard);
+		return new AttributeGroup(context, node, annotations, name, targetNamespace, attributeUses, attributeWildcard);
 	}
 
 	static void register() {
 		TagParser.register(TagParser.Names.ATTRIBUTE_GROUP, parser, AttributeGroup.class, AttributeGroup::parse);
+		VisitorHelper.register(AttributeGroup.class, AttributeGroup::visit);
 	}
 
 	static Deque<AttributeUse> findAttributeUses(final Deque<AttributeUse> attributeUses, final Deque<AttributeGroup> attributeGroups) {
@@ -130,6 +125,17 @@ public class AttributeGroup implements AnnotatedComponent {
 			}
 			return x;
 		});
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context.get(), node, this)) {
+			visitor.onAttributeGroup(context.get(), node, this);
+			annotations.forEach(a -> a.visit(visitor));
+			attributeUses.forEach(a -> a.visit(visitor));
+			if (attributeWildcard != null) {
+				attributeWildcard().visit(visitor);
+			}
+		}
 	}
 
 	/** @return The ·actual value· of the name [attribute] */
@@ -150,11 +156,6 @@ public class AttributeGroup implements AnnotatedComponent {
 	/** @return The Wildcard determined by applying the attribute-wildcard mapping described in Common Rules for Attribute Wildcards (§3.6.2.2) to the &lt;attributeGroup&gt; element information item. */
 	public Wildcard attributeWildcard() {
 		return attributeWildcard != null ? attributeWildcard.get() : null;
-	}
-
-	@Override
-	public Node node() {
-		return node;
 	}
 
 	/** @return The ·annotation mapping· of the &lt;attributeGroup&gt; element and its &lt;attributeGroup&gt; [children], if present, as defined in XML Representation of Annotation Schema Components (§3.15.2). */

@@ -4,21 +4,6 @@ import java.util.*;
 
 public class DeferredArrayDeque<E> implements Deque<E> {
 
-	private static class DeferredValue<V> implements Deferred<V> {
-
-		private final V value;
-
-		DeferredValue(final V value) {
-			this.value = value;
-		}
-
-		@Override
-		public V get() {
-			return value;
-		}
-
-	}
-
 	private Deferred<? extends Deque<E>> def;
 
 	public DeferredArrayDeque() {

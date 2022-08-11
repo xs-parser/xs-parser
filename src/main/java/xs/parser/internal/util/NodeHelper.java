@@ -48,6 +48,7 @@ public final class NodeHelper {
 	private static final DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
 	private static BiFunction<Node, String, Schema.ParseException> newParseExceptionNodeString;
 	private static BiConsumer<Schema, Set<Schema>> schemaFindAllConstituentSchemas;
+	private static Function<Schema, Document> schemaToOwnerDocument;
 	public static final String LIST_SEP = " ";
 
 	static {
@@ -136,13 +137,16 @@ public final class NodeHelper {
 		return equalsQualifiedName(q, t.name(), t.targetNamespace());
 	}
 
-	/**
-	 * Tests whether the parent of the given result is the schema element.
-	 * @param result the result
-	 * @return {@code true} if the provided result's {@link SequenceParser.Result#node()} is a direct child of {@link SequenceParser.Result#schema()}
-	 */
-	public static boolean isParentSchemaElement(final SequenceParser.Result result) {
-		return result.node().getOwnerDocument().getDocumentElement().equals(result.parent().node());
+	public static void setSchemaToOwnerDocument(final Function<Schema, Document> fn) {
+		if (schemaToOwnerDocument != null) {
+			throw new IllegalStateException("schemaToOwnerDocument already set");
+		}
+		schemaToOwnerDocument = fn;
+	}
+
+	public static Document ownerDocument(final Schema schema) {
+		Objects.requireNonNull(schema, "schema");
+		return schemaToOwnerDocument.apply(schema);
 	}
 
 	public static Document ownerDocument(final Node node) {
@@ -195,10 +199,18 @@ public final class NodeHelper {
 		return doc;
 	}
 
-	public static Node newSchemaNode(final Document doc, final String elementLocalName, final String localName) {
+	public static Node newGlobalNode(final Schema schema, final String elementLocalName, final String localName) {
+		final Document doc = ownerDocument(schema);
 		final org.w3c.dom.Element elem = doc.createElementNS(XMLConstants.W3C_XML_SCHEMA_NS_URI, "xs:" + Objects.requireNonNull(elementLocalName));
 		doc.getDocumentElement().appendChild(elem);
 		elem.setAttributeNS(null, "name", Objects.requireNonNull(localName));
+		return elem;
+	}
+
+	public static Node newLocalNode(final Schema schema, final Node parentNode, final String elementLocalName) {
+		final Document doc = ownerDocument(schema);
+		final org.w3c.dom.Element elem = doc.createElementNS(XMLConstants.W3C_XML_SCHEMA_NS_URI, "xs:" + Objects.requireNonNull(elementLocalName));
+		parentNode.appendChild(elem);
 		return elem;
 	}
 

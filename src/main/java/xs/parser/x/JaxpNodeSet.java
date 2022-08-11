@@ -127,7 +127,7 @@ final class JaxpNodeSet extends NodeSet {
 	}
 
 	JaxpNodeSet(final NamespaceContext namespaceContext, final Schema schema) {
-		this(namespaceContext, new LinkedHashMap<>(), schema.node().getOwnerDocument().getDocumentURI(), schema.node().getOwnerDocument(), new Nodes(constituentSchemas(schema).stream().map(s -> s.node().getOwnerDocument())), false);
+		this(namespaceContext, new LinkedHashMap<>(), NodeHelper.ownerDocument(schema).getDocumentURI(), NodeHelper.ownerDocument(schema), new Nodes(constituentSchemas(schema).stream().map(NodeHelper::ownerDocument)), false);
 	}
 
 	@Override
@@ -188,7 +188,7 @@ final class JaxpNodeSet extends NodeSet {
 					return new JaxpNodeSet(namespaceContext, queryResultCache, expr, result, null, true);
 				}
 			} catch (final XPathExpressionException e) {
-				throw new RuntimeException(e);
+				throw new IllegalArgumentException(e);
 			}
 		});
 	}

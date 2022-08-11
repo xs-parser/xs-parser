@@ -17,6 +17,7 @@ import xs.parser.TypeDefinition.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -619,24 +620,6 @@ public class Schema implements AnnotatedComponent {
 			this.node = node;
 		}
 
-		ParseException(final Throwable cause) {
-			this((String) null, cause);
-		}
-
-		ParseException(final String message, final Throwable cause) {
-			super(message, cause);
-			this.node = cause instanceof ParseException
-					? ((ParseException) cause).node
-					: null;
-		}
-
-		ParseException(final String message, final Throwable cause, final boolean enableSuppression, final boolean writableStackTrace) {
-			super(message, cause, enableSuppression, writableStackTrace);
-			this.node = cause instanceof ParseException
-					? ((ParseException) cause).node
-					: null;
-		}
-
 		private static String formMessage(final Node node, final String message) {
 			final String nodeTypeName;
 			final String nodeString;
@@ -675,6 +658,7 @@ public class Schema implements AnnotatedComponent {
 
 	static {
 		NodeHelper.setNewParseException(ParseException::new);
+		NodeHelper.setSchemaToOwnerDocument(s -> s.document);
 		NodeHelper.setSchemaFindAllConstituentSchemas(Schema::findAllConstituentSchemas);
 		Alternative.register();
 		Annotation.register();
@@ -711,6 +695,7 @@ public class Schema implements AnnotatedComponent {
 		TagParser.register(TagParser.Names.OVERRIDE, Overrides.parser, Overrides.class, Overrides::parse);
 		TagParser.register(TagParser.Names.REDEFINE, Redefine.parser, Redefine.class, Redefine::parse);
 		TagParser.register(TagParser.Names.DEFAULT_OPEN_CONTENT, DefaultOpenContent.parser, DefaultOpenContent.class, DefaultOpenContent::parse);
+		VisitorHelper.register(Schema.class, Schema::visit);
 	}
 
 	private static final DocumentResolver DEFAULT_DOCUMENT_RESOLVER = new DefaultDocumentResolver();
@@ -723,6 +708,31 @@ public class Schema implements AnnotatedComponent {
 			.elements(0, 1, TagParser.SCHEMA.defaultOpenContent())
 			.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION)
 			.elements(0, Integer.MAX_VALUE, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP, TagParser.ELEMENT, TagParser.ATTRIBUTE, TagParser.NOTATION, TagParser.ANNOTATION);
+	static final Schema XSD = new Schema(NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI)) {
+
+		final Deque<TypeDefinition> typeDefinitions = new DeferredArrayDeque<>(() -> Deques.asDeque(ComplexType.xsAnyType(), SimpleType.xsAnySimpleType(), SimpleType.xsAnyAtomicType(), SimpleType.xsString(), SimpleType.xsBoolean(), SimpleType.xsFloat(), SimpleType.xsDouble(), SimpleType.xsDecimal(), SimpleType.xsDuration(), SimpleType.xsDateTime(), SimpleType.xsTime(), SimpleType.xsDate(), SimpleType.xsGYearMonth(), SimpleType.xsGYear(), SimpleType.xsGMonthDay(), SimpleType.xsGDay(), SimpleType.xsGMonth(), SimpleType.xsHexBinary(), SimpleType.xsBase64Binary(), SimpleType.xsAnyURI(), SimpleType.xsQName(), SimpleType.xsNOTATION(), SimpleType.xsNormalizedString(), SimpleType.xsToken(), SimpleType.xsLanguage(), SimpleType.xsIDREFS(), SimpleType.xsENTITIES(), SimpleType.xsNMTOKEN(), SimpleType.xsNMTOKENS(), SimpleType.xsName(), SimpleType.xsNCName(), SimpleType.xsID(), SimpleType.xsIDREF(), SimpleType.xsENTITY(), SimpleType.xsInteger(), SimpleType.xsNonPositiveInteger(), SimpleType.xsNegativeInteger(), SimpleType.xsLong(), SimpleType.xsInt(), SimpleType.xsShort(), SimpleType.xsByte(), SimpleType.xsNonNegativeInteger(), SimpleType.xsUnsignedLong(), SimpleType.xsUnsignedInt(), SimpleType.xsUnsignedShort(), SimpleType.xsUnsignedByte(), SimpleType.xsPositiveInteger(), SimpleType.xsYearMonthDuration(), SimpleType.xsDayTimeDuration(), SimpleType.xsDateTimeStamp()));
+
+		@Override
+		String location() {
+			return "datatypes.xsd";
+		}
+
+		@Override
+		public Deque<TypeDefinition> typeDefinitions() {
+			return typeDefinitions;
+		}
+
+	};
+	static final Schema XSI = new Schema(NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI)) {
+
+		final Deque<Attribute> attributeDeclarations = new DeferredArrayDeque<>(() -> Deques.asDeque(Attribute.xsiNil(), Attribute.xsiType(), Attribute.xsiSchemaLocation(), Attribute.xsiNoNamespaceSchemaLocation()));
+
+		@Override
+		public Deque<Attribute> attributeDeclarations() {
+			return attributeDeclarations;
+		}
+
+	};
 
 	private final DocumentResolver documentResolver;
 	private final NamespaceContext namespaceContext;
@@ -911,7 +921,7 @@ public class Schema implements AnnotatedComponent {
 			final QName q = new QName(targetNs == null ? XMLConstants.NULL_NS_URI : targetNs, name.apply(t));
 			final T dup = names.put(q, t);
 			if (dup != null) {
-				throw new ParseException(t.node(), "Duplicate declaration: " + q);
+				throw new ParseException("Duplicate declaration: " + q);
 			}
 		}
 	}
@@ -996,9 +1006,12 @@ public class Schema implements AnnotatedComponent {
 	@SuppressWarnings("unchecked")
 	<T extends SchemaComponent> Deferred<T> find(final QName name, final Class<? extends T> cls) {
 		return Deferred.of(() -> {
-			final T t = (T) FINDERS.get(cls).apply(this, name).get();
-			if (t != null) {
-				return t;
+			final Deferred<? extends SchemaComponent> def = FINDERS.get(cls).apply(this, name);
+			if (def != null) {
+				final T t = (T) def.get();
+				if (t != null) {
+					return t;
+				}
 			}
 			throw new ParseException(cls.getSimpleName() + " with name " + name + " not found");
 		});
@@ -1042,6 +1055,20 @@ public class Schema implements AnnotatedComponent {
 				return schema;
 			}
 			return new Schema(documentResolver(), namespaceContext(), doc, schemaLocation != null ? schemaLocation : doc.getDocumentURI(), schemaDocumentCache, schemaCache);
+		}
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(null, document, this)) {
+			visitor.onSchema(document, this);
+			annotations().forEach(a -> a.visit(visitor));
+			typeDefinitions().forEach(t -> ComplexType.visitTypeDefinition(t, visitor));
+			attributeDeclarations().forEach(a -> a.visit(visitor));
+			elementDeclarations().forEach(e -> e.visit(visitor));
+			attributeGroupDefinitions().forEach(a -> a.visit(visitor));
+			modelGroupDefinitions().forEach(m -> m.visit(visitor));
+			notationDeclarations().forEach(n -> n.visit(visitor));
+			identityConstraintDefinitions().forEach(i -> i.visit(visitor));
 		}
 	}
 
@@ -1126,11 +1153,6 @@ public class Schema implements AnnotatedComponent {
 	/** @return The identity-constraint definitions corresponding to all the &lt;key&gt;, &lt;keyref&gt;, and &lt;unique&gt; element information items anywhere within the [children], if any, plus any definitions brought in via &lt;include&gt;, &lt;override&gt;, &lt;redefine&gt;, and &lt;import&gt;. */
 	public Deque<IdentityConstraint> identityConstraintDefinitions() {
 		return Deques.unmodifiableDeque(identityConstraintDefinitions);
-	}
-
-	@Override
-	public Node node() {
-		return document.getDocumentElement();
 	}
 
 	/** @return The ·annotation mapping· of the set of elements containing the &lt;schema&gt; and all the &lt;include&gt;, &lt;redefine&gt;, &lt;override&gt;, &lt;import&gt;, and &lt;defaultOpenContent&gt; [children], if any, as defined in XML Representation of Annotation Schema Components (§3.15.2). */

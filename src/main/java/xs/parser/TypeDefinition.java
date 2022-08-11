@@ -44,7 +44,7 @@ public interface TypeDefinition extends AnnotatedComponent {
 
 		static Final getByName(final String name) {
 			for (final Final f : values()) {
-				if (f.getName().equals(name)) {
+				if (f.name.equals(name)) {
 					return f;
 				}
 			}
@@ -70,6 +70,6 @@ public interface TypeDefinition extends AnnotatedComponent {
 
 	public Deque<Final> finals();
 
-	public Node context();
+	public AnnotatedComponent context();
 
 }

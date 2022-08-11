@@ -10,6 +10,7 @@ import xs.parser.TypeDefinition.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -116,6 +117,71 @@ public class Element implements Term {
 
 	/**
 	 * <table>
+	 *   <caption style="font-size: large; text-align: left">Property Record: Scope</caption>
+	 *   <thead>
+	 *     <tr>
+	 *       <th style="text-align: left">Method</th>
+	 *       <th style="text-align: left">Property</th>
+	 *       <th style="text-align: left">Representation</th>
+	 *     </tr>
+	 *   </thead>
+	 *   <tbody>
+	 *     <tr>
+	 *       <td>{@link Scope#variety()}</td>
+	 *       <td>{variety}</td>
+	 *       <td>One of {global, local}. Required.</td>
+	 *     </tr>
+	 *     <tr>
+	 *       <td>{@link Scope#parent()}</td>
+	 *       <td>{parent}</td>
+	 *       <td>Either a Complex Type Definition or a Model Group Definition. Required if {variety} is local, otherwise must be ·absent·</td>
+	 *     </tr>
+	 *   </tbody>
+	 * </table>
+	 */
+	public static class Scope {
+
+		public enum Variety {
+
+			GLOBAL,
+			LOCAL;
+
+		}
+
+		private final Variety variety;
+		private final AnnotatedComponent parent;
+
+		Scope(final Variety variety, final AnnotatedComponent parent, final Node node) {
+			if ((Variety.LOCAL.equals(variety) && parent == null) || (Variety.GLOBAL.equals(variety) && parent != null)) {
+				throw new IllegalArgumentException(variety.toString());
+			}
+			this.variety = Objects.requireNonNull(variety);
+			Objects.requireNonNull(node);
+			if (Variety.GLOBAL.equals(variety)) {
+				this.parent = null;
+			} else if (parent instanceof ComplexType || parent instanceof ModelGroup) {
+				this.parent = parent;
+			} else if (parent instanceof Particle && ((Particle) parent).term() instanceof ModelGroup) {
+				this.parent = ((Particle) parent).term();
+			} else {
+				throw new ParseException(node, TagParser.ELEMENT.getName() + " must be a descendent of " + TagParser.COMPLEX_TYPE.getName() + " or " + TagParser.GROUP.getName());
+			}
+		}
+
+		/** @return either local or global, as appropriate */
+		public Variety variety() {
+			return variety;
+		}
+
+		/** @return If the &lt;element&gt; element information item has &lt;complexType&gt; as an ancestor, the Complex Type Definition corresponding to that item, otherwise (the &lt;element&gt; element information item is within a named &lt;group&gt; element information item), the Model Group Definition corresponding to that item. */
+		public AnnotatedComponent parent() {
+			return parent;
+		}
+
+	}
+
+	/**
+	 * <table>
 	 *   <caption style="font-size: large; text-align: left">Property Record: Type Table</caption>
 	 *   <thead>
 	 *     <tr>
@@ -151,13 +217,40 @@ public class Element implements Term {
 			final Alternative last = alternatives.getLast();
 			this.defaultTypeDefinition = last.test() == null
 					? last
-					: new Alternative(node, Deques.emptyDeque(), null, typeDefinition);
+					: new Alternative(() -> Element.this, node, Deques.emptyDeque(), null, typeDefinition);
 		}
 
+		/** @return A sequence of Type Alternatives, each corresponding, in order, to one of the &lt;alternative&gt; elements which have a test [attribute]. */
 		public Deque<Alternative> alternatives() {
 			return alternatives;
 		}
 
+		/** @return Depends upon the final &lt;alternative&gt; element among the [children]. If it has no test [attribute], the final &lt;alternative&gt; maps to the {default type definition}; if it does have a test attribute, it is covered by the rule for {alternatives} and the {default type definition} is taken from the declared type of the Element Declaration. So the value of the {default type definition} is given by the appropriate case among the following:
+		 * <br>1 If the &lt;alternative&gt; has no test [attribute], then a Type Alternative corresponding to the &lt;alternative&gt;.
+		 * <br>2 otherwise (the &lt;alternative&gt; has a test) a Type Alternative with the following properties:
+		 * <table>
+		 *   <caption style="font-size: large; text-align: left">Type Alternative</caption>
+		 *   <thead>
+		 *     <tr>
+		 *       <th style="text-align: left">Property</th>
+		 *       <th style="text-align: left">Value</th>
+		 *     </tr>
+		 *   </thead>
+		 *   <tbody>
+		 *     <tr>
+		 *       <td>{test}</td>
+		 *       <td>·absent·</td>
+		 *     </tr>
+		 *     <tr>
+		 *       <td>{type definition}</td>
+		 *       <td>the {type definition} property of the parent Element Declaration.</td>
+		 *     </tr>
+		 *     <tr>
+		 *       <td>{annotations}</td>
+		 *       <td>the empty sequence.</td>
+		 *     </tr>
+		 *   </tbody>
+		 * </table> */
 		public Alternative defaultTypeDefinition() {
 			return defaultTypeDefinition;
 		}
@@ -173,13 +266,14 @@ public class Element implements Term {
 			.elements(0, Integer.MAX_VALUE, TagParser.ALTERNATIVE)
 			.elements(0, Integer.MAX_VALUE, TagParser.KEY, TagParser.KEYREF, TagParser.UNIQUE);
 
+	private final Deferred<? extends AnnotatedComponent> context;
 	private final Node node;
 	private final Deque<Annotation> annotations;
 	private final String name;
-	private final String targetNamespace;
+	private final Deferred<String> targetNamespace;
 	private final Deferred<? extends TypeDefinition> typeDefinition;
 	private final TypeTable typeTable;
-	private final Scope scope;
+	private final Deferred<Scope> scope;
 	private final boolean nillable;
 	private final Deferred<ValueConstraint> valueConstraint;
 	private final Deque<IdentityConstraint> identityConstraintDefinitions;
@@ -188,14 +282,15 @@ public class Element implements Term {
 	private final Set<Final> substitutionGroupExclusions;
 	private final boolean isAbstract;
 
-	private Element(final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<? extends TypeDefinition> typeDefinition, final Deque<Alternative> alternatives, final Scope scope, final boolean nillable, final Deferred<ValueConstraint> valueConstraint, final Deque<IdentityConstraint> identityConstraintDefinitions, final Deque<Element> substitutionGroupAffiliations, final Set<Block> disallowedSubstitutions, final Set<Final> substitutionGroupExclusions, final boolean isAbstract) {
+	private Element(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String name, final Deferred<String> targetNamespace, final Deferred<? extends TypeDefinition> typeDefinition, final Deque<Alternative> alternatives, final Deferred<Scope> scope, final boolean nillable, final Deferred<ValueConstraint> valueConstraint, final Deque<IdentityConstraint> identityConstraintDefinitions, final Deque<Element> substitutionGroupAffiliations, final Set<Block> disallowedSubstitutions, final Set<Final> substitutionGroupExclusions, final boolean isAbstract) {
+		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
-		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
+		this.targetNamespace = targetNamespace.map(tns -> NodeHelper.requireNonEmpty(node, tns));
 		this.typeDefinition = Objects.requireNonNull(typeDefinition);
 		this.typeTable = alternatives.isEmpty() ? null : new TypeTable(alternatives);
-		this.scope = scope;
+		this.scope = Objects.requireNonNull(scope);
 		this.nillable = nillable;
 		this.valueConstraint = valueConstraint;
 		this.identityConstraintDefinitions = Objects.requireNonNull(identityConstraintDefinitions);
@@ -206,6 +301,7 @@ public class Element implements Term {
 	}
 
 	private static Element parseDecl(final Result result) {
+		final Deferred<AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final String defaultValue = result.value(AttrParser.DEFAULT);
@@ -241,36 +337,43 @@ public class Element implements Term {
 		final Deque<Alternative> alternatives = result.parseAll(TagParser.ALTERNATIVE);
 		final Deque<IdentityConstraint> identityConstraints = result.parseAll(TagParser.KEY, TagParser.KEYREF, TagParser.UNIQUE);
 		final Form form = result.value(AttrParser.FORM);
-		final boolean isGlobal = NodeHelper.isParentSchemaElement(result);
-		final Scope scope;
-		String targetNamespace = result.value(AttrParser.TARGET_NAMESPACE);
-		if (isGlobal) {
-			if (form != null) {
-				throw new Schema.ParseException(node, "'form' attribute is only allowed for local element declarations");
-			} else if (targetNamespace != null) {
-				throw new Schema.ParseException(node, "'targetNamespace' attribute is only allowed for local element declarations");
-			}
-			targetNamespace = result.schema().targetNamespace();
-			scope = new Scope(Scope.Variety.GLOBAL, null);
-		} else {
-			if (targetNamespace == null && (Form.QUALIFIED.equals(form) || (form == null && Form.QUALIFIED.equals(result.schema().elementFormDefault())))) { // 3.3.2.3
-				targetNamespace = result.schema().targetNamespace();
-			}
-			Node n = result.parent().node();
-			while (!TagParser.COMPLEX_TYPE.equalsName(n) && !TagParser.GROUP.equalsName(n)) {
-				if ((n = n.getParentNode()) == null) {
-					throw new ParseException(result.node(), TagParser.ELEMENT.getName() + " must be a descendent of " + TagParser.COMPLEX_TYPE.getName() + " or " + TagParser.GROUP.getName());
+		final Deferred<Scope> scope = context.map(ctx -> {
+			if (ctx instanceof Schema) {
+				if (form != null) {
+					throw new Schema.ParseException(node, "'form' attribute is only allowed for local element declarations");
 				}
+				return new Scope(Scope.Variety.GLOBAL, null, node);
+			} else {
+				return new Scope(Scope.Variety.LOCAL, ctx, node);
 			}
-			scope = new Scope(Scope.Variety.LOCAL, n);
-		}
-		Deque<QName> substitutionGroup = result.value(AttrParser.SUBSTITUTION_GROUP);
-		if (substitutionGroup != null && !isGlobal) {
-			throw new ParseException(result.node(), "@substitutionGroup is only valid for global elements");
-		} else if (substitutionGroup == null) {
-			substitutionGroup = Deques.emptyDeque();
-		}
-		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>();
+		});
+		final String targetNamespaceValue = result.value(AttrParser.TARGET_NAMESPACE);
+		final Deferred<String> targetNamespace = context.map(ctx -> {
+			if (ctx instanceof Schema) {
+				if (targetNamespaceValue != null) {
+					throw new Schema.ParseException(node, "'targetNamespace' attribute is only allowed for local element declarations");
+				}
+				return result.schema().targetNamespace();
+			} else {
+				if (targetNamespaceValue == null && (Form.QUALIFIED.equals(form) || (form == null && Form.QUALIFIED.equals(result.schema().elementFormDefault())))) { // 3.3.2.3
+					return result.schema().targetNamespace();
+				}
+				return targetNamespaceValue;
+			}
+		});
+		final Deque<QName> substitutionGroup = result.value(AttrParser.SUBSTITUTION_GROUP);
+		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>(() -> {
+			if (substitutionGroup != null && !(context.get() instanceof Schema)) {
+				throw new ParseException(result.node(), "@substitutionGroup is only valid for global elements");
+			} else if (substitutionGroup == null) {
+				return Deques.emptyDeque();
+			}
+			final DeferredArrayDeque<Element> x = new DeferredArrayDeque<>();
+			for (final QName s : substitutionGroup) {
+				x.addLast(result.schema().find(s, Element.class));
+			}
+			return x;
+		});
 		final Deferred<? extends TypeDefinition> typeDefinition;
 		final QName typeName = result.value(AttrParser.TYPE);
 		if (typeName != null) {
@@ -279,9 +382,9 @@ public class Element implements Term {
 			final Deferred<TypeDefinition> type = result.parse(TagParser.COMPLEX_TYPE, TagParser.SIMPLE_TYPE);
 			typeDefinition = type != null
 					? type
-					: substitutionGroup.isEmpty()
-							? ComplexType::xsAnyType
-							: () -> substitutionGroupAffiliations.getFirst().typeDefinition.get();
+					: () -> substitutionGroupAffiliations.isEmpty()
+							? ComplexType.xsAnyType()
+							: substitutionGroupAffiliations.getFirst().typeDefinition.get();
 		}
 		final Deferred<ValueConstraint> valueConstraint;
 		if (defaultValue != null || fixedValue != null) {
@@ -296,33 +399,29 @@ public class Element implements Term {
 							: SimpleType::xsString;
 				}
 				return defaultValue != null
-						? new ValueConstraint(result.schema(), effectiveSimpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
+						? new ValueConstraint(effectiveSimpleType, ValueConstraint.Variety.DEFAULT, defaultValue)
 						: fixedValue != null
-								? new ValueConstraint(result.schema(), effectiveSimpleType, ValueConstraint.Variety.FIXED, fixedValue)
+								? new ValueConstraint(effectiveSimpleType, ValueConstraint.Variety.FIXED, fixedValue)
 								: null;
 			});
 		} else {
 			valueConstraint = null;
 		}
-		substitutionGroup.forEach(s -> substitutionGroupAffiliations.addLast(result.schema().find(s, Element.class)));
 		final String name = result.value(AttrParser.NAME);
-		return new Element(node, annotations, name, targetNamespace, typeDefinition, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
+		return new Element(context, node, annotations, name, targetNamespace, typeDefinition, alternatives, scope, nillable, valueConstraint, identityConstraints, substitutionGroupAffiliations, disallowedSubstitutions, substitutionGroupExclusions, isAbstract);
 	}
 
 	private static Particle parse(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
 		final Number minOccurs = result.value(AttrParser.MIN_OCCURS);
 		final QName refName = result.value(AttrParser.REF);
-		final Deferred<Element> decl;
-		if (refName != null) {
-			decl = result.schema().find(refName, Element.class);
-		} else {
-			final Element elem = parseDecl(result);
-			decl = () -> elem;
-		}
-		return new Particle(node, annotations, maxOccurs, minOccurs, decl);
+		final Deferred<Element> term = refName != null
+				? result.schema().find(refName, Element.class)
+				: new DeferredValue<>(parseDecl(result));
+		return new Particle(context, node, annotations, maxOccurs, minOccurs, term);
 	}
 
 	static void register() {
@@ -333,6 +432,21 @@ public class Element implements Term {
 		AttrParser.register(AttrParser.Names.TYPE, QName.class, NodeHelper::getAttrValueAsQName);
 		TagParser.register(TagParser.Names.ELEMENT, parser, Element.class, Element::parseDecl);
 		TagParser.register(TagParser.Names.ELEMENT, parser, Particle.class, Element::parse);
+		VisitorHelper.register(Element.class, Element::visit);
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context.get(), node, this)) {
+			visitor.onElement(context.get(), node, this);
+			annotations.forEach(a -> a.visit(visitor));
+			ComplexType.visitTypeDefinition(typeDefinition(), visitor);
+			if (typeTable != null) {
+				typeTable.alternatives.forEach(a -> a.visit(visitor));
+				typeTable.defaultTypeDefinition.visit(visitor);
+			}
+			identityConstraintDefinitions.forEach(i -> i.visit(visitor));
+			substitutionGroupAffiliations.forEach(e -> e.visit(visitor));
+		}
 	}
 
 	public String name() {
@@ -340,7 +454,7 @@ public class Element implements Term {
 	}
 
 	public String targetNamespace() {
-		return targetNamespace;
+		return targetNamespace.get();
 	}
 
 	public TypeDefinition typeDefinition() {
@@ -352,7 +466,7 @@ public class Element implements Term {
 	}
 
 	public Scope scope() {
-		return scope;
+		return scope.get();
 	}
 
 	public boolean nillable() {
@@ -381,11 +495,6 @@ public class Element implements Term {
 
 	public boolean isAbstract() {
 		return isAbstract;
-	}
-
-	@Override
-	public Node node() {
-		return node;
 	}
 
 	@Override

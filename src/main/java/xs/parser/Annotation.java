@@ -8,6 +8,7 @@ import org.w3c.dom.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -124,7 +125,7 @@ public class Annotation implements SchemaComponent {
 						} while (!component.isSameNode(n));
 						return attrs;
 					});
-					mapped.add(new Annotation(a.node, a.applicationInformation, a.userInformation, attributes));
+					mapped.add(new Annotation(a.context, a.node, a.applicationInformation, a.userInformation, attributes));
 				}
 				return mapped;
 			});
@@ -172,12 +173,14 @@ public class Annotation implements SchemaComponent {
 			.optionalAttributes(AttrParser.ID)
 			.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION.documentation(), TagParser.ANNOTATION.appinfo());
 
+	private final Deferred<? extends AnnotatedComponent> context;
 	private final Node node;
 	private final Deque<Node> applicationInformation;
 	private final Deque<Node> userInformation;
 	private final Deferred<Set<Attr>> attributes;
 
-	private Annotation(final Node node, final Deque<Node> applicationInformation, final Deque<Node> userInformation, final Deferred<Set<Attr>> attributes) {
+	private Annotation(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Node> applicationInformation, final Deque<Node> userInformation, final Deferred<Set<Attr>> attributes) {
+		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.applicationInformation = Objects.requireNonNull(applicationInformation);
 		this.userInformation = Objects.requireNonNull(userInformation);
@@ -185,11 +188,13 @@ public class Annotation implements SchemaComponent {
 	}
 
 	private static Annotation parse(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
+		final Node node = result.node();
 		final Deque<Appinfo> appinfo = result.parseAll(TagParser.ANNOTATION.appinfo());
 		final Deque<Node> applicationInformation = new DeferredArrayDeque<>(() -> appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new)));
 		final Deque<Documentation> documentation = result.parseAll(TagParser.ANNOTATION.documentation());
 		final Deque<Node> userInformation = new DeferredArrayDeque<>(() -> documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new)));
-		return new Annotation(result.node(), applicationInformation, userInformation, Collections::emptySet);
+		return new Annotation(context, node, applicationInformation, userInformation, Collections::emptySet);
 	}
 
 	static void register() {
@@ -198,10 +203,17 @@ public class Annotation implements SchemaComponent {
 		TagParser.register(TagParser.Names.APPINFO, Appinfo.parser, Appinfo.class, Appinfo::parse);
 		TagParser.register(TagParser.Names.DOCUMENTATION, Documentation.parser, Documentation.class, Documentation::parse);
 		TagParser.register(TagParser.Names.ANNOTATION, Annotation.parser, Annotation.class, Annotation::parse);
+		VisitorHelper.register(Annotation.class, Annotation::visit);
 	}
 
 	static AnnotationSet of(final Result result) {
 		return new AnnotationSet(result);
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context.get(), node, this)) {
+			visitor.onAnnotation(context.get(), node, this);
+		}
 	}
 
 	/** @return A sequence of the &lt;appinfo&gt; element information items from among the [children], in order, if any, otherwise the empty sequence. */
@@ -217,11 +229,6 @@ public class Annotation implements SchemaComponent {
 	/** @return A set of attribute information items, namely those allowed by the attribute wildcard in the type definition for the &lt;annotation&gt; item itself or for the enclosing items which correspond to the component within which the annotation component is located. */
 	public Set<Attr> attributes() {
 		return Collections.unmodifiableSet(attributes.get());
-	}
-
-	@Override
-	public Node node() {
-		return node;
 	}
 
 }

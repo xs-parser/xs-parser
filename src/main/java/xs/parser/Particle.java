@@ -8,6 +8,7 @@ import xs.parser.ModelGroup.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
+import xs.parser.v.*;
 
 /**
  * <pre>
@@ -44,25 +45,28 @@ public class Particle implements AnnotatedComponent {
 			.elements(0, Integer.MAX_VALUE, TagParser.ELEMENT.use(), TagParser.GROUP.use(), TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE, TagParser.ANY);
 	static final String UNBOUNDED = "unbounded";
 
+	private final Deferred<? extends AnnotatedComponent> context;
 	private final Node node;
 	private final Deque<Annotation> annotations;
 	private final Number maxOccurs;
 	private final Number minOccurs;
 	private final Deferred<? extends Term> term;
 
-	Particle(final Node node, final Deque<Annotation> annotations, final Number maxOccurs, final Number minOccurs, final Term term) {
-		this(node, annotations, maxOccurs, minOccurs, () -> term);
+	Particle(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final Number maxOccurs, final Number minOccurs, final Term term) {
+		this(context, node, annotations, maxOccurs, minOccurs, new DeferredValue<>(Objects.requireNonNull(term)));
 	}
 
-	Particle(final Node node, final Deque<Annotation> annotations, final Number maxOccurs, final Number minOccurs, final Deferred<? extends Term> term) {
+	Particle(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final Number maxOccurs, final Number minOccurs, final Deferred<? extends Term> term) {
+		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
-		this.maxOccurs = maxOccurs;
-		this.minOccurs = minOccurs;
-		this.term = term;
+		this.maxOccurs = Objects.requireNonNull(maxOccurs);
+		this.minOccurs = Objects.requireNonNull(minOccurs);
+		this.term = Objects.requireNonNull(term);
 	}
 
 	private static Particle parse(final Result result) {
+		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Annotation> annotations = Annotation.of(result).resolve(node);
 		final Number maxOccurs = result.value(AttrParser.MAX_OCCURS);
@@ -72,8 +76,9 @@ public class Particle implements AnnotatedComponent {
 				: TagParser.SEQUENCE.equalsName(node) ? Compositor.SEQUENCE
 				: null;
 		final Deque<Particle> particles = result.parseAll(TagParser.ELEMENT.use(), TagParser.GROUP.use(), TagParser.ALL, TagParser.CHOICE, TagParser.SEQUENCE, TagParser.ANY);
-		final ModelGroup term = ModelGroup.synthetic(node, annotations, compositor, particles);
-		return new Particle(node, annotations, maxOccurs, minOccurs, term);
+		final DeferredValue<Particle> self = new DeferredValue<>();
+		final ModelGroup term = ModelGroup.synthetic(self, node, annotations, compositor, particles);
+		return self.set(new Particle(context, node, annotations, maxOccurs, minOccurs, term));
 	}
 
 	private static Number getAttrValueAsMaxOccurs(final Attr attr) {
@@ -89,6 +94,7 @@ public class Particle implements AnnotatedComponent {
 		TagParser.register(TagParser.Names.ALL, parser, Particle.class, Particle::parse);
 		TagParser.register(TagParser.Names.CHOICE, parser, Particle.class, Particle::parse);
 		TagParser.register(TagParser.Names.SEQUENCE, parser, Particle.class, Particle::parse);
+		VisitorHelper.register(Particle.class, Particle::visit);
 	}
 
 	/**
@@ -129,12 +135,22 @@ public class Particle implements AnnotatedComponent {
 	 * @return {@code true} if this {@code Particle} is emptiable
 	 */
 	boolean isEmptiable() {
-		if (minOccurs.intValue() == 0) {
-			return true;
-		} else if (term() instanceof ModelGroup) {
-			return BigInteger.ZERO.equals(effectiveTotalRangeMinimum());
+		return minOccurs.intValue() == 0 || (term() instanceof ModelGroup && BigInteger.ZERO.equals(effectiveTotalRangeMinimum()));
+	}
+
+	void visit(final Visitor visitor) {
+		if (visitor.visit(context.get(), node, this)) {
+			visitor.onParticle(context.get(), node, this);
+			annotations.forEach(a -> a.visit(visitor));
+			final Term t = term();
+			if (t instanceof ModelGroup) {
+				((ModelGroup) t).visit(visitor);
+			} else if (t instanceof Element) {
+				((Element) t).visit(visitor);
+			} else {
+				((Wildcard) t).visit(visitor);
+			}
 		}
-		return false;
 	}
 
 	public Number maxOccurs() {
@@ -147,11 +163,6 @@ public class Particle implements AnnotatedComponent {
 
 	public Term term() {
 		return term.get();
-	}
-
-	@Override
-	public Node node() {
-		return node;
 	}
 
 	@Override
