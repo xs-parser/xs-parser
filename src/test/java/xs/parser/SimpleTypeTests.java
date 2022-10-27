@@ -13,7 +13,13 @@ public class SimpleTypeTests {
 				Utilities.PROLOG_UTF8
 				+ "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>"
 				+ "  <xs:simpleType name='TestA'>"
+				+ "    <xs:annotation>"
+				+ "      <xs:documentation>simpleType user information</xs:documentation>"
+				+ "    </xs:annotation>"
 				+ "    <xs:restriction>"
+				+ "      <xs:annotation>"
+				+ "        <xs:documentation>restriction user information</xs:documentation>"
+				+ "      </xs:annotation>"
 				+ "      <xs:simpleType>"
 				+ "        <xs:restriction base='xs:int'>"
 				+ "          <xs:minInclusive value='2'/>"
@@ -110,6 +116,13 @@ public class SimpleTypeTests {
 		Assert.assertEquals(new LinkedHashSet<>(Arrays.asList("C", "D")), facetOf(testD, ConstrainingFacet.Enumeration.class).value());
 		final SimpleType testE = (SimpleType) schema.typeDefinitions().stream().filter(s -> s.name().equals("TestE")).findAny().get();
 		Assert.assertEquals(new LinkedHashSet<>(Arrays.asList("A", "B")), facetOf(testE, ConstrainingFacet.Enumeration.class).value());
+	}
+
+	@Test
+	public void testAnnotations() {
+		final SimpleType testA = (SimpleType) schema.typeDefinitions().stream().filter(s -> s.name().equals("TestA")).findAny().get();
+		Assert.assertEquals("simpleType user information", testA.annotations().getFirst().userInformation().getFirst().getTextContent());
+		Assert.assertEquals("restriction user information", testA.annotations().getLast().userInformation().getFirst().getTextContent());
 	}
 
 }

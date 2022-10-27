@@ -1044,7 +1044,7 @@ public class ComplexType implements TypeDefinition {
 			});
 		}
 		annotations.addAll(def.mapToDeque(d -> d.asserts), Assert::annotations);
-		return self.set(new ComplexType(context, node, annotations.resolve(node), name, targetNamespace, finals, def.map(d -> d.baseTypeDefinition), def.mapToDeque(d -> {
+		return self.set(new ComplexType(context, node, def.mapToDeque(d -> annotations.resolve(node)), name, targetNamespace, finals, def.map(d -> d.baseTypeDefinition), def.mapToDeque(d -> {
 			if (defaultAttributesApply && result.schema().defaultAttributes() != null) {
 				d.attributeUses.addAll(result.schema().defaultAttributes().mapToDeque(AttributeGroup::attributeUses));
 			}

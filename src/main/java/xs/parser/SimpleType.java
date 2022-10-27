@@ -478,10 +478,15 @@ public class SimpleType implements TypeDefinition {
 				throw new AssertionError();
 			}
 		});
-		final Deque<Annotation> annotations = list != null ? list.mapToDeque(ls -> ls.annotations().resolve(node))
-				: union != null ? union.mapToDeque(u -> u.annotations().resolve(node))
-				: restriction.mapToDeque(r -> r.annotations().resolve(node));
-		return self.set(new SimpleType(schema, context, node, annotations, name, targetNamespace, finals, baseType, variety, facets, restriction, list, union));
+		final AnnotationSet annotations = Annotation.of(result);
+		if (list != null) {
+			annotations.add(list, List::annotations);
+		} else if (union != null) {
+			annotations.add(union, Union::annotations);
+		} else {
+			annotations.add(restriction, Restriction::annotations);
+		}
+		return self.set(new SimpleType(schema, context, node, annotations.resolve(node), name, targetNamespace, finals, baseType, variety, facets, restriction, list, union));
 	}
 
 	private static Deferred<SimpleType> create(final String name, final Deferred<? extends TypeDefinition> baseTypeDefinition) {

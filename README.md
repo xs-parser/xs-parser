@@ -21,7 +21,7 @@ Unlike other software libraries that attempt to model XML schema documents, `xs-
 
 # Requirements
 
-`xs-parser` requires Java 8 or later. `xs-parser` has no third-party dependencies.
+`xs-parser` requires Java 8 or later and has no third-party dependencies.
 
 If `Saxon-HE` version 10 is detected at runtime on the classpath, then it is used as the XPath and XQuery evaluation engine. When not detected, XQuery evaluation is disabled and the XPath engine defaults to the JAXP XPath 1.0 implementation. `Saxon-HE` version 11+ is not supported at this time.
 
@@ -64,6 +64,42 @@ public class Runner {
 
 }
 ```
+
+## Equals and HashCode
+
+The classes of `xs-parser` do not override `equals()` or `hashCode()`. Use reference equality, `==`, instead. Consider the following code and schema:
+
+```xml
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+	<xs:complexType name="A" />
+	<xs:complexType name="B" >
+		<xs:sequence>
+			<xs:element name="E" />
+		</xs:sequence>
+	</xs:complexType>
+	<xs:element name="E1" type="A" />
+	<xs:element name="E2" type="B" />
+</xs:schema>
+```
+
+where `/path/to/schema.xsd` contains the above schema.
+
+```java
+final Schema schema = new Schema(new File("/path/to/schema.xsd"));
+final TypeDefinition a = schema.typeDefinitions().getFirst();
+System.out.println(a.baseTypeDefinition() == ComplexType.xsAnyType()); // Prints: true
+final Element e1 = schema.elementDeclarations().getFirst();
+System.out.println(e1.name());                                         // Prints: E1
+System.out.println(e1.typeDefinition() == a);                          // Prints: true
+final Element e2 = schema.elementDeclarations().getLast();
+System.out.println(e2.name());                                         // Prints: E2
+final TypeDefinition b = schema.typeDefinitions().getLast();
+System.out.println(e2.typeDefinition() == b);                          // Prints: true
+```
+
+## Execution Model
+
+Almost all evaluations in `xs-parser` are lazy, accomplished through a deferred execution model. The `Schema` constructor does not do anything more than load the DOM of the file as well as a few sanity checks to ensure that what was provided looks roughly like an actual schema. The definitions and declarations of the schema are not parsed until they are needed.
 
 ## XSD Datatypes Mapping
 

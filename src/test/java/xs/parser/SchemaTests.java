@@ -285,4 +285,35 @@ public class SchemaTests {
 		}
 	}
 
+	@Test
+	public void testAnnotations() throws Exception {
+		final Schema schema = Utilities.stringToSchema(
+				Utilities.PROLOG_UTF8
+				+ "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>"
+				+ "  <xs:annotation>"
+				+ "    <xs:documentation>schema user information</xs:documentation>"
+				+ "  </xs:annotation>"
+				+ "  <xs:import schemaLocation=''>"
+				+ "    <xs:annotation>"
+				+ "      <xs:documentation>import user information</xs:documentation>"
+				+ "    </xs:annotation>"
+				+ "  </xs:import>"
+				+ "  <xs:include schemaLocation=''>"
+				+ "    <xs:annotation>"
+				+ "      <xs:documentation>include user information</xs:documentation>"
+				+ "    </xs:annotation>"
+				+ "  </xs:include>"
+				+ "  <xs:defaultOpenContent appliesToEmpty='true' mode='interleave'>"
+				+ "    <xs:annotation>"
+				+ "      <xs:documentation>defaultOpenContent user information</xs:documentation>"
+				+ "    </xs:annotation>"
+				+ "  </xs:defaultOpenContent>"
+				+ "</xs:schema>");
+		final Iterator<Annotation> iter = schema.annotations().iterator();
+		Assert.assertEquals("schema user information", iter.next().userInformation().getFirst().getTextContent());
+		Assert.assertEquals("import user information", iter.next().userInformation().getFirst().getTextContent());
+		Assert.assertEquals("include user information", iter.next().userInformation().getFirst().getTextContent());
+		Assert.assertEquals("defaultOpenContent user information", iter.next().userInformation().getFirst().getTextContent());
+	}
+
 }
