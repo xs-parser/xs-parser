@@ -39,7 +39,7 @@ repositories {
 }
 
 dependencies {
-	implementation 'io.github.xs-parser:xs-parser:1.0'
+	implementation 'io.github.xs-parser:xs-parser:2.0'
 }
 ```
 
