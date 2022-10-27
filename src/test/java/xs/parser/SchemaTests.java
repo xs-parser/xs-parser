@@ -281,7 +281,7 @@ public class SchemaTests {
 			Assert.assertEquals(c2, e2.typeDefinition());
 			final ModelGroup originalG1 = schema.modelGroupDefinitions().stream().filter(g -> ("_" + g1.name()).equals(g.name())).findFirst().get();
 			Assert.assertEquals(ModelGroup.Compositor.CHOICE, originalG1.compositor());
-			Assert.assertEquals(Wildcard.class, originalG1.particles().getFirst().term().getClass());
+			Assert.assertEquals(Wildcard.Any.class, originalG1.particles().getFirst().term().getClass());
 		}
 	}
 

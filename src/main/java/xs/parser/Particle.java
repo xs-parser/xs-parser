@@ -5,6 +5,7 @@ import java.util.*;
 import java.util.function.*;
 import org.w3c.dom.*;
 import xs.parser.ModelGroup.*;
+import xs.parser.Wildcard.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
@@ -147,8 +148,10 @@ public class Particle implements AnnotatedComponent {
 				((ModelGroup) t).visit(visitor);
 			} else if (t instanceof Element) {
 				((Element) t).visit(visitor);
+			} else if (t instanceof Any) {
+				((Any) t).visit(visitor);
 			} else {
-				((Wildcard) t).visit(visitor);
+				((AnyAttribute) t).visit(visitor);
 			}
 		}
 	}

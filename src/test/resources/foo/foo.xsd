@@ -19,6 +19,9 @@
 	</xs:element>
 
 	<xs:complexType name="superCompoType">
+		<xs:openContent mode="interleave">
+			<xs:any xmlns:r="r" namespace="r" notQName="##defined r:y"/>
+		</xs:openContent>
 		<xs:attribute name="type">
 			<xs:simpleType>
 				<xs:restriction base="xs:string">
@@ -41,6 +44,9 @@
 	<xs:complexType name="sub2CompoType">
 		<xs:complexContent>
 			<xs:extension base="superCompoType">
+				<xs:openContent>
+					<xs:any xmlns:q="q" namespace="q r" notQName="q:z"/>
+				</xs:openContent>
 				<xs:attribute name="sub2" use="required" type="xs:int"/>
 				<xs:assert test="@sub2 &gt; 10 and @sub2 &lt; 20"></xs:assert>
 			</xs:extension>

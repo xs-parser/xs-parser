@@ -14,6 +14,7 @@ import org.w3c.dom.*;
 import org.xml.sax.*;
 import xs.parser.Annotation.*;
 import xs.parser.TypeDefinition.*;
+import xs.parser.Wildcard.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
@@ -199,7 +200,7 @@ public class Schema implements AnnotatedComponent {
 
 		private final boolean appliesToEmpty;
 
-		private DefaultOpenContent(final AnnotationSet annotations, final boolean appliesToEmpty, final Mode mode, final Deferred<Particle> wildcard) {
+		private DefaultOpenContent(final AnnotationSet annotations, final boolean appliesToEmpty, final Mode mode, final Deferred<Any> wildcard) {
 			super(annotations, mode, wildcard);
 			this.appliesToEmpty = appliesToEmpty;
 		}
@@ -208,7 +209,7 @@ public class Schema implements AnnotatedComponent {
 			final AnnotationSet annotations = Annotation.of(result);
 			final boolean appliesToEmpty = result.value(AttrParser.APPLIES_TO_EMPTY);
 			final Mode mode = result.value(AttrParser.MODE);
-			final Deferred<Particle> wildcard = result.parse(TagParser.ANY);
+			final Deferred<Any> wildcard = result.parse(TagParser.ANY);
 			return new DefaultOpenContent(annotations, appliesToEmpty, mode, wildcard);
 		}
 
@@ -662,6 +663,8 @@ public class Schema implements AnnotatedComponent {
 		NodeHelper.setSchemaFindAllConstituentSchemas(Schema::findAllConstituentSchemas);
 		Alternative.register();
 		Annotation.register();
+		Any.register();
+		AnyAttribute.register();
 		Assertion.register();
 		Attribute.register();
 		AttributeGroup.register();
@@ -674,7 +677,6 @@ public class Schema implements AnnotatedComponent {
 		Notation.register();
 		Particle.register();
 		SimpleType.register();
-		Wildcard.register();
 		AttrParser.register(AttrParser.Names.APPLIES_TO_EMPTY, false);
 		AttrParser.register(AttrParser.Names.ATTRIBUTE_FORM_DEFAULT, Form.class, Form.UNQUALIFIED, Form::getAttrValueAsForm);
 		AttrParser.register(AttrParser.Names.BLOCK, Deque.class, Block.class, Block::getAttrValueAsBlocks);

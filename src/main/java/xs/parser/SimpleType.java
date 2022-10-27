@@ -167,18 +167,16 @@ public class SimpleType implements TypeDefinition {
 				.optionalAttributes(AttrParser.BASE, AttrParser.ID)
 				.elements(0, 1, TagParser.ANNOTATION)
 				.elements(0, 1, TagParser.SIMPLE_TYPE)
-				.elements(0, Integer.MAX_VALUE, TagParser.FACETS.length(), TagParser.FACETS.maxLength(), TagParser.FACETS.minLength(), TagParser.FACETS.pattern(), TagParser.FACETS.enumeration(), TagParser.FACETS.whiteSpace(), TagParser.FACETS.maxInclusive(), TagParser.FACETS.maxExclusive(), TagParser.FACETS.minExclusive(), TagParser.FACETS.minInclusive(), TagParser.FACETS.totalDigits(), TagParser.FACETS.fractionDigits(), TagParser.FACETS.assertion(), TagParser.FACETS.explicitTimezone(), TagParser.ANY);
+				.elements(0, Integer.MAX_VALUE, TagParser.FACETS.length(), TagParser.FACETS.maxLength(), TagParser.FACETS.minLength(), TagParser.FACETS.pattern(), TagParser.FACETS.enumeration(), TagParser.FACETS.whiteSpace(), TagParser.FACETS.maxInclusive(), TagParser.FACETS.maxExclusive(), TagParser.FACETS.minExclusive(), TagParser.FACETS.minInclusive(), TagParser.FACETS.totalDigits(), TagParser.FACETS.fractionDigits(), TagParser.FACETS.assertion(), TagParser.FACETS.explicitTimezone());
 
 		private final AnnotationSet annotations;
 		private final Deferred<SimpleType> baseTypeDefinition;
 		private final Deque<ConstrainingFacet> facets;
-		private final Deque<Particle> wildcard;
 
-		private Restriction(final AnnotationSet annotations, final Deferred<SimpleType> baseTypeDefinition, final Deque<ConstrainingFacet> facets, final Deque<Particle> wildcard) {
+		private Restriction(final AnnotationSet annotations, final Deferred<SimpleType> baseTypeDefinition, final Deque<ConstrainingFacet> facets) {
 			this.annotations = Objects.requireNonNull(annotations);
 			this.baseTypeDefinition = Objects.requireNonNull(baseTypeDefinition);
 			this.facets = Objects.requireNonNull(facets);
-			this.wildcard = Objects.requireNonNull(wildcard);
 		}
 
 		private static Restriction parse(final Result result) {
@@ -188,8 +186,7 @@ public class SimpleType implements TypeDefinition {
 					? result.parse(TagParser.SIMPLE_TYPE)
 					: result.schema().find(baseType, SimpleType.class);
 			final Deque<ConstrainingFacet> facets = result.parseAll(TagParser.FACETS.length(), TagParser.FACETS.maxLength(), TagParser.FACETS.minLength(), TagParser.FACETS.pattern(), TagParser.FACETS.enumeration(), TagParser.FACETS.whiteSpace(), TagParser.FACETS.maxInclusive(), TagParser.FACETS.maxExclusive(), TagParser.FACETS.minExclusive(), TagParser.FACETS.minInclusive(), TagParser.FACETS.totalDigits(), TagParser.FACETS.fractionDigits(), TagParser.FACETS.assertion(), TagParser.FACETS.explicitTimezone());
-			final Deque<Particle> wildcard = result.parseAll(TagParser.ANY);
-			return new Restriction(annotations, baseTypeDefinition, facets, wildcard);
+			return new Restriction(annotations, baseTypeDefinition, facets);
 		}
 
 		private AnnotationSet annotations() {
@@ -202,10 +199,6 @@ public class SimpleType implements TypeDefinition {
 
 		private Deque<ConstrainingFacet> facets() {
 			return facets;
-		}
-
-		private Deque<Particle> wildcard() {
-			return wildcard;
 		}
 
 	}

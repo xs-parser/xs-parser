@@ -333,7 +333,7 @@ public class TagParser<T> {
 		final Key key = new Key(name, cls);
 		TagParser<T> tagParser = (TagParser<T>) tagParsers.get(key);
 		if (tagParser == null) {
-			final Deferred<Value<T>> value = () -> (Value<T>) Objects.requireNonNull(values.get(key));
+			final Deferred<Value<T>> value = () -> (Value<T>) Objects.requireNonNull(values.get(key), cls.toString());
 			switch (elementLocalName) {
 			case Names.ANNOTATION:
 				tagParser = new AoParsers<>(value);
@@ -379,7 +379,7 @@ public class TagParser<T> {
 	public static final TagParser<Particle> ALL = defer(Names.ALL, Particle.class);
 	public static final TagParser<Alternative> ALTERNATIVE = defer(Names.ALTERNATIVE, Alternative.class);
 	public static final AoParsers<Annotation> ANNOTATION = defer(Names.ANNOTATION, Annotation.class);
-	public static final TagParser<Particle> ANY = defer(Names.ANY, Particle.class);
+	public static final TagParser<Wildcard.Any> ANY = defer(Names.ANY, Wildcard.Any.class);
 	public static final TagParser<Wildcard> ANY_ATTRIBUTE = defer(Names.ANY_ATTRIBUTE, Wildcard.class);
 	public static final TagParser<Assertion> ASSERTION = defer(Names.ASSERTION, Assertion.class);
 	public static final AtParsers<Attribute> ATTRIBUTE = defer(Names.ATTRIBUTE, Attribute.class);

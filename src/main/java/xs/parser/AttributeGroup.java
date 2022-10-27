@@ -133,7 +133,7 @@ public class AttributeGroup implements AnnotatedComponent {
 			annotations.forEach(a -> a.visit(visitor));
 			attributeUses.forEach(a -> a.visit(visitor));
 			if (attributeWildcard != null) {
-				attributeWildcard().visit(visitor);
+				((AnyAttribute) attributeWildcard()).visit(visitor);
 			}
 		}
 	}
