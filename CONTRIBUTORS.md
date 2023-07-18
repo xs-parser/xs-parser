@@ -6,6 +6,7 @@
 
 - Copyright 2022-present Thomas A. Bateson <thomas.bateson@us.af.mil>
 - Copyright 2022-present Thomas Bateson <thomas.bateson@eagles.oc.edu>
+- Copyright 2023-present Nick Little <nicklaus.little@us.af.mil>
 - _Add the copyright date, your name, and email address here. (PLEASE KEEP THIS LINE)_
 
 ## Note for U.S. Federal Employees

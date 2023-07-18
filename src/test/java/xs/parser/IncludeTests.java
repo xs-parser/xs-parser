@@ -4,6 +4,7 @@ import java.io.*;
 import javax.xml.*;
 import org.junit.*;
 import xs.parser.Schema.*;
+import xs.parser.v.*;
 
 public class IncludeTests {
 
@@ -73,6 +74,36 @@ public class IncludeTests {
 				+ "  <xs:include schemaLocation='src/test/resources/schema/base.xsd'/>"
 				+ "</xs:schema>"));
 		Assert.assertEquals(7, schema.typeDefinitions().size());
+	}
+
+	@Test
+	public void testIncludeIncomplete() throws Exception {
+		final String bSchemaText = Utilities.PROLOG_UTF8
+				+ "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" targetNamespace=\"a\" xmlns:a=\"a\">"
+				+ "  <xs:complexType name=\"BType\">"
+				+ "    <xs:sequence>"
+				+ "      <xs:element name=\"BElement\" type=\"a:AType\" />"
+				+ "    </xs:sequence>"
+				+ "  </xs:complexType>"
+				+ "</xs:schema>";
+		final ComplexType bType = (ComplexType) new Schema(Utilities.stringToDocument(bSchemaText)).typeDefinitions().getFirst();
+		Assert.assertThrows(ParseException.class, () -> Visitors.visit(bType, new DefaultVisitor())); // Should fail to resolve a:AType
+		final DocumentResolver resolver = Utilities.stringResolver(bSchemaText);
+		final String aSchemaText = Utilities.PROLOG_UTF8
+				+ "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" targetNamespace=\"a\" xmlns:a=\"a\">"
+				+ "  <xs:include schemaLocation=\"b.xsd\" />"
+				+ "  <xs:complexType name=\"AType\">"
+				+ "    <xs:sequence>"
+				+ "      <xs:element name=\"AElement\" type=\"xs:string\" />"
+				+ "    </xs:sequence>"
+				+ "  </xs:complexType>"
+				+ "  <xs:element name=\"AElement\" type=\"a:BType\" />"
+				+ "</xs:schema>";
+		final Schema schema = new Schema(resolver, Utilities.stringToDocument(aSchemaText));
+		Visitors.visit(schema, new DefaultVisitor());
+		final Element aElement = schema.elementDeclarations().getLast();
+		Assert.assertEquals("AElement", aElement.name());
+		Assert.assertEquals("BType", aElement.typeDefinition().name());
 	}
 
 }
