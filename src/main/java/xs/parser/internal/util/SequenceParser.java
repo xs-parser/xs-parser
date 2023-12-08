@@ -167,9 +167,9 @@ public final class SequenceParser {
 		private TagParser<?> elementFor(final Node node) {
 			final String namespaceUri = NodeHelper.namespaceUri(node);
 			final String localName = node.getLocalName();
-			for (final TagParser<?> v : values) {
-				if (v.getName().getNamespaceURI().equals(namespaceUri) && v.getName().getLocalPart().equals(localName)) {
-					return v;
+			for (final TagParser<?> t : values) {
+				if (t.getName().getNamespaceURI().equals(namespaceUri) && t.getName().getLocalPart().equals(localName)) {
+					return t;
 				}
 			}
 			return null;

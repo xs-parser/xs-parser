@@ -13,6 +13,15 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * An element declaration is an association of a name with a type definition, either simple or complex, an (optional) default value and a (possibly empty) set of identity-constraint definitions. The association is either global or scoped to a containing complex type definition. A top-level element declaration with name 'A' is broadly comparable to a pair of DTD declarations as follows, where the associated type definition fills in the ellipses:
+ *
+ * <pre>
+ *   &lt;!ELEMENT A . . .&gt;
+ *   &lt;!ATTLIST A . . .&gt;
+ * </pre>
+ *
+ * Element declarations contribute to ·validation· as part of model group ·validation·, when their defaults and type components are checked against an element information item with a matching name and namespace, and by triggering identity-constraint definition ·validation·.
+ *
  * <pre>
  * &lt;element
  *   abstract = boolean : false
@@ -141,9 +150,12 @@ public class Element implements Term {
 	 */
 	public static class Scope {
 
+		/** Element scope variety */
 		public enum Variety {
 
+			/** Element scope variety global */
 			GLOBAL,
+			/** Element scope variety local */
 			LOCAL;
 
 		}
@@ -168,7 +180,7 @@ public class Element implements Term {
 			}
 		}
 
-		/** @return either local or global, as appropriate */
+		/** @return Either local or global, as appropriate */
 		public Variety variety() {
 			return variety;
 		}
@@ -225,9 +237,13 @@ public class Element implements Term {
 			return alternatives;
 		}
 
-		/** @return Depends upon the final &lt;alternative&gt; element among the [children]. If it has no test [attribute], the final &lt;alternative&gt; maps to the {default type definition}; if it does have a test attribute, it is covered by the rule for {alternatives} and the {default type definition} is taken from the declared type of the Element Declaration. So the value of the {default type definition} is given by the appropriate case among the following:
-		 * <br>1 If the &lt;alternative&gt; has no test [attribute], then a Type Alternative corresponding to the &lt;alternative&gt;.
-		 * <br>2 otherwise (the &lt;alternative&gt; has a test) a Type Alternative with the following properties:
+		/**
+		 * @return Depends upon the final &lt;alternative&gt; element among the [children]. If it has no test [attribute], the final &lt;alternative&gt; maps to the {default type definition}; if it does have a test attribute, it is covered by the rule for {alternatives} and the {default type definition} is taken from the declared type of the Element Declaration. So the value of the {default type definition} is given by the appropriate case among the following:
+		 * <ol>
+		 *   <li>If the &lt;alternative&gt; has no test [attribute], then a Type Alternative corresponding to the &lt;alternative&gt;.</li>
+		 *   <li>otherwise (the &lt;alternative&gt; has a test) a Type Alternative with the following properties:</li>
+		 * </ol>
+		 *
 		 * <table>
 		 *   <caption style="font-size: large; text-align: left">Type Alternative</caption>
 		 *   <thead>
@@ -250,7 +266,8 @@ public class Element implements Term {
 		 *       <td>the empty sequence.</td>
 		 *     </tr>
 		 *   </tbody>
-		 * </table> */
+		 * </table>
+		 */
 		public Alternative defaultTypeDefinition() {
 			return defaultTypeDefinition;
 		}
@@ -449,54 +466,112 @@ public class Element implements Term {
 		}
 	}
 
+	/** @return The ·actual value· of the name [attribute]. */
 	public String name() {
 		return name;
 	}
 
+	/** @return The ·actual value· of the targetNamespace [attribute] of the parent &lt;schema&gt; element information item, or ·absent· if there is none. */
 	public String targetNamespace() {
 		return targetNamespace.get();
 	}
 
+	/**
+	 * @return The first of the following that applies:
+	 * <ol>
+	 *   <li>The type definition corresponding to the &lt;simpleType&gt; or &lt;complexType&gt; element information item in the [children], if either is present.</li>
+	 *   <li>The type definition ·resolved· to by the ·actual value· of the type [attribute], if it is present.</li>
+	 *   <li>The declared {type definition} of the Element Declaration ·resolved· to by the first QName in the ·actual value· of the substitutionGroup [attribute], if present.</li>
+	 *   <li>·xs:anyType·.</li>
+	 * </ol>
+	 */
 	public TypeDefinition typeDefinition() {
 		return typeDefinition.get();
 	}
 
+	/** @return A Type Table corresponding to the &lt;alternative&gt; element information items among the [children], if any, as follows, otherwise ·absent·. */
 	public TypeTable typeTable() {
 		return typeTable;
 	}
 
+	/** @return A Scope as follows */
 	public Scope scope() {
 		return scope.get();
 	}
 
+	/** @return The ·actual value· of the nillable [attribute], if present, otherwise false. */
 	public boolean nillable() {
 		return nillable;
 	}
 
+	/**
+	 * @return If there is a default or a fixed [attribute], then a Value Constraint as follows, otherwise ·absent·. Use the name effective simple type definition for the declared {type definition}, if it is a simple type definition, or, if {type definition}.{content type}.{variety} = simple, for {type definition}.{content type}.{simple type definition}, or else for the built-in string simple type definition).
+	 * <table>
+	 *   <caption style="text-align: left">Value Constraint</caption>
+	 *   <thead>
+	 *     <tr>
+	 *       <th style="text-align: left">Property</th>
+	 *       <th style="text-align: left">Value</th>
+	 *     </tr>
+	 *   </thead>
+	 *   <tbody>
+	 *     <tr>
+	 *       <td>{@link ValueConstraint#variety()}</td>
+	 *       <td>{variety}</td>
+	 *       <td>either default or fixed, as appropriate</td>
+	 *     </tr>
+	 *     <tr>
+	 *       <td>{@link ValueConstraint#value()}</td>
+	 *       <td>{value}</td>
+	 *       <td>the ·actual value· (with respect to the ·effective simple type definition·) of the [attribute]</td>
+	 *     </tr>
+	 *     <tr>
+	 *       <td>{@link ValueConstraint#lexicalForm()}</td>
+	 *       <td>{lexical form}</td>
+	 *       <td>the ·normalized value· (with respect to the ·effective simple type definition·) of the [attribute]</td>
+	 *     </tr>
+	 *   </tbody>
+	 * </table>
+	 */
 	public ValueConstraint valueConstraint() {
 		return valueConstraint != null ? valueConstraint.get() : null;
 	}
 
+	/** @return A set consisting of the identity-constraint-definitions corresponding to all the &lt;key&gt;, &lt;unique&gt; and &lt;keyref&gt; element information items in the [children], if any, otherwise the empty set. */
 	public Deque<IdentityConstraint> identityConstraintDefinitions() {
 		return Deques.unmodifiableDeque(identityConstraintDefinitions);
 	}
 
+	/** @return A set of the element declarations ·resolved· to by the items in the ·actual value· of the substitutionGroup [attribute], if present, otherwise the empty set. */
 	public Deque<Element> substitutionGroupAffiliations() {
 		return Deques.unmodifiableDeque(substitutionGroupAffiliations);
 	}
 
+	/**
+	 * @return A set depending on the ·actual value· of the block [attribute], if present, otherwise on the ·actual value· of the blockDefault [attribute] of the ancestor &lt;schema&gt; element information item, if present, otherwise on the empty string. Call this the EBV (for effective block value). Then the value of this property is the appropriate case among the following:
+	 * <ol>
+	 *   <li>If the EBV is the empty string, then the empty set;</li>
+	 *   <li>If the EBV is #all, then {extension, restriction, substitution};</li>
+	 *   <li>otherwise a set with members drawn from the set above, each being present or absent depending on whether the ·actual value· (which is a list) contains an equivalently named item.</li>
+	 * </ol>
+	 *
+	 * <i>Note: Although the blockDefault [attribute] of &lt;schema&gt; may include values other than extension, restriction or substitution, those values are ignored in the determination of {disallowed substitutions} for element declarations (they are used elsewhere).</i>
+	 */
 	public Set<Block> disallowedSubstitutions() {
 		return Collections.unmodifiableSet(disallowedSubstitutions);
 	}
 
+	/** @return As for {disallowed substitutions} above, but using the final and finalDefault [attributes] in place of the block and blockDefault [attributes] and with the relevant set being {extension, restriction}. */
 	public Set<Final> substitutionGroupExclusions() {
 		return Collections.unmodifiableSet(substitutionGroupExclusions);
 	}
 
+	/** @return The ·actual value· of the abstract [attribute], if present, otherwise false. */
 	public boolean isAbstract() {
 		return isAbstract;
 	}
 
+	/** @return The ·annotation mapping· of the &lt;element&gt; element and any of its &lt;unique&gt;, &lt;key&gt; and &lt;keyref&gt; [children] with a ref [attribute], as defined in XML Representation of Annotation Schema Components (§3.15.2). */
 	@Override
 	public Deque<Annotation> annotations() {
 		return Deques.unmodifiableDeque(annotations);

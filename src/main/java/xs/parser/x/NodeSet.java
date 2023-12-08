@@ -10,6 +10,19 @@ import xs.parser.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 
+/**
+ * A collection of nodes that can be evaluated by either XPath or XQuery statements.
+ * <p>
+ * The "xml", "xmlns", "xs", "map", "fn", "math", and "array" prefixes are defined if no namespace context is provided.
+ * <p>
+ * <b>Note: An implementation of Saxon, such as Saxon-HE, must be on the classpath in order to evaluate XQuery statements. Additionally, if using the default JAXP engine, XPath statements are limited to XPath version 1.0 and will evaluate significantly slower.</b>
+ *
+ * <pre>
+ * NodeSet.of(schema).xpath("/xs:schema/xs:complexType").xquery("@name").stream().forEach(node -> {
+ *   // ...
+ * });
+ * </pre>
+ */
 public abstract class NodeSet implements Iterable<NodeSet> {
 
 	private static final class Namespaces implements Iterable<Map.Entry<String, String>>, NamespaceContext {
@@ -136,6 +149,7 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	protected static final Supplier<IllegalStateException> IS_NOT_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + true + " to invoke this method");
 	/**
 	 * The default namespace context for evaluation of XPath and XQuery expressions.
+	 * <p>
 	 * The following entries are defined:
 	 * <table>
 	 *   <caption>Default namespace context entries</caption>
@@ -196,9 +210,9 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	/**
 	 * Returns a new {@code NodeSet} with the given namespace context and node.
-	 * @param namespaceContext the namespace context
-	 * @param node the node
-	 * @return a new {@code NodeSet} with the given namespace context and node
+	 * @param namespaceContext The namespace context
+	 * @param node The node
+	 * @return A new {@code NodeSet} with the given namespace context and node
 	 */
 	public static NodeSet of(final NamespaceContext namespaceContext, final Node node) {
 		return SaxonProcessor.IS_SAXON_LOADED
@@ -208,8 +222,8 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	/**
 	 * Returns a new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and node.
-	 * @param node the node
-	 * @return a new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and node
+	 * @param node The node
+	 * @return A new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and node
 	 */
 	public static NodeSet of(final Node node) {
 		return of(DEFAULT_NAMESPACE_CONTEXT, node);
@@ -217,9 +231,9 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	/**
 	 * Returns a new {@code NodeSet} with the given namespace context and schema.
-	 * @param namespaceContext the namespace context
-	 * @param schema the schema
-	 * @return a new {@code NodeSet} with the given namespace context and schema
+	 * @param namespaceContext The namespace context
+	 * @param schema The schema
+	 * @return A new {@code NodeSet} with the given namespace context and schema
 	 */
 	public static NodeSet of(final NamespaceContext namespaceContext, final Schema schema) {
 		return SaxonProcessor.IS_SAXON_LOADED
@@ -229,8 +243,8 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	/**
 	 * Returns a new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and schema.
-	 * @param schema the schema
-	 * @return a new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and schema
+	 * @param schema The schema
+	 * @return A new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and schema
 	 */
 	public static NodeSet of(final Schema schema) {
 		return of(DEFAULT_NAMESPACE_CONTEXT, schema);
@@ -238,62 +252,66 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	/**
 	 * Evaluates the given XPath expression for every node in this {@code NodeSet}.
-	 * @param expression the XPath expression
-	 * @return a new {@code NodeSet} with the result of the XPath evaluation
+	 * @param expression The XPath expression
+	 * @return A new {@code NodeSet} with the result of the XPath evaluation
 	 */
 	public abstract NodeSet xpath(final String expression);
 
 	/**
 	 * Evaluates the given expression for every node in this {@code NodeSet}.
-	 * @param expression the XQuery expression
-	 * @return a new {@code NodeSet} with the result of the XQuery evaluation
+	 * @param expression The XQuery expression
+	 * @return A new {@code NodeSet} with the result of the XQuery evaluation
 	 */
 	public abstract NodeSet xquery(final String expression);
 
 	/**
 	 * Returns the double value of the atomic value.
-	 * @return the double value of the atomic value
-	 * @throws IllegalStateException if {@link #isAtomic()} is {@code false}
+	 * @return The double value of the atomic value
+	 * @throws IllegalStateException If {@link #isAtomic()} is {@code false}
 	 */
 	public abstract double getDoubleValue();
 
 	/**
 	 * Returns the long value of the atomic value.
-	 * @return the long value of the atomic value
-	 * @throws IllegalStateException if {@link #isAtomic()} is {@code false}
+	 * @return The long value of the atomic value
+	 * @throws IllegalStateException If {@link #isAtomic()} is {@code false}
 	 */
 	public abstract long getLongValue();
 
 	/**
 	 * Returns the string value of the atomic value.
-	 * @return the string value of the atomic value
-	 * @throws IllegalStateException if {@link #isAtomic()} is {@code false}
+	 * @return The string value of the atomic value
+	 * @throws IllegalStateException If {@link #isAtomic()} is {@code false}
 	 */
 	public abstract String getStringValue();
 
 	/**
 	 * Returns the boolean value of the atomic value.
-	 * @return the boolean value of the atomic value
-	 * @throws IllegalStateException if {@link #isAtomic()} is {@code false}
+	 * @return The boolean value of the atomic value
+	 * @throws IllegalStateException If {@link #isAtomic()} is {@code false}
 	 */
 	public abstract boolean getBooleanValue();
 
 	/**
 	 * Returns the number of items contained within this {@code NodeSet}.
-	 * @return the number of items contained within this {@code NodeSet}
+	 * @return The number of items contained within this {@code NodeSet}
 	 */
 	public abstract int size();
 
 	/**
 	 * Returns {@code true} if this {@code NodeSet} is a single atomic value.
-	 * <br>This method will return {@code false} in the case of multiple atomic values; in that case, use {@link #split()} to handle each atomic value individually.
+	 * <p>
+	 * In the case of multiple atomic values, this method will return {@code false}; in that case, use {@link #split()} to handle each atomic value individually.
+	 * <p>
 	 * This method must return {@code true} in order to invoke atomic getter methods such as {@link #getBooleanValue()}, {@link #getDoubleValue()}, {@link #getLongValue()}, and {@link #getStringValue()}.
 	 * @return {@code true} if this {@code NodeSet} is a single atomic value
 	 */
 	public abstract boolean isAtomic();
 
 	/**
-	 * Returns a stream of {@code NodeSet}s. The possible values are:
+	 * Returns a stream of {@code NodeSet}s.
+	 * <p>
+	 * The possible values are:
 	 * <table>
 	 *   <caption>Return values</caption>
 	 *   <thead>
@@ -305,20 +323,20 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	 *     <tr><td>&gt; 1</td><td>a <code>Stream</code> of <code>NodeSet</code>s with <code>size() == 1</code></td></tr>
 	 *   </tbody>
 	 * </table>
-	 * @return a stream of {@code NodeSet}s with {@code size() == 1}
+	 * @return A stream of {@code NodeSet}s with {@code size() == 1}
 	 */
 	public abstract Stream<NodeSet> split();
 
 	/**
 	 * Returns a stream of nodes contained by this {@code NodeSet}.
-	 * @return a stream of nodes contained by this {@code NodeSet}
-	 * @throws IllegalStateException if {@link #isAtomic()} is {@code true}
+	 * @return A stream of nodes contained by this {@code NodeSet}
+	 * @throws IllegalStateException If {@link #isAtomic()} is {@code true}
 	 */
 	public abstract Stream<Node> stream();
 
 	/**
 	 * Returns the expression used to evaluate or construct this {@code NodeSet}, defaults to {@code ""} if no expression has been evaluated yet.
-	 * @return the expression used to evaluate or construct this {@code NodeSet}, defaults to {@code ""} if no expression has been evaluated yet
+	 * @return The expression used to evaluate or construct this {@code NodeSet}, defaults to {@code ""} if no expression has been evaluated yet
 	 */
 	public String getExpression() {
 		return expr;
@@ -342,8 +360,8 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	/**
 	 * Returns the first node present, or {@code null} if {@link #size()} is 0.
-	 * @return the first node present, or {@code null} if {@link #size()} is 0
-	 * @throws IllegalStateException if {@link #isAtomic()} is {@code true}
+	 * @return The first node present, or {@code null} if {@link #size()} is 0
+	 * @throws IllegalStateException If {@link #isAtomic()} is {@code true}
 	 */
 	public Node getSingleNodeValue() {
 		return stream().findAny().orElse(null);
@@ -351,7 +369,7 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	/**
 	 * Returns an iterator over this {@code NodeSet}, equivalent to {@code split().iterator()}.
-	 * @return an iterator over this {@code NodeSet}
+	 * @return An iterator over this {@code NodeSet}
 	 */
 	@Override
 	public Iterator<NodeSet> iterator() {

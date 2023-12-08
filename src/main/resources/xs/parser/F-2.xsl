@@ -29,9 +29,9 @@
     <xsl:copy-of select="."/>
   </xsl:template>
 
-  <!--* replace children of xs:schema, xs:redefine,
+  <!--* Replace children of xs:schema, xs:redefine,
       * and xs:override which match children of
-      * $overrideElement.  Retain others.
+      * $overrideElement. Retain others.
       *-->
   <xsl:template match="xs:schema/*
                        | xs:redefine/*

@@ -12,6 +12,12 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * A particle is a term in the grammar for element content, consisting of either an element declaration, a wildcard or a model group, together with occurrence constraints. Particles contribute to ·validation· as part of complex type definition ·validation·, when they allow anywhere from zero to many element information items or sequences thereof, depending on their contents and occurrence constraints.
+ * <p>
+ * The name Term is used to refer to any of the three kinds of components which can appear in particles. All ·Terms· are themselves ·Annotated Components·. A basic term is an Element Declaration or a Wildcard. A basic particle is a Particle whose {term} is a ·basic term·.
+ * <p>
+ * A particle can be used in a complex type definition to constrain the ·validation· of the [children] of an element information item; such a particle is called a content model.
+ *
  * <pre>
  * &lt;all
  *   id = ID
@@ -100,7 +106,7 @@ public class Particle implements AnnotatedComponent {
 
 	/**
 	 * The minimum portion of the effective total range algorithm defined at <a href="https://www.w3.org/TR/xmlschema11-1/#cos-seq-range">https://www.w3.org/TR/xmlschema11-1/#cos-seq-range</a> and <a href="https://www.w3.org/TR/xmlschema11-1/#cos-choice-range">https://www.w3.org/TR/xmlschema11-1/#cos-choice-range</a>.
-	 * @return the minimum portion of the effective total range
+	 * @return The minimum portion of the effective total range
 	 */
 	private BigInteger effectiveTotalRangeMinimum() {
 		final Term t = term();
@@ -156,18 +162,22 @@ public class Particle implements AnnotatedComponent {
 		}
 	}
 
+	/** @return {@code "unbounded"}, if the maxOccurs [attribute] equals unbounded, otherwise the ·actual value· of the maxOccurs [attribute], if present, otherwise 1. */
 	public Number maxOccurs() {
 		return maxOccurs;
 	}
 
+	/** @return The ·actual value· of the minOccurs [attribute], if present, otherwise 1. */
 	public Number minOccurs() {
 		return minOccurs;
 	}
 
+	/** @return The {model group} of the model group definition ·resolved· to by the ·actual value· of the ref [attribute] */
 	public Term term() {
 		return term.get();
 	}
 
+	/** @return The ·annotation mapping· of the &lt;group&gt; element, as defined in XML Representation of Annotation Schema Components (§3.15.2). */
 	@Override
 	public Deque<Annotation> annotations() {
 		return Deques.unmodifiableDeque(annotations);

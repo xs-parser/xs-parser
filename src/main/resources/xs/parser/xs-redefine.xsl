@@ -43,8 +43,6 @@
     </xsl:element>
   </xsl:template>
 
-  <!--*
-      *-->
   <xsl:template match="xs:schema/xs:simpleType
                        | xs:schema/xs:complexType
                        | xs:schema/xs:group
@@ -79,8 +77,6 @@
     </xsl:choose>
   </xsl:template>
 
-  <!--*
-      *-->
   <xsl:template match="*">
     <xsl:param name="redefineElement" as="element(xs:redefine)"/>
     <xsl:param name="prefixForTargetNamespace" as="xs:string"/>
@@ -96,8 +92,6 @@
     </xsl:element>
   </xsl:template>
 
-  <!--*
-      *-->
   <xsl:template match="@*">
     <xsl:param name="redefineElement" as="element(xs:redefine)"/>
     <xsl:param name="prefixForTargetNamespace" as="xs:string"/>
@@ -116,9 +110,9 @@
     </xsl:choose>
   </xsl:template>
 
-  <!--* redefine children of xs:schema, xs:redefine,
+  <!--* Redefine children of xs:schema, xs:redefine,
       * and xs:override which match children of
-      * $redefineElement.  Retain others.
+      * $redefineElement. Retain others.
       *-->
   <!-- <xsl:template match="xs:schema/*
                        | xs:redefine/*

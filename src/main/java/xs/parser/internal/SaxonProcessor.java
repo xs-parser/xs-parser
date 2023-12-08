@@ -10,7 +10,7 @@ import org.w3c.dom.*;
 import xs.parser.internal.util.*;
 
 /**
- * Processor for XPath and XSLT.
+ * Processor for XPath and XSLT
  */
 public final class SaxonProcessor {
 

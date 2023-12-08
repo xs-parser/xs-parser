@@ -3,12 +3,15 @@ package xs.parser;
 import java.util.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
+import xs.parser.Wildcard.*;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * An attribute group definition is an association between a name and a set of attribute declarations, enabling re-use of the same set in several complex type definitions.
+ *
  * <pre>
  * &lt;attributeGroup
  *   id = ID
@@ -148,7 +151,7 @@ public class AttributeGroup implements AnnotatedComponent {
 		return targetNamespace;
 	}
 
-	/** @return The union of the set of attribute uses corresponding to the &lt;attribute&gt; [children], if any, with the {attribute uses} of the attribute groups ·resolved· to by the ·actual value·s of the ref [attribute] of the &lt;attributeGroup&gt; [children], if any. Note: As described below, circular references from &lt;attributeGroup&gt; to &lt;attributeGroup&gt; are not errors. */
+	/** @return The union of the set of attribute uses corresponding to the &lt;attribute&gt; [children], if any, with the {attribute uses} of the attribute groups ·resolved· to by the ·actual value·s of the ref [attribute] of the &lt;attributeGroup&gt; [children], if any. <i>Note: As described below, circular references from &lt;attributeGroup&gt; to &lt;attributeGroup&gt; are not errors.</i> */
 	public Deque<AttributeUse> attributeUses() {
 		return Deques.unmodifiableDeque(attributeUses);
 	}

@@ -5,6 +5,15 @@ import org.w3c.dom.*;
 import xs.parser.internal.util.*;
 import xs.parser.v.*;
 
+/**
+ * Each fundamental facet is a schema component that provides a limited piece of information about some aspect of each datatype. All ·fundamental facet· components are defined in this section. For example, cardinality is a ·fundamental facet·. Most ·fundamental facets· are given a value fixed with each primitive datatype's definition, and this value is not changed by subsequent ·derivations· (even when it would perhaps be reasonable to expect an application to give a more accurate value based on the constraining facets used to define the ·derivation·). The cardinality and bounded facets are exceptions to this rule; their values may change as a result of certain ·derivations·.
+ * <p>
+ * <i>Note: Schema components are identified by kind. "Fundamental" is not a kind of component. Each kind of ·fundamental facet· ("ordered", "bounded", etc.) is a separate kind of schema component.</i>
+ * <p>
+ * A ·fundamental facet· can occur only in the {fundamental facets} of a Simple Type Definition, and this is the only place where ·fundamental facet· components occur. Each kind of ·fundamental facet· component occurs (once) in each Simple Type Definition's {fundamental facets} set.
+ * <p>
+ * <i>Note: The value of any ·fundamental facet· component can always be calculated from other properties of its ·owner·. Fundamental facets are not required for schema processing, but some applications use them.</i>
+ */
 public abstract class FundamentalFacet implements SchemaComponent {
 
 	/**
@@ -28,10 +37,14 @@ public abstract class FundamentalFacet implements SchemaComponent {
 	 */
 	public static class Ordered extends FundamentalFacet {
 
+		/** Ordered values */
 		public enum Value {
 
+			/** Ordered value false */
 			FALSE("false"),
+			/** Ordered value partial */
 			PARTIAL("partial"),
+			/** Ordered value total */
 			TOTAL("total");
 
 			private final String name;
@@ -40,13 +53,14 @@ public abstract class FundamentalFacet implements SchemaComponent {
 				this.name = name;
 			}
 
+			/** @return The name of this fundamental facet ordered */
 			public String getName() {
 				return name;
 			}
 
 			@Override
 			public String toString() {
-				return getName();
+				return name;
 			}
 
 		}
@@ -60,6 +74,7 @@ public abstract class FundamentalFacet implements SchemaComponent {
 			this.value = Objects.requireNonNull(value);
 		}
 
+		/** @return One of {false, partial, total}. Required. */
 		@Override
 		public Value value() {
 			return value;
@@ -97,6 +112,7 @@ public abstract class FundamentalFacet implements SchemaComponent {
 			this.value = value;
 		}
 
+		/** @return An xs:boolean value. Required. */
 		@Override
 		public Boolean value() {
 			return value;
@@ -125,9 +141,12 @@ public abstract class FundamentalFacet implements SchemaComponent {
 	 */
 	public static class Cardinality extends FundamentalFacet {
 
+		/** Cardinality values */
 		public enum Value {
 
+			/** Cardinality value finite */
 			FINITE("finite"),
+			/** Cardinality value countably infinite */
 			COUNTABLY_INFINITE("countably infinite");
 
 			private final String name;
@@ -136,13 +155,14 @@ public abstract class FundamentalFacet implements SchemaComponent {
 				this.name = name;
 			}
 
+			/** @return The name of this fundamental facet cardinality */
 			public String getName() {
 				return name;
 			}
 
 			@Override
 			public String toString() {
-				return getName();
+				return name;
 			}
 
 		}
@@ -156,6 +176,7 @@ public abstract class FundamentalFacet implements SchemaComponent {
 			this.value = Objects.requireNonNull(value);
 		}
 
+		/** @return One of {finite, countably infinite}. Required. */
 		@Override
 		public Value value() {
 			return value;
@@ -193,6 +214,7 @@ public abstract class FundamentalFacet implements SchemaComponent {
 			this.value = value;
 		}
 
+		/** @return An xs:boolean value. Required. */
 		@Override
 		public Boolean value() {
 			return value;
@@ -276,9 +298,9 @@ public abstract class FundamentalFacet implements SchemaComponent {
 	}
 
 	private static Deque<FundamentalFacet> fundamentalFacets(final SimpleType simpleType, final Ordered.Value ordered, final boolean bounded, final Cardinality.Value cardinality, final boolean numeric) {
-		final Node orderedNode = createElementNS(Ordered.NAME, ordered.getName());
+		final Node orderedNode = createElementNS(Ordered.NAME, ordered.name);
 		final Node boundedNode = createElementNS(Bounded.NAME, Boolean.toString(bounded));
-		final Node cardinalityNode = createElementNS(Cardinality.NAME, cardinality.getName());
+		final Node cardinalityNode = createElementNS(Cardinality.NAME, cardinality.name);
 		final Node numericNode = createElementNS(Numeric.NAME, Boolean.toString(numeric));
 		return Deques.asDeque(new Ordered(simpleType, orderedNode, ordered), new Bounded(simpleType, boundedNode, bounded), new Cardinality(simpleType, cardinalityNode, cardinality), new Numeric(simpleType, numericNode, numeric));
 	}
@@ -297,6 +319,7 @@ public abstract class FundamentalFacet implements SchemaComponent {
 		}
 	}
 
+	/** @return The value of this fundamental facet */
 	public abstract Object value();
 
 }

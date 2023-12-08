@@ -13,6 +13,16 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * A simple type definition is a set of constraints on strings and information about the values they encode, applicable to the ·normalized value· of an attribute information item or of an element information item with no element children. Informally, it applies to the values of attributes and the text-only content of elements.
+ * <p>
+ * Each simple type definition, whether built-in (that is, defined in [XML Schema: Datatypes]) or user-defined, is a ·restriction· of its ·base type definition·. A special ·restriction· of ·xs:anyType·, whose name is anySimpleType in the XSD namespace, is the root of the ·Type Definition Hierarchy· for all simple type definitions. ·xs:anySimpleType· has a lexical space containing all sequences of characters in the Universal Character Set (UCS) and a value space containing all atomic values and all finite-length lists of atomic values. As with ·xs:anyType·, this specification sometimes uses the qualified name xs:anySimpleType to designate this type definition. The built-in list datatypes all have ·xs:anySimpleType· as their ·base type definition·.
+ * <p>
+ * There is a further special datatype called anyAtomicType, a ·restriction· of ·xs:anySimpleType·, which is the ·base type definition· of all the primitive datatypes. This type definition is often referred to simply as "xs:anyAtomicType". It too is considered to have an unconstrained lexical space. Its value space consists of the union of the value spaces of all the primitive datatypes.
+ * <p>
+ * Datatypes can be constructed from other datatypes by restricting the value space or lexical space of a {base type definition} using zero or more Constraining Facets, by specifying the new datatype as a list of items of some {item type definition}, or by defining it as a union of some specified sequence of {member type definitions}.
+ * <p>
+ * The mapping from lexical space to value space is unspecified for items whose type definition is ·xs:anySimpleType· or ·xs:anyAtomicType·. Accordingly this specification does not constrain processors' behavior in areas where this mapping is implicated, for example checking such items against enumerations, constructing default attributes or elements whose declared type definition is ·xs:anySimpleType· or ·xs:anyAtomicType·, checking identity constraints involving such items.
+ *
  * <pre>
  * &lt;simpleType
  *   final = (#all | List of (list | union | restriction | extension))
@@ -98,10 +108,14 @@ import xs.parser.v.*;
  */
 public class SimpleType implements TypeDefinition {
 
+	/** Simple type variety */
 	public enum Variety {
 
+		/** Simple type variety atomic */
 		ATOMIC,
+		/** Simple type variety list */
 		LIST,
+		/** Simple type variety union */
 		UNION;
 
 	}
@@ -564,10 +578,18 @@ public class SimpleType implements TypeDefinition {
 		};
 	}
 
+	/**
+	 * The definition of anySimpleType is a special ·restriction· of anyType. The ·lexical space· of anySimpleType is the set of all sequences of Unicode characters, and its ·value space· includes all ·atomic values· and all finite-length lists of zero or more ·atomic values·.
+	 * @return <a href="https://www.w3.org/TR/xmlschema11-2/#anySimpleType">https://www.w3.org/TR/xmlschema11-2/#anySimpleType</a>
+	 */
 	public static SimpleType xsAnySimpleType() {
 		return xsAnySimpleType.get();
 	}
 
+	/**
+	 * The definition of anyAtomicType is a special ·restriction· of anySimpleType. The ·value· and ·lexical spaces· of anyAtomicType are the unions of the ·value· and ·lexical spaces· of all the ·primitive· datatypes, and anyAtomicType is their ·base type·.
+	 * @return <a href="https://www.w3.org/TR/xmlschema11-2/#anyAtomicType">https://www.w3.org/TR/xmlschema11-2/#anyAtomicType</a>
+	 */
 	public static SimpleType xsAnyAtomicType() {
 		return xsAnyAtomicType.get();
 	}
@@ -919,11 +941,15 @@ public class SimpleType implements TypeDefinition {
 		return variety.get();
 	}
 
-	/** @return The appropriate case among the following:
-	 * <br>1 If the &lt;restriction&gt; alternative is chosen and the children of the &lt;restriction&gt; element are all either &lt;simpleType&gt; elements, &lt;annotation&gt; elements, or elements which specify constraining facets supported by the processor, then the set of Constraining Facet components obtained by ·overlaying· the {facets} of the {base type definition} with the set of Constraining Facet components corresponding to those [children] of &lt;restriction&gt; which specify facets, as defined in Simple Type Restriction (Facets) (§3.16.6.4).
-	 * <br>2 If the &lt;restriction&gt; alternative is chosen and the children of the &lt;restriction&gt; element include at least one element of which the processor has no prior knowledge (i.e. not a &lt;simpleType&gt; element, an &lt;annotation&gt; element, or an element denoting a constraining facet known to and supported by the processor), then the &lt;simpleType&gt; element maps to no component at all (but is not in error solely on account of the presence of the unknown element).
-	 * <br>3 If the &lt;list&gt; alternative is chosen, then a set with one member, a whiteSpace facet with {value} = collapse and {fixed} = true.
-	 * <br>4 otherwise the empty set */
+	/**
+	 * @return The appropriate case among the following:
+	 * <ol>
+	 *   <li>If the &lt;restriction&gt; alternative is chosen and the children of the &lt;restriction&gt; element are all either &lt;simpleType&gt; elements, &lt;annotation&gt; elements, or elements which specify constraining facets supported by the processor, then the set of Constraining Facet components obtained by ·overlaying· the {facets} of the {base type definition} with the set of Constraining Facet components corresponding to those [children] of &lt;restriction&gt; which specify facets, as defined in Simple Type Restriction (Facets) (§3.16.6.4).</li>
+	 *   <li>If the &lt;restriction&gt; alternative is chosen and the children of the &lt;restriction&gt; element include at least one element of which the processor has no prior knowledge (i.e. not a &lt;simpleType&gt; element, an &lt;annotation&gt; element, or an element denoting a constraining facet known to and supported by the processor), then the &lt;simpleType&gt; element maps to no component at all (but is not in error solely on account of the presence of the unknown element).</li>
+	 *   <li>If the &lt;list&gt; alternative is chosen, then a set with one member, a whiteSpace facet with {value} = collapse and {fixed} = true.</li>
+	 *   <li>otherwise the empty set</li>
+	 * </ol>
+	 */
 	public Deque<ConstrainingFacet> facets() {
 		return Deques.unmodifiableDeque(facetValues);
 	}
@@ -938,20 +964,24 @@ public class SimpleType implements TypeDefinition {
 		return primitiveTypeDefinition != null ? primitiveTypeDefinition.get() : null;
 	}
 
-	/** @return The appropriate case among the following:
-	 * <br>1 If the {base type definition} is ·xs:anySimpleType·, then the Simple Type Definition (a) ·resolved· to by the ·actual value· of the itemType [attribute] of &lt;list&gt;, or (b), corresponding to the &lt;simpleType&gt; among the [children] of &lt;list&gt;, whichever is present.
-	 * <br>Note: In this case, a &lt;list&gt; element will invariably be present; it will invariably have either an itemType [attribute] or a &lt;simpleType&gt; [child], but not both.
-	 * <br>2 otherwise (that is, the {base type definition} is not ·xs:anySimpleType·), the {item type definition} of the {base type definition}.
-	 * <br>Note: In this case, a &lt;restriction&gt; element will invariably be present. */
+	/**
+	 * @return The appropriate case among the following:
+	 * <ol>
+	 *   <li>If the {base type definition} is ·xs:anySimpleType·, then the Simple Type Definition (a) ·resolved· to by the ·actual value· of the itemType [attribute] of &lt;list&gt;, or (b), corresponding to the &lt;simpleType&gt; among the [children] of &lt;list&gt;, whichever is present.<br><i>Note: In this case, a &lt;list&gt; element will invariably be present; it will invariably have either an itemType [attribute] or a &lt;simpleType&gt; [child], but not both.</i></li>
+	 *   <li>otherwise (that is, the {base type definition} is not ·xs:anySimpleType·), the {item type definition} of the {base type definition}.<br><i>Note: In this case, a &lt;restriction&gt; element will invariably be present.</i></li>
+	 * </ol>
+	 */
 	public SimpleType itemTypeDefinition() {
 		return itemTypeDefinition != null ? itemTypeDefinition.get() : null;
 	}
 
-	/** @return The appropriate case among the following:
-	 * <br>1 If the {base type definition} is ·xs:anySimpleType·, then the sequence of Simple Type Definitions (a) ·resolved· to by the items in the ·actual value· of the memberTypes [attribute] of &lt;union&gt;, if any, and (b) corresponding to the &lt;simpleType&gt;s among the [children] of &lt;union&gt;, if any, in order.
-	 * <br>Note: In this case, a &lt;union&gt; element will invariably be present; it will invariably have either a memberTypes [attribute] or one or more &lt;simpleType&gt; [children], or both.
-	 * <br>2 otherwise (that is, the {base type definition} is not ·xs:anySimpleType·), the {member type definitions} of the {base type definition}.
-	 * <br>Note: In this case, a &lt;restriction&gt; element will invariably be present. */
+	/**
+	 * @return The appropriate case among the following:
+	 * <ol>
+	 *   <li>If the {base type definition} is ·xs:anySimpleType·, then the sequence of Simple Type Definitions (a) ·resolved· to by the items in the ·actual value· of the memberTypes [attribute] of &lt;union&gt;, if any, and (b) corresponding to the &lt;simpleType&gt;s among the [children] of &lt;union&gt;, if any, in order.<br><i>Note: In this case, a &lt;union&gt; element will invariably be present; it will invariably have either a memberTypes [attribute] or one or more &lt;simpleType&gt; [children], or both.</i></li>
+	 *   <li>otherwise (that is, the {base type definition} is not ·xs:anySimpleType·), the {member type definitions} of the {base type definition}.<br><i>Note: In this case, a &lt;restriction&gt; element will invariably be present.</i></li>
+	 * </ol>
+	 */
 	public Deque<SimpleType> memberTypeDefinitions() {
 		return Deques.unmodifiableDeque(memberTypeDefinitions);
 	}
@@ -974,33 +1004,51 @@ public class SimpleType implements TypeDefinition {
 		return targetNamespace;
 	}
 
-	/** @return The appropriate case among the following:
-	 * <br>1 If the &lt;restriction&gt; alternative is chosen, then the type definition ·resolved· to by the ·actual value· of the base [attribute] of &lt;restriction&gt;, if present, otherwise the type definition corresponding to the &lt;simpleType&gt; among the [children] of &lt;restriction&gt;.
-	 * <br>2 If the &lt;list&gt; or &lt;union&gt; alternative is chosen, then ·xs:anySimpleType·. */
+	/**
+	 * @return The appropriate case among the following:
+	 * <ol>
+	 *   <li>If the &lt;restriction&gt; alternative is chosen, then the type definition ·resolved· to by the ·actual value· of the base [attribute] of &lt;restriction&gt;, if present, otherwise the type definition corresponding to the &lt;simpleType&gt; among the [children] of &lt;restriction&gt;.</li>
+	 *   <li>If the &lt;list&gt; or &lt;union&gt; alternative is chosen, then ·xs:anySimpleType·.</li>
+	 * </ol>
+	 */
 	@Override
 	public TypeDefinition baseTypeDefinition() {
 		return baseTypeDefinition.get();
 	}
 
-	/** @return A subset of {restriction, extension, list, union}, determined as follows. [Definition:]  Let FS be the ·actual value· of the final [attribute], if present, otherwise the ·actual value· of the finalDefault [attribute] of the ancestor schema element, if present, otherwise the empty string. Then the property value is the appropriate case among the following:
-	 * <br>1 If ·FS· is the empty string, then the empty set;
-	 * <br>2 If ·FS· is "#all", then {restriction, extension, list, union};
-	 * <br>3 otherwise Consider ·FS· as a space-separated list, and include restriction if "restriction" is in that list, and similarly for extension, list and union. */
+	/**
+	 * @return A subset of {restriction, extension, list, union}, determined as follows. Let FS be the ·actual value· of the final [attribute], if present, otherwise the ·actual value· of the finalDefault [attribute] of the ancestor schema element, if present, otherwise the empty string. Then the property value is the appropriate case among the following:
+	 * <ol>
+	 *   <li>If ·FS· is the empty string, then the empty set;</li>
+	 *   <li>If ·FS· is "#all", then {restriction, extension, list, union};</li>
+	 *   <li>otherwise Consider ·FS· as a space-separated list, and include restriction if "restriction" is in that list, and similarly for extension, list and union.</li>
+	 * </ol>
+	 */
 	@Override
 	public Deque<Final> finals() {
 		return Deques.unmodifiableDeque(finals);
 	}
 
-	/** @return The appropriate case among the following:
-	 * <br>1 If the name [attribute] is present, then ·absent·
-	 * <br>2 otherwise the appropriate case among the following:
-	 * <br>2.1 If the parent element information item is &lt;attribute&gt;, then the corresponding Attribute Declaration
-	 * <br>2.2 If the parent element information item is &lt;element&gt;, then the corresponding Element Declaration
-	 * <br>2.3 If the parent element information item is &lt;list&gt; or &lt;union&gt;, then the Simple Type Definition corresponding to the grandparent &lt;simpleType&gt; element information item
-	 * <br>2.4 If the parent element information item is &lt;alternative&gt;, then the Element Declaration corresponding to the nearest enclosing &lt;element&gt; element information item
-	 * <br>2.5 otherwise (the parent element information item is &lt;restriction&gt;), the appropriate case among the following:
-	 * <br>2.5.1 If the grandparent element information item is &lt;simpleType&gt;, then the Simple Type Definition corresponding to the grandparent
-	 * <br>2.5.2 otherwise (the grandparent element information item is &lt;simpleContent&gt;), the Simple Type Definition which is the {content type}.{simple type definition} of the Complex Type Definition corresponding to the great-grandparent &lt;complexType&gt; element information item. */
+	/**
+	 * @return The appropriate case among the following:
+	 * <ol>
+	 *   <li>If the name [attribute] is present, then ·absent·</li>
+	 *   <li>otherwise the appropriate case among the following:
+	 *     <ol>
+	 *       <li>If the parent element information item is &lt;attribute&gt;, then the corresponding Attribute Declaration</li>
+	 *       <li>If the parent element information item is &lt;element&gt;, then the corresponding Element Declaration</li>
+	 *       <li>If the parent element information item is &lt;list&gt; or &lt;union&gt;, then the Simple Type Definition corresponding to the grandparent &lt;simpleType&gt; element information item</li>
+	 *       <li>If the parent element information item is &lt;alternative&gt;, then the Element Declaration corresponding to the nearest enclosing &lt;element&gt; element information item</li>
+	 *       <li>otherwise (the parent element information item is &lt;restriction&gt;), the appropriate case among the following:
+	 *         <ol>
+	 *           <li>If the grandparent element information item is &lt;simpleType&gt;, then the Simple Type Definition corresponding to the grandparent</li>
+	 *           <li>otherwise (the grandparent element information item is &lt;simpleContent&gt;), the Simple Type Definition which is the {content type}.{simple type definition} of the Complex Type Definition corresponding to the great-grandparent &lt;complexType&gt; element information item.</li>
+	 *         </ol>
+	 *       </li>
+	 *     </ol>
+	 *   </li>
+	 * </ol>
+	 */
 	@Override
 	public AnnotatedComponent context() {
 		return name == null ? context.get() : null;

@@ -210,9 +210,9 @@ public class TagParser<T> {
 
 	}
 
-	public static final class FtParsers {
+	public static final class FctParsers {
 
-		private FtParsers() { }
+		private FctParsers() { }
 
 		public TagParser<ConstrainingFacet.Length> length() {
 			return defer(Names.LENGTH, ConstrainingFacet.Length.class);
@@ -272,9 +272,9 @@ public class TagParser<T> {
 
 	}
 
-	public static final class ShParsers {
+	public static final class SchParsers {
 
-		private ShParsers() { }
+		private SchParsers() { }
 
 		public TagParser<Schema.DefaultOpenContent> defaultOpenContent() {
 			return defer(Names.DEFAULT_OPEN_CONTENT, Schema.DefaultOpenContent.class);
@@ -386,14 +386,14 @@ public class TagParser<T> {
 	public static final TagParser<AttributeGroup> ATTRIBUTE_GROUP = defer(Names.ATTRIBUTE_GROUP, AttributeGroup.class);
 	public static final TagParser<Particle> CHOICE = defer(Names.CHOICE, Particle.class);
 	public static final CtParsers<ComplexType> COMPLEX_TYPE = defer(Names.COMPLEX_TYPE, ComplexType.class);
-	public static final FtParsers FACETS = new FtParsers();
+	public static final FctParsers FACETS = new FctParsers();
 	public static final PtParsers<Element> ELEMENT = defer(Names.ELEMENT, Element.class);
 	public static final TagParser<Assertion.XPathExpression> FIELD = defer(Names.FIELD, Assertion.XPathExpression.class);
 	public static final PtParsers<ModelGroup> GROUP = defer(Names.GROUP, ModelGroup.class);
 	public static final TagParser<IdentityConstraint> KEY = defer(Names.KEY, IdentityConstraint.class);
 	public static final TagParser<IdentityConstraint> KEYREF = defer(Names.KEYREF, IdentityConstraint.class);
 	public static final TagParser<Notation> NOTATION = defer(Names.NOTATION, Notation.class);
-	public static final ShParsers SCHEMA = new ShParsers();
+	public static final SchParsers SCHEMA = new SchParsers();
 	public static final TagParser<Assertion.XPathExpression> SELECTOR = defer(Names.SELECTOR, Assertion.XPathExpression.class);
 	public static final TagParser<Particle> SEQUENCE = defer(Names.SEQUENCE, Particle.class);
 	public static final StParsers<SimpleType> SIMPLE_TYPE = defer(Names.SIMPLE_TYPE, SimpleType.class);

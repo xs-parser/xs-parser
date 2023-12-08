@@ -12,6 +12,8 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * An attribute declaration is an association between a name and a simple type definition, together with occurrence information and (optionally) a default value. The association is either global, or local to its containing complex type definition. Attribute declarations contribute to ·validation· as part of complex type definition ·validation·, when their occurrence, defaults and type components are checked against an attribute information item with a matching name and namespace.
+ *
  * <pre>
  * &lt;attribute
  *   default = string
@@ -104,9 +106,12 @@ public class Attribute implements AnnotatedComponent {
 	 */
 	public static class Scope {
 
+		/** Attribute scope variety */
 		public enum Variety {
 
+			/** Attribute scope variety global */
 			GLOBAL,
+			/** Attribute scope variety local */
 			LOCAL;
 
 		}
@@ -129,7 +134,7 @@ public class Attribute implements AnnotatedComponent {
 			}
 		}
 
-		/** @return either local or global, as appropriate */
+		/** @return Either local or global, as appropriate */
 		public Variety variety() {
 			return variety;
 		}
@@ -141,10 +146,16 @@ public class Attribute implements AnnotatedComponent {
 
 	}
 
+	/**
+	 * Attribute uses correspond to all uses of &lt;attribute&gt; which allow a use attribute. These in turn correspond to two components in each case, an attribute use and its {attribute declaration} (although note the latter is not new when the attribute use is a reference to a top-level attribute declaration).
+	 */
 	public enum Use {
 
+		/** Attribute use required */
 		REQUIRED("required"),
+		/** Attribute use optional */
 		OPTIONAL("optional"),
+		/** Attribute use prohibited */
 		PROHIBITED("prohibited");
 
 		private final String name;
@@ -156,20 +167,21 @@ public class Attribute implements AnnotatedComponent {
 		private static Use getAttrValueAsUse(final Attr attr) {
 			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			for (final Use u : values()) {
-				if (u.getName().equals(value)) {
+				if (u.name.equals(value)) {
 					return u;
 				}
 			}
 			throw new IllegalArgumentException(value);
 		}
 
+		/** @return The name of this attribute use */
 		public String getName() {
 			return name;
 		}
 
 		@Override
 		public String toString() {
-			return getName();
+			return name;
 		}
 
 	}
@@ -205,9 +217,12 @@ public class Attribute implements AnnotatedComponent {
 	 */
 	public static class ValueConstraint {
 
+		/** Attribute value constraint variety */
 		public enum Variety {
 
+			/** Attribute value constraint variety default */
 			DEFAULT,
+			/** Attribute value constraint variety fixed */
 			FIXED;
 
 		}
@@ -223,17 +238,17 @@ public class Attribute implements AnnotatedComponent {
 			this.lexicalForm = simpleType.map(s -> s.lexicalMapping(value));
 		}
 
-		/** @return either default or fixed, as appropriate */
+		/** @return Either default or fixed, as appropriate */
 		public Variety variety() {
 			return variety;
 		}
 
-		/** @return the ·actual value· of the [attribute] (with respect to {attribute declaration}.{type definition}) */
+		/** @return The ·actual value· of the [attribute] (with respect to {attribute declaration}.{type definition}) */
 		public Object value() {
 			return value.get();
 		}
 
-		/** @return the ·normalized value· of the [attribute] (with respect to {attribute declaration}.{type definition}) */
+		/** @return The ·normalized value· of the [attribute] (with respect to {attribute declaration}.{type definition}) */
 		public String lexicalForm() {
 			return lexicalForm.get();
 		}
@@ -347,7 +362,7 @@ public class Attribute implements AnnotatedComponent {
 
 	/**
 	 * The xsi:type attribute is used to signal use of a type other than the declared type of an element. See xsi:type (§2.7.1).
-	 * @return xsi:type
+	 * @return The xsi:type attribute
 	 */
 	public static Attribute xsiType() {
 		return xsiType.get();
@@ -355,7 +370,7 @@ public class Attribute implements AnnotatedComponent {
 
 	/**
 	 * The xsi:nil attribute is used to signal that an element's content is "nil" (or "null"). See xsi:nil (§2.7.2).
-	 * @return xsi:nil
+	 * @return The xsi:nil attribute
 	 */
 	public static Attribute xsiNil() {
 		return xsiNil.get();
@@ -363,7 +378,7 @@ public class Attribute implements AnnotatedComponent {
 
 	/**
 	 * The xsi:schemaLocation attribute is used to signal possible locations of relevant schema documents. See xsi:schemaLocation, xsi:noNamespaceSchemaLocation (§2.7.3).
-	 * @return xsi:schemaLocation
+	 * @return The xsi:schemaLocation attribute
 	 */
 	public static Attribute xsiSchemaLocation() {
 		return xsiSchemaLocation.get();
@@ -371,7 +386,7 @@ public class Attribute implements AnnotatedComponent {
 
 	/**
 	 * The xsi:noNamespaceSchemaLocation attribute is used to signal possible locations of relevant schema documents. See xsi:schemaLocation, xsi:noNamespaceSchemaLocation (§2.7.3).
-	 * @return xsi:noNamespaceSchemaLocation
+	 * @return The xsi:noNamespaceSchemaLocation attribute
 	 */
 	public static Attribute xsiNoNamespaceSchemaLocation() {
 		return xsiNoNamespaceSchemaLocation.get();
@@ -401,9 +416,9 @@ public class Attribute implements AnnotatedComponent {
 	}
 
 	/**
-	 * @return
+	 * @return If there is a default or a fixed [attribute], then a Value Constraint as follows, otherwise ·absent·.
 	 * <table>
-	 *   <caption style="text-align: left">If there is a default or a fixed [attribute], then a Value Constraint as follows, otherwise ·absent·.</caption>
+	 *   <caption style="text-align: left">Value Constraint</caption>
 	 *   <thead>
 	 *     <tr>
 	 *       <th style="text-align: left">Property</th>

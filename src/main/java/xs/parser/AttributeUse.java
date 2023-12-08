@@ -11,6 +11,8 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * An attribute use plays a role similar to that of a particle, but for attribute declarations: an attribute declaration used by a complex type definition is embedded within an attribute use, which specifies whether the declaration requires or merely allows its attribute, and whether it has a default or fixed value.
+ *
  * <pre>
  * &lt;attribute
  *   default = string
@@ -101,7 +103,7 @@ public class AttributeUse implements AnnotatedComponent {
 		}
 	}
 
-	/** @return true if the &lt;attribute&gt; element has use = required, otherwise false. */
+	/** @return {@code true} if the &lt;attribute&gt; element has use = required, otherwise {@code false}. */
 	public boolean required() {
 		return Use.REQUIRED.equals(use);
 	}
@@ -112,9 +114,9 @@ public class AttributeUse implements AnnotatedComponent {
 	}
 
 	/**
-	 * @return
+	 * @return If there is a default or a fixed [attribute], then a Value Constraint as follows, otherwise ·absent·.
 	 * <table>
-	 *   <caption style="text-align: left">If there is a default or a fixed [attribute], then a Value Constraint as follows, otherwise ·absent·.</caption>
+	 *   <caption style="text-align: left">Value Constraint</caption>
 	 *   <thead>
 	 *     <tr>
 	 *       <th style="text-align: left">Property</th>

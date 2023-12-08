@@ -20,11 +20,11 @@ jobs:
     - name: Set up JDK
       uses: actions/setup-java@v3
       with:
-        java-version: '11'
+        java-version: '17'
         distribution: temurin
 
     - name: Build with Gradle
-      run: ./gradlew test sonarqube -Dsonar.projectKey=xs-parser_xs-parser -Dsonar.organization=xs-parser -Dsonar.host.url=https://sonarcloud.io
+      run: ./gradlew test sonar -Dsonar.projectKey=xs-parser_xs-parser -Dsonar.organization=xs-parser -Dsonar.host.url=https://sonarcloud.io
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

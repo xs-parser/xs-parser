@@ -9,6 +9,8 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * An assertion is a predicate associated with a type, which is checked for each instance of the type. If an element or attribute information item fails to satisfy an assertion associated with a given type, then that information item is not locally ·valid· with respect to that type.
+ *
  * <pre>
  * &lt;assertion
  *   id = ID
@@ -78,10 +80,12 @@ public class Assertion implements AnnotatedComponent {
 			this.namespace = Objects.requireNonNull(namespace);
 		}
 
+		/** @return An xs:NCName value. Required. */
 		public String prefix() {
 			return prefix;
 		}
 
+		/** @return An xs:anyURI value. Required. */
 		public String namespace() {
 			return namespace;
 		}
@@ -210,14 +214,22 @@ public class Assertion implements AnnotatedComponent {
 
 		/**
 		 * @return Let D be the ·actual value· of the xpathDefaultNamespace [attribute], if present on the host element, otherwise that of the xpathDefaultNamespace [attribute] of the &lt;schema&gt; ancestor. Then the value is the appropriate case among the following:
-		 * <br>1 If D is ##defaultNamespace, then the appropriate case among the following:
-		 * <br>  1.1 If there is an entry in the [in-scope namespaces] of the host element whose [prefix] is ·absent·, then the corresponding [namespace name];
-		 * <br>  1.2 otherwise ·absent·;
-		 * <br>2 If D is ##targetNamespace, then the appropriate case among the following:
-		 * <br>  2.1 If the targetNamespace [attribute] is present on the &lt;schema&gt; ancestor, then its ·actual value·;
-		 * <br>  2.2 otherwise ·absent·;
-		 * <br>3 If D is ##local, then ·absent·;
-		 * <br>4 otherwise (D is an xs:anyURI value) D.
+		 * <ol>
+		 *   <li>If D is ##defaultNamespace, then the appropriate case among the following:
+		 *     <ol>
+		 *       <li>If there is an entry in the [in-scope namespaces] of the host element whose [prefix] is ·absent·, then the corresponding [namespace name];</li>
+		 *       <li>otherwise ·absent·;</li>
+		 *     </ol>
+		 *   </li>
+		 *   <li>If D is ##targetNamespace, then the appropriate case among the following:
+		 *     <ol>
+		 *       <li>If the targetNamespace [attribute] is present on the &lt;schema&gt; ancestor, then its ·actual value·;</li>
+		 *       <li>otherwise ·absent·;</li>
+		 *     </ol>
+		 *   </li>
+		 *   <li>If D is ##local, then ·absent·;</li>
+		 *   <li>otherwise (D is an xs:anyURI value) D.</li>
+		 * </ol>
 		 */
 		public String defaultNamespace() {
 			return defaultNamespace;

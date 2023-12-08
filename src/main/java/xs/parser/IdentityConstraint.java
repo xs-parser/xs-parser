@@ -10,6 +10,8 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * An identity-constraint definition is an association between a name and one of several varieties of identity-constraint related to uniqueness and reference. All the varieties use [XPath 2.0] expressions to pick out sets of information items relative to particular target element information items which are unique, or a key, or a ·valid· reference, within a specified scope. An element information item is only ·valid· with respect to an element declaration with identity-constraint definitions if those definitions are all satisfied for all the descendants of that element information item which they pick out.
+ *
  * <pre>
  * &lt;unique
  *   id = ID
@@ -36,12 +38,66 @@ import xs.parser.v.*;
  *   Content: (annotation?, (selector, field+)?)
  * &lt;/keyref&gt;
  * </pre>
+ *
+ * <table>
+ *   <caption style="font-size: large; text-align: left">Schema Component: Identity-Constraint Definition, a kind of Annotated Component</caption>
+ *   <thead>
+ *     <tr>
+ *       <th style="text-align: left">Method</th>
+ *       <th style="text-align: left">Property</th>
+ *       <th style="text-align: left">Representation</th>
+ *     </tr>
+ *   </thead>
+ *   <tbody>
+ *     <tr>
+ *       <td>{@link IdentityConstraint#annotations()}</td>
+ *       <td>{annotations}</td>
+ *       <td>A sequence of Annotation components.</td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link IdentityConstraint#name()}</td>
+ *       <td>{name}</td>
+ *       <td>An xs:NCName value. Required.</td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link IdentityConstraint#targetNamespace()}</td>
+ *       <td>{target namespace}</td>
+ *       <td>An xs:anyURI value. Optional.</td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link IdentityConstraint#category()}</td>
+ *       <td>{identity-constraint category}</td>
+ *       <td>One of {key, keyref, unique}. Required.</td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link IdentityConstraint#selector()}</td>
+ *       <td>{selector}</td>
+ *       <td>An XPath Expression property record. Required.</td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link IdentityConstraint#fields()}</td>
+ *       <td>{fields}</td>
+ *       <td>A sequence of XPath Expression property records.</td>
+ *     </tr>
+ *     <tr>
+ *       <td>{@link IdentityConstraint#referencedKey()}</td>
+ *       <td>{referenced key}</td>
+ *       <td>An Identity-Constraint Definition component. Required if {identity-constraint category} is keyref, otherwise ({identity-constraint category} is key or unique) must be ·absent·.<br>If a value is present, its {identity-constraint category} must be key or unique.</td>
+ *     </tr>
+ *   </tbody>
+ * </table>
  */
 public class IdentityConstraint implements AnnotatedComponent {
 
+	/** Identity-constraint category */
 	public enum Category {
 
-		KEY, KEYREF, UNIQUE;
+		/** Identity-constraint category key */
+		KEY,
+		/** Identity-constraint category keyref */
+		KEYREF,
+		/** Identity-constraint category unique */
+		UNIQUE;
 
 		private static Category fromNode(final Node node) {
 			if (TagParser.KEY.equalsName(node)) {
@@ -50,9 +106,8 @@ public class IdentityConstraint implements AnnotatedComponent {
 				return KEYREF;
 			} else if (TagParser.UNIQUE.equalsName(node)) {
 				return UNIQUE;
-			} else {
-				throw new IllegalArgumentException(NodeHelper.toString(node));
 			}
+			throw new IllegalArgumentException(NodeHelper.toString(node));
 		}
 
 	}
@@ -144,26 +199,32 @@ public class IdentityConstraint implements AnnotatedComponent {
 		}
 	}
 
+	/** @return The ·actual value· of the name [attribute]. */
 	public String name() {
 		return name;
 	}
 
+	/** @return The ·actual value· of the targetNamespace [attribute] of the &lt;schema&gt; ancestor element information item if present, otherwise ·absent·. */
 	public String targetNamespace() {
 		return targetNamespace;
 	}
 
+	/** @return One of key, keyref or unique, depending on the item. */
 	public Category category() {
 		return category;
 	}
 
+	/** @return An XPath Expression property record, as described in section XML Representation of Assertion Schema Components (§3.13.2), with &lt;selector&gt; as the "host element" and xpath as the designated expression [attribute]. */
 	public XPathExpression selector() {
 		return selector.get();
 	}
 
+	/** @return A sequence of XPath Expression property records, corresponding to the &lt;field&gt; element information item [children], in order, following the rules given in XML Representation of Assertion Schema Components (§3.13.2), with &lt;field&gt; as the "host element" and xpath as the designated expression [attribute]. */
 	public Deque<XPathExpression> fields() {
 		return Deques.unmodifiableDeque(fields);
 	}
 
+	/** @return If the item is a &lt;keyref&gt;, the identity-constraint definition ·resolved· to by the ·actual value· of the refer [attribute], otherwise ·absent·. */
 	public IdentityConstraint referencedKey() {
 		return referencedKey;
 	}

@@ -2,6 +2,3 @@
 .vscode
 build
 bin
-.project
-.classpath
-.settings/

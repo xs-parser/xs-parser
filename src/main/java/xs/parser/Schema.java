@@ -21,6 +21,8 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * A schema is represented in XML by one or more ·schema documents·, that is, one or more &lt;schema&gt; element information items. A ·schema document· contains representations for a collection of schema components, e.g. type definitions and element declarations, which have a common {target namespace}. A ·schema document· which has one or more &lt;import&gt; element information items corresponds to a schema with components with more than one {target namespace}, see Import Constraints and Semantics (§4.2.6.2).
+ *
  * <pre>
  * &lt;schema
  *   attributeFormDefault = (qualified | unqualified) : unqualified
@@ -38,6 +40,7 @@ import xs.parser.v.*;
  * &lt;/schema&gt;
  * </pre>
  *
+ * The &lt;schema&gt; element information item maps to a Schema component as follows.
  * <table>
  *   <caption style="font-size: large; text-align: left">Schema Component: Schema, a kind of Annotated Component</caption>
  *   <thead>
@@ -93,12 +96,18 @@ import xs.parser.v.*;
  */
 public class Schema implements AnnotatedComponent {
 
+	/** Schema block */
 	public enum Block {
 
+		/** Schema block default */
 		DEFAULT(""),
+		/** Schema block extension */
 		EXTENSION("extension"),
+		/** Schema block restriction */
 		RESTRICTION("restriction"),
+		/** Schema block substitution */
 		SUBSTITUTION("substitution"),
+		/** Schema block all */
 		ALL("#all");
 
 		private final String name;
@@ -130,27 +139,31 @@ public class Schema implements AnnotatedComponent {
 
 		static Block getByName(final String name) {
 			for (final Block b : values()) {
-				if (b.getName().equals(name)) {
+				if (b.name.equals(name)) {
 					return b;
 				}
 			}
 			throw new IllegalArgumentException(name);
 		}
 
+		/** @return The name of this schema block */
 		public String getName() {
 			return name;
 		}
 
 		@Override
 		public String toString() {
-			return getName();
+			return name;
 		}
 
 	}
 
+	/** Schema form */
 	public enum Form {
 
+		/** Schema form unqualified */
 		UNQUALIFIED("unqualified"),
+		/** Schema form qualified */
 		QUALIFIED("qualified");
 
 		private final String name;
@@ -162,20 +175,21 @@ public class Schema implements AnnotatedComponent {
 		static Form getAttrValueAsForm(final Attr attr) {
 			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			for (final Form f : values()) {
-				if (f.getName().equals(value)) {
+				if (f.name.equals(value)) {
 					return f;
 				}
 			}
 			throw new IllegalArgumentException(value);
 		}
 
+		/** @return The name of this schema form */
 		public String getName() {
 			return name;
 		}
 
 		@Override
 		public String toString() {
-			return getName();
+			return name;
 		}
 
 	}
@@ -533,20 +547,47 @@ public class Schema implements AnnotatedComponent {
 
 	}
 
+	/**
+	 * Provides an interface to override the default schema document resolution behavior.
+	 * To extend the default behavior, see {@link DefaultDocumentResolver}.
+	 */
 	public interface DocumentResolver {
 
+		/**
+		 * Resolves a URI with respect to the given base URI, schema namespace, and schema location.
+		 * @param baseUri The base URI to be resolved with respect to; {@code null} if there is no base URI
+		 * @param namespace The schema namespace; {@code null} if the schema namespace attribute is absent
+		 * @param schemaLocation The schema location; {@code null} if the schema is loaded from memory
+		 * @return The resolved URI
+		 */
 		public URI resolveUri(String baseUri, String namespace, String schemaLocation);
 
+		/**
+		 * Resolves the provided URI to a {@link Document}.
+		 * @param resourceUri The resource URI, as resolved by {@link #resolveUri(String, String, String)}
+		 * @return The resolved document
+		 * @throws Exception If an exception occurs while resolving the document
+		 */
 		public Document resolve(URI resourceUri) throws Exception;
 
-		public Document newDocument(final InputSource source) throws Exception;
+		/**
+		 * Creates a new {@link Document} from an {@link InputSource}.
+		 * @param source The input source to be loaded
+		 * @return The new document
+		 * @throws Exception If an exception occurs while loading the document
+		 */
+		public Document newDocument(InputSource source) throws Exception;
 
 	}
 
+	/**
+	 * The default schema document resolution behavior
+	 */
 	public static class DefaultDocumentResolver implements DocumentResolver {
 
 		private final DocumentBuilder documentBuilder = NodeHelper.newDocumentBuilder();
 
+		@Override
 		public URI resolveUri(final String baseUri, final String namespace, final String schemaLocation) {
 			if (schemaLocation != null) {
 				URI schemaLocationUri = null;
@@ -562,6 +603,7 @@ public class Schema implements AnnotatedComponent {
 			return null;
 		}
 
+		@Override
 		public Document resolve(final URI resourceUri) throws Exception {
 			if (resourceUri == null) {
 				return null;
@@ -595,6 +637,10 @@ public class Schema implements AnnotatedComponent {
 
 	}
 
+	/**
+	 * An unchecked exception denoting an exception while parsing the content of the schema.
+	 * When this exception is thrown the provided schema is not valid.
+	 */
 	public static class ParseException extends RuntimeException {
 
 		private static final long serialVersionUID = 1L;
@@ -651,6 +697,7 @@ public class Schema implements AnnotatedComponent {
 			return message + " of " + nodeTypeName + " '" + nodeString + "' in " + node.getOwnerDocument().getDocumentURI();
 		}
 
+		/** @return The node associated with this exception. */
 		public Node node() {
 			return node;
 		}
@@ -895,22 +942,48 @@ public class Schema implements AnnotatedComponent {
 		}
 	}
 
+	/**
+	 * Creates a new schema from the specified file.
+	 * @param file The XSD file
+	 * @throws IOException If the file cannot be found or by {@link javax.xml.parsers.DocumentBuilder#parse(InputSource)}
+	 * @throws SAXException If by {@link javax.xml.parsers.DocumentBuilder#parse(InputSource)}
+	 */
 	public Schema(final File file) throws IOException, SAXException {
 		this(loadDocFromFile(file));
 	}
 
+	/**
+	 * Creates a new schema from the specified document, using the {@link DefaultDocumentResolver} as the document resolver.
+	 * @param document The document
+	 */
 	public Schema(final Document document) {
 		this(DEFAULT_DOCUMENT_RESOLVER, document);
 	}
 
+	/**
+	 * Creates a new schema from the specified namespace context and document, using the {@link DefaultDocumentResolver} as the document resolver.
+	 * @param namespaceContext The namespace context
+	 * @param document The document
+	 */
 	public Schema(final NamespaceContext namespaceContext, final Document document) {
 		this(DEFAULT_DOCUMENT_RESOLVER, namespaceContext, document);
 	}
 
+	/**
+	 * Creates a new schema from the specified document resolver and document.
+	 * @param documentResolver The document resolver
+	 * @param document The document
+	 */
 	public Schema(final DocumentResolver documentResolver, final Document document) {
 		this(documentResolver, null, document);
 	}
 
+	/**
+	 * Creates a new schema from the specified document resolver, namespace context, and document.
+	 * @param documentResolver The document resolver
+	 * @param namespaceContext The namespace context
+	 * @param document The document
+	 */
 	public Schema(final DocumentResolver documentResolver, final NamespaceContext namespaceContext, final Document document) {
 		this(null, documentResolver, namespaceContext, document, document.getDocumentURI(), new HashMap<>(), new HashMap<>());
 	}

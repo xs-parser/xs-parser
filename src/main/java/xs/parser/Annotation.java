@@ -11,6 +11,8 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * An annotation is information for human and/or mechanical consumers. The interpretation of such information is not defined in this specification.
+ *
  * <pre>
  * &lt;annotation
  *   id = ID
@@ -109,7 +111,7 @@ public class Annotation implements SchemaComponent {
 			return new DeferredArrayDeque<>(() -> {
 				final ArrayDeque<Annotation> mapped = new ArrayDeque<>();
 				for (final Annotation a : annotations) {
-					final Deferred<Set<Attr>> attributes = Deferred.of(() -> {
+					mapped.add(new Annotation(a.context, a.node, a.applicationInformation, a.userInformation, Deferred.of(() -> {
 						Node n = a.node;
 						final Set<Attr> attrs = new LinkedHashSet<>();
 						do {
@@ -124,8 +126,7 @@ public class Annotation implements SchemaComponent {
 							n = n.getParentNode();
 						} while (!component.isSameNode(n));
 						return attrs;
-					});
-					mapped.add(new Annotation(a.context, a.node, a.applicationInformation, a.userInformation, attributes));
+					})));
 				}
 				return mapped;
 			});
@@ -133,6 +134,15 @@ public class Annotation implements SchemaComponent {
 
 	}
 
+	/**
+	 * <pre>
+	 * &lt;appinfo
+	 *   source = anyURI
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: ({any})*
+	 * &lt;/appinfo&gt;
+	 * </pre>
+	 */
 	public static class Appinfo {
 
 		private static final SequenceParser parser = new SequenceParser()
@@ -151,6 +161,16 @@ public class Annotation implements SchemaComponent {
 
 	}
 
+	/**
+	 * <pre>
+	 * &lt;documentation
+	 *   source = anyURI
+	 *   xml:lang = language
+	 *   {any attributes with non-schema namespace . . .}&gt;
+	 *   Content: ({any})*
+	 * &lt;/documentation&gt;
+	 * </pre>
+	 */
 	public static class Documentation {
 
 		private static final SequenceParser parser = new SequenceParser()

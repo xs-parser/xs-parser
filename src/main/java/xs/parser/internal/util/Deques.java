@@ -2,6 +2,9 @@ package xs.parser.internal.util;
 
 import java.util.*;
 
+/**
+ * Utility class for {@link java.util.Deque}
+ */
 public final class Deques {
 
 	private static class UnmodifiableDeque<E> implements Deque<E> {
@@ -250,22 +253,41 @@ public final class Deques {
 
 	private Deques() { }
 
+	/**
+	 * @param <E> The item type
+	 * @return An empty deque
+	 */
 	@SuppressWarnings("unchecked")
 	public static <E> Deque<E> emptyDeque() {
 		return (Deque<E>) EMPTY;
 	}
 
+	/**
+	 * @param <E> The item type
+	 * @param e The items
+	 * @return A deque containing the values of {@code e}
+	 */
 	@SafeVarargs
 	public static <E> Deque<E> asDeque(final E... e) {
 		return new UnmodifiableDeque<>(new ArrayDeque<>(Arrays.asList(e)));
 	}
 
+	/**
+	 * @param <E> The item type
+	 * @param e The item
+	 * @return A deque with a single item
+	 */
 	public static <E> Deque<E> singletonDeque(final E e) {
 		final Deque<E> d = new ArrayDeque<>(1);
 		d.add(e);
 		return new UnmodifiableDeque<>(d);
 	}
 
+	/**
+	 * @param <E> The item type
+	 * @param d The deque
+	 * @return An unmodifiable deque
+	 */
 	public static <E> Deque<E> unmodifiableDeque(final Deque<? extends E> d) {
 		return new UnmodifiableDeque<>(d);
 	}

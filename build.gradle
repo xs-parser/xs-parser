@@ -4,7 +4,7 @@ plugins {
 	id 'java-library'
 	id 'maven-publish'
 	id 'signing'
-	id 'org.sonarqube' version '4.2.1.3168' apply false
+	id 'org.sonarqube' version '4.4.1.3373' apply false
 }
 
 if (System.getenv('SONAR_TOKEN') != null) {
@@ -72,6 +72,8 @@ test {
 }
 
 javadoc {
+	exclude 'xs/parser/internal/**'
+	options.addBooleanOption('Werror', true)
 	options.encoding = 'UTF-8'
 	options.memberLevel = JavadocMemberLevel.PUBLIC
 }
@@ -80,12 +82,18 @@ jar {
 	manifest {
 		attributes 'Implementation-Title': project.name,
 				'Implementation-Version': project.version,
+				'Specification-Title': 'XML Schema Definition Language (XSD)',
+				'Specification-Vendor': 'W3C',
+				'Specification-Version': '1.1',
 				'Sealed': true
 	}
 }
 
 tasks.withType(Jar) {
 	from('LICENSE.md') {
+		into 'META-INF'
+	}
+	from('DISCLAIMER.md') {
 		into 'META-INF'
 	}
 }

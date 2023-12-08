@@ -17,6 +17,14 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * A complex type definition is a set of attribute declarations and a content type, applicable to the [attributes] and [children] of an element information item respectively. The content type may require the [children] to contain neither element nor character information items (that is, to be empty), or to be a string which belongs to a particular simple type, or to contain a sequence of element information items which conforms to a particular model group, with or without character information items as well.
+ * <p>
+ * Each complex type definition other than ·xs:anyType· is either a restriction of a complex ·base type definition· or an ·extension· of a simple or complex ·base type definition·.
+ * <p>
+ * A complex type which extends another does so by having additional content model particles at the end of the other definition's content model, or by having additional attribute declarations, or both.
+ * <p>
+ * <i>Note: For the most part, this specification allows only appending, and not other kinds of extensions. This decision simplifies application processing required to cast instances from the derived type to the base type. One special case allows the extension of all-groups in ways that do not guarantee that the new material occurs only at the end of the content. Another special case is extension via Open Contents in interleave mode.</i>
+ *
  * <pre>
  * &lt;complexType
  *   abstract = boolean : false
@@ -139,18 +147,26 @@ public class ComplexType implements TypeDefinition {
 
 	}
 
+	/** Complex type derivation method */
 	public enum DerivationMethod {
 
+		/** Complex type derivation by extension */
 		EXTENSION,
+		/** Complex type derivation by restriction */
 		RESTRICTION;
 
 	}
 
+	/** Complex type content type variety */
 	public enum Variety {
 
+		/** Complex type content type variety empty */
 		EMPTY,
+		/** Complex type content type variety simple */
 		SIMPLE,
+		/** Complex type content type variety element only */
 		ELEMENT_ONLY,
+		/** Complex type content type variety simple mixed */
 		MIXED;
 
 		private boolean isMixedOrElementOnly() {
@@ -428,18 +444,22 @@ public class ComplexType implements TypeDefinition {
 			this.simpleTypeDefinition = simpleTypeDefinition;
 		}
 
+		/** @return One of {empty, simple, element-only, mixed}. Required. */
 		public Variety variety() {
 			return variety.get();
 		}
 
+		/** @return A Particle component. Required if {variety} is element-only or mixed, otherwise must be ·absent·. */
 		public Particle particle() {
 			return particle != null ? particle.get() : null;
 		}
 
+		/** @return An Open Content property record. Optional if {variety} is element-only or mixed, otherwise must be ·absent·. */
 		public OpenContent openContent() {
 			return openContent != null ? openContent.get() : null;
 		}
 
+		/** @return A Simple Type Definition component. Required if {variety} is simple, otherwise must be ·absent·. */
 		public SimpleType simpleTypeDefinition() {
 			return simpleTypeDefinition != null ? simpleTypeDefinition.get() : null;
 		}
@@ -481,10 +501,14 @@ public class ComplexType implements TypeDefinition {
 	 */
 	public static class OpenContent {
 
+		/** Complex type open content mode */
 		public enum Mode {
 
+			/** Complex type open content mode none */
 			NONE("none"),
+			/** Complex type open content mode interleave */
 			INTERLEAVE("interleave"),
+			/** Complex type open content mode suffix */
 			SUFFIX("suffix");
 
 			private final String name;
@@ -497,7 +521,7 @@ public class ComplexType implements TypeDefinition {
 				final String value = NodeHelper.collapseWhitespace(attr.getValue());
 				Mode mode = null;
 				for (final Mode m : values()) {
-					if (m.getName().equals(value)) {
+					if (m.name.equals(value)) {
 						mode = m;
 					}
 				}
@@ -507,13 +531,14 @@ public class ComplexType implements TypeDefinition {
 				return mode;
 			}
 
+			/** @return The name of this complex type open content mode */
 			public String getName() {
 				return name;
 			}
 
 			@Override
 			public String toString() {
-				return getName();
+				return name;
 			}
 
 		}
@@ -1070,6 +1095,7 @@ public class ComplexType implements TypeDefinition {
 		VisitorHelper.register(ComplexType.class, ComplexType::visit);
 	}
 
+	/** @return The xs:anyType complex type */
 	public static ComplexType xsAnyType() {
 		return xsAnyType.get();
 	}
@@ -1105,10 +1131,12 @@ public class ComplexType implements TypeDefinition {
 		}
 	}
 
+	/** @return A Content Type as follows */
 	public ContentType contentType() {
 		return contentType.get();
 	}
 
+	/** @return If the &lt;restriction&gt; alternative is chosen, then restriction, otherwise (the &lt;extension&gt; alternative is chosen) extension. */
 	public DerivationMethod derivationMethod() {
 		return derivationMethod.get();
 	}
@@ -1118,18 +1146,84 @@ public class ComplexType implements TypeDefinition {
 		return isAbstract;
 	}
 
+	/**
+	 * @return If the &lt;schema&gt; ancestor has a defaultAttributes attribute, and the &lt;complexType&gt; element does not have defaultAttributesApply = false, then the {attribute uses} property is computed as if there were an &lt;attributeGroup&gt; [child] with empty content and a ref [attribute] whose ·actual value· is the same as that of the defaultAttributes [attribute] appearing after any other &lt;attributeGroup&gt; [children]. Otherwise proceed as if there were no such &lt;attributeGroup&gt; [child].
+	 * <p>
+	 * Then the value is a union of sets of attribute uses as follows
+	 * <ol>
+	 *   <li>The set of attribute uses corresponding to the &lt;attribute&gt; [children], if any.</li>
+	 *   <li>The {attribute uses} of the attribute groups ·resolved· to by the ·actual value·s of the ref [attribute] of the &lt;attributeGroup&gt; [children], if any.</li>
+	 *   <li>The attribute uses "inherited" from the {base type definition} T, as described by the appropriate case among the following:
+	 *     <ol>
+	 *       <li>If T is a complex type definition and {derivation method} = extension, then the attribute uses in T.{attribute uses} are inherited.</li>
+	 *       <li>If T is a complex type definition and {derivation method} = restriction, then the attribute uses in T.{attribute uses} are inherited, with the exception of those with an {attribute declaration} whose expanded name is one of the following:
+	 *         <ol>
+	 *           <li>the expanded name of the {attribute declaration} of an attribute use which has already been included in the set, following the rules in clause 1 or clause 2 above;</li>
+	 *           <li>the expanded name of the {attribute declaration} of what would have been an attribute use corresponding to an &lt;attribute&gt; [child], if the &lt;attribute&gt; had not had use = prohibited. <i>Note: This sub-clause handles the case where the base type definition T allows the attribute in question, but the restriction prohibits it.</i></li>
+	 *         </ol>
+	 *       </li>
+	 *       <li>otherwise no attribute use is inherited.</li>
+	 *     </ol>
+	 *   </li>
+	 * </ol>
+	 */
 	public Deque<AttributeUse> attributeUses() {
 		return Deques.unmodifiableDeque(attributeUses);
 	}
 
+	/**
+	 * @return If the &lt;schema&gt; ancestor has a defaultAttributes attribute, and the &lt;complexType&gt; element does not have defaultAttributesApply = false, then the {attribute wildcard} property is computed as if there were an &lt;attributeGroup&gt; [child] with empty content and a ref [attribute] whose ·actual value· is the same as that of the defaultAttributes [attribute] appearing after any other &lt;attributeGroup&gt; [children]. Otherwise proceed as if there were no such &lt;attributeGroup&gt; [child].
+	 * <ol>
+	 *   <li>Let the complete wildcard be the Wildcard computed as described in Common Rules for Attribute Wildcards (§3.6.2.2).</li>
+	 *   <li>The value is then determined by the appropriate case among the following:
+	 *     <ol>
+	 *       <li>If {derivation method} = restriction, then the ·complete wildcard·;</li>
+	 *       <li>If {derivation method} = extension, then
+	 *         <ol>
+	 *           <li>let the base wildcard be defined as the appropriate case among the following:
+	 *             <ol>
+	 *               <li>If the {base type definition} is a complex type definition with an {attribute wildcard}, then that {attribute wildcard}.</li>
+	 *               <li>otherwise ·absent·.</li>
+	 *             </ol>
+	 *           </li>
+	 *           <li>The value is then determined by the first case among the following which applies:
+	 *             <ol>
+	 *               <li>If the ·base wildcard· is ·absent·, then the ·complete wildcard·;</li>
+	 *               <li>If the ·complete wildcard· is ·absent·, then the ·base wildcard·;</li>
+	 *               <li>otherwise a wildcard whose {process contents} and {annotations} are those of the ·complete wildcard·, and whose {namespace constraint} is the wildcard union of the {namespace constraint} of the ·complete wildcard· and of the ·base wildcard·, as defined in Attribute Wildcard Union (§3.10.6.3).</li>
+	 *             </ol>
+	 *           </li>
+	 *         </ol>
+	 *       </li>
+	 *     </ol>
+	 *   </li>
+	 * </ol>
+	 */
 	public Wildcard attributeWildcard() {
 		return attributeWildcard.get();
 	}
 
+	/**
+	 * @return A set corresponding to the ·actual value· of the block [attribute], if present, otherwise to the ·actual value· of the blockDefault [attribute] of the ancestor &lt;schema&gt; element information item, if present, otherwise on the empty string. Call this the EBV (for effective block value). Then the value of this property is the appropriate case among the following:
+	 * <ol>
+	 *   <li>If the EBV is the empty string, then the empty set;</li>
+	 *   <li>If the EBV is #all, then {extension, restriction};</li>
+	 *   <li>otherwise a set with members drawn from the set above, each being present or absent depending on whether the ·actual value· (which is a list) contains an equivalently named item.</li>
+	 * </ol>
+	 *
+	 * <i>Note: Although the blockDefault [attribute] of &lt;schema&gt; may include values other than restriction or extension, those values are ignored in the determination of {prohibited substitutions} for complex type definitions (they are used elsewhere).</i>
+	 */
 	public Deque<Block> prohibitedSubstitutions() {
 		return Deques.unmodifiableDeque(prohibitedSubstitutions);
 	}
 
+	/**
+	 * @return A sequence whose members are Assertions drawn from the following sources, in order:
+	 * <ol>
+	 *   <li>The {assertions} of the {base type definition}.</li>
+	 *   <li>Assertions corresponding to all the &lt;assert&gt; element information items among the [children] of &lt;complexType&gt;, &lt;restriction&gt; and &lt;extension&gt;, if any, in document order.</li>
+	 * </ol>
+	 */
 	public Deque<Assertion> assertions() {
 		return assertions;
 	}

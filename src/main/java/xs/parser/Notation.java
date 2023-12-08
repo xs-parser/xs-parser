@@ -8,6 +8,8 @@ import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
 /**
+ * A notation declaration is an association between a name and an identifier for a notation. For an attribute or element information item to be ·valid· with respect to a NOTATION simple type definition, its value must have been declared with a notation declaration.
+ *
  * <pre>
  * &lt;notation
  *   id = ID

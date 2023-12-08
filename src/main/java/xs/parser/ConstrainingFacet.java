@@ -13,6 +13,18 @@ import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
 import xs.parser.v.*;
 
+/**
+ * Constraining facets are schema components whose values may be set or changed during ·derivation· (subject to facet-specific controls) to control various aspects of the derived datatype. All ·constraining facet· components defined by this specification are defined in this section. For example, whiteSpace is a ·constraining facet·. ·Constraining Facets· are given a value as part of the ·derivation· when an ·ordinary· datatype is defined by ·restricting· a ·primitive· or ·ordinary· datatype; a few ·constraining facets· have default values that are also provided for ·primitive· datatypes.
+ * <p>
+ * <i>Note: Schema components are identified by kind. "Constraining" is not a kind of component. Each kind of ·constraining facet· ("whiteSpace", "length", etc.) is a separate kind of schema component.</i>
+ * <p>
+ * This specification distinguishes three kinds of constraining facets:
+ * <ul>
+ *   <li>A constraining facet which is used to normalize an initial ·literal· before checking to see whether the resulting character sequence is a member of a datatype's ·lexical space· is a pre-lexical facet.<br>This specification defines just one ·pre-lexical· facet: whiteSpace.</li>
+ *   <li>A constraining facet which directly restricts the ·lexical space· of a datatype is a lexical facet.<br>This specification defines just one ·lexical· facet: pattern.<br><i>Note: As specified normatively elsewhere, ·lexical· facets can have an indirect effect on the ·value space·: if every lexical representation of a value is removed from the ·lexical space·, the value itself is removed from the ·value space·.</i></li>
+ *    <li>A constraining facet which directly restricts the ·value space· of a datatype is a value-based facet.<br>Most of the constraining facets defined by this specification are ·value-based· facets.<br><i>Note: As specified normatively elsewhere, ·value-based· facets can have an indirect effect on the ·lexical space·: if a value is removed from the ·value space·, its lexical representations are removed from the ·lexical space·.</i></li>
+ * </ul>
+ */
 public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 	@FunctionalInterface
@@ -230,12 +242,17 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 		}
 
 		/**
-		 * @return [Definition:]  Let R be a regular expression given by the appropriate case among the following:
-		 * <br>1 If there is only one &lt;pattern&gt; among the [children] of a &lt;restriction&gt;, then the actual value of its value [attribute]
-		 * <br>2 otherwise the concatenation of the actual values of all the &lt;pattern&gt; [children]'s value [attributes], in order, separated by '|', so forming a single regular expression with multiple ·branches·.
-		 * <br>The value is then given by the appropriate case among the following:
-		 * <br>1 If the {base type definition} of the ·owner· has a pattern facet among its {facets}, then the union of that pattern facet's {value} and {·R·}
-		 * <br>2 otherwise just {·R·}
+		 * @return Let R be a regular expression given by the appropriate case among the following:
+		 * <ol>
+		 *   <li>If there is only one &lt;pattern&gt; among the [children] of a &lt;restriction&gt;, then the actual value of its value [attribute]</li>
+		 *   <li>otherwise the concatenation of the actual values of all the &lt;pattern&gt; [children]'s value [attributes], in order, separated by '|', so forming a single regular expression with multiple ·branches·.</li>
+		 * </ol>
+		 *
+		 * The value is then given by the appropriate case among the following:
+		 * <ol>
+		 *   <li>If the {base type definition} of the ·owner· has a pattern facet among its {facets}, then the union of that pattern facet's {value} and {·R·}</li>
+		 *   <li>otherwise just {·R·}</li>
+		 * </ol>
 		 */
 		@Override
 		public Set<String> value() {
@@ -288,9 +305,13 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 		/**
 		 * @return The appropriate case among the following:
-		 * <br>1 If there is only one &lt;enumeration&gt; among the [children] of a &lt;restriction&gt;, then a set with one member, the actual value of its value [attribute], interpreted as an instance of the {base type definition}.
-		 * <br>2 otherwise a set of the actual values of all the &lt;enumeration&gt; [children]'s value [attributes], interpreted as instances of the {base type definition}.
-		 * <br>Note: The value [attribute] is declared as having type ·anySimpleType·, but the {value} property of the enumeration facet must be a member of the {base type definition}. So in mapping from the XML representation to the enumeration component, the actual value is identified by using the ·lexical mapping· of the {base type definition}. */
+		 * <ol>
+		 *   <li>If there is only one &lt;enumeration&gt; among the [children] of a &lt;restriction&gt;, then a set with one member, the actual value of its value [attribute], interpreted as an instance of the {base type definition}.</li>
+		 *   <li>otherwise a set of the actual values of all the &lt;enumeration&gt; [children]'s value [attributes], interpreted as instances of the {base type definition}.</li>
+		 * </ol>
+		 *
+		 * <i>Note: The value [attribute] is declared as having type ·anySimpleType·, but the {value} property of the enumeration facet must be a member of the {base type definition}. So in mapping from the XML representation to the enumeration component, the actual value is identified by using the ·lexical mapping· of the {base type definition}.</i>
+		 */
 		@Override
 		public Set<String> value() {
 			return Collections.unmodifiableSet(value);
@@ -339,10 +360,14 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 */
 	public static class WhiteSpace extends ConstrainingFacet {
 
+		/** White space value */
 		public enum Value {
 
+			/** White space value preserve */
 			PRESERVE("preserve"),
+			/** White space value replace */
 			REPLACE("replace"),
+			/** White space value collapse */
 			COLLAPSE("collapse");
 
 			private final String name;
@@ -354,20 +379,21 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 			private static Value getAttrValueAsWhiteSpace(final Attr attr) {
 				final String value = NodeHelper.collapseWhitespace(attr.getValue());
 				for (final Value e : values()) {
-					if (e.getName().equals(value)) {
+					if (e.name.equals(value)) {
 						return e;
 					}
 				}
 				throw new IllegalArgumentException(value);
 			}
 
+			/** @return The name of this constraining facet white space */
 			public String getName() {
 				return name;
 			}
 
 			@Override
 			public String toString() {
-				return getName();
+				return name;
 			}
 
 		}
@@ -763,8 +789,10 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 		/**
 		 * @return A sequence whose members are Assertions drawn from the following sources, in order:
-		 * <br>1 If the {base type definition} of the ·owner· has an assertions facet among its {facets}, then the Assertions which appear in the {value} of that assertions facet.
-		 * <br>2 Assertions corresponding to the &lt;assertion&gt; element information items among the [children] of &lt;restriction&gt;, if any, in document order. For details of the construction of the Assertion components, see section 3.13.2 of [XSD 1.1 Part 1: Structures].
+		 * <ol>
+		 *   <li>If the {base type definition} of the ·owner· has an assertions facet among its {facets}, then the Assertions which appear in the {value} of that assertions facet.</li>
+		 *   <li>Assertions corresponding to the &lt;assertion&gt; element information items among the [children] of &lt;restriction&gt;, if any, in document order. For details of the construction of the Assertion components, see section 3.13.2 of [XSD 1.1 Part 1: Structures].</li>
+		 * </ol>
 		 */
 		@Override
 		public Deque<Assertion> value() {
@@ -773,7 +801,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 		/**
 		 * @return The empty sequence.
-		 * <br>Note: Annotations specified within an &lt;assertion&gt; element are captured by the individual Assertion component to which it maps.
+		 * <i>Note: Annotations specified within an &lt;assertion&gt; element are captured by the individual Assertion component to which it maps.</i>
 		 */
 		@Override
 		public final Deque<Annotation> annotations() {
@@ -823,10 +851,14 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	 */
 	public static class ExplicitTimezone extends ConstrainingFacet {
 
+		/** Explicit timezone value */
 		public enum Value {
 
+			/** Explicit timezone value required */
 			REQUIRED("required"),
+			/** Explicit timezone value prohibited */
 			PROHIBITED("prohibited"),
+			/** Explicit timezone value optional */
 			OPTIONAL("optional");
 
 			private final String name;
@@ -838,20 +870,21 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 			private static Value getAttrValueAsExplicitTimezone(final Attr attr) {
 				final String value = NodeHelper.collapseWhitespace(attr.getValue());
 				for (final Value e : values()) {
-					if (e.getName().equals(value)) {
+					if (e.name.equals(value)) {
 						return e;
 					}
 				}
 				throw new IllegalArgumentException(value);
 			}
 
+			/** @return The name of this constraining facet explicit timezone */
 			public String getName() {
 				return name;
 			}
 
 			@Override
 			public String toString() {
-				return getName();
+				return name;
 			}
 
 		}
