@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" version="1">
+	<xs:include schemaLocation="second.xsd" />
+	<xs:include schemaLocation="third.xsd" />
+	<xs:simpleType name="First_SimpleType">
+		<xs:restriction base="xs:string" />
+	</xs:simpleType>
+	<xs:complexType name="First_ComplexType">
+		<xs:all>
+			<xs:element name="First_Element" type="xs:unsignedInt" />
+		</xs:all>
+	</xs:complexType>
+</xs:schema>

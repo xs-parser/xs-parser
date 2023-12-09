@@ -119,7 +119,7 @@ public class SchemaTests {
 		final Instant start = Instant.now();
 		final Schema schema = new Schema(new File("src/test/resources/schema/base.xsd"));
 		// Test XPath evaluation
-		final NodeSet schemaRoot = NodeSet.of(NodeSet.DEFAULT_NAMESPACE_CONTEXT, schema);
+		final NodeSet schemaRoot = NodeSet.of(schema);
 		final NodeSet simpleTypes = schemaRoot.xpath("/xs:schema/xs:simpleType");
 		Assert.assertEquals("xs:simpleType", schema.typeDefinitions().stream().filter(SimpleType.class::isInstance).count(), simpleTypes.size());
 		Assert.assertEquals("xs:simpleType", simpleTypes.size(), schemaRoot.xpath("/xs:schema/xs:simpleType").size());

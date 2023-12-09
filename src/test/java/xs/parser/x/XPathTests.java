@@ -32,8 +32,8 @@ public class XPathTests {
 	@Parameters(name = "{0}")
 	public static Collection<Object[]> nodeSetFns() {
 		return Arrays.asList(new Object[][] {
-			{ "Saxon XPath", (Function<Schema, NodeSet>) s -> new SaxonNodeSet(NodeSet.DEFAULT_NAMESPACE_CONTEXT, s) },
-			{ "JAXP XPath", (Function<Schema, NodeSet>) s -> new JaxpNodeSet(NodeSet.DEFAULT_NAMESPACE_CONTEXT, s) }
+			{ "Saxon XPath", (Function<Schema, NodeSet>) s -> new SaxonNodeSet(new NodeSet.DefaultNamespaces(), s) },
+			{ "JAXP XPath", (Function<Schema, NodeSet>) s -> new JaxpNodeSet(new NodeSet.DefaultNamespaces(), s) }
 		});
 	}
 
@@ -140,6 +140,24 @@ public class XPathTests {
 		Assert.assertEquals(schemaCount, n.size());
 		final long uriCount = n.split().map(x -> x.isAtomic() ? x.getStringValue() : x.getSingleNodeValue().getNodeValue()).distinct().count();
 		Assert.assertEquals(schemaCount, uriCount);
+	}
+
+	@Test
+	public void testNoNamespaceIncludes() throws Exception {
+		final Schema schema = new Schema(new File("src/test/resources/no-namespace/first.xsd"));
+		final NodeSet n = nodeSetFn.apply(schema);
+		Assert.assertEquals(3, n.xpath("fn:uri-collection()").size());
+		final NodeSet schemas = n.xpath("fn:collection()/xs:schema");
+		Assert.assertEquals(3, schemas.size());
+		final NodeSet complexTypes = schemas.xpath("xs:complexType");
+		Assert.assertEquals(2, complexTypes.size());
+		final NodeSet simpleTypes = n.xpath("fn:collection()/xs:schema/xs:simpleType");
+		Assert.assertEquals(2, simpleTypes.size());
+		final NodeSet attributes = n.xpath("fn:collection()/xs:schema/xs:attribute");
+		Assert.assertEquals(1, attributes.size());
+		Stream.concat(Stream.concat(complexTypes.split(), simpleTypes.split()), attributes.split()).forEach(s -> {
+			Assert.assertEquals(1, s.xpath("@name").size());
+		});
 	}
 
 }

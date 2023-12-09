@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" version="3">
+	<xs:include schemaLocation="first.xsd" />
+	<xs:attribute name="Third_Attribute">
+		<xs:simpleType>
+			<xs:list itemType="xs:positiveInteger" />
+		</xs:simpleType>
+	</xs:attribute>
+</xs:schema>

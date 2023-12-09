@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" version="2">
+	<xs:include schemaLocation="third.xsd" />
+	<xs:simpleType name="Second_SimpleType">
+		<xs:restriction base="xs:normalizedString" />
+	</xs:simpleType>
+	<xs:complexType name="Second_ComplexType">
+		<xs:all>
+			<xs:element name="Second_Element" type="xs:nonNegativeInteger" />
+		</xs:all>
+	</xs:complexType>
+</xs:schema>

@@ -23,7 +23,8 @@ Unlike other software libraries that attempt to model XML schema documents, `xs-
 
 `xs-parser` requires Java 8 or later and has no third-party dependencies.
 
-If `Saxon-HE` version 10 is detected at runtime on the classpath, then it is used as the XPath and XQuery evaluation engine. When not detected, XQuery evaluation is disabled and the XPath engine defaults to the JAXP XPath 1.0 implementation. `Saxon-HE` version 11+ is not supported at this time.
+If an implementation of Saxon, such as `net.sf.Saxon-HE`, version 9+ is detected at runtime on the classpath, then it is used as the XPath, XQuery, and XSLT engine.
+When not detected, XSLT and XQuery evaluation are disabled and the XPath engine defaults to the JAXP XPath 1.0 implementation provided by the Java Platform.
 
 # Usage
 
@@ -39,7 +40,7 @@ repositories {
 }
 
 dependencies {
-	implementation 'io.github.xs-parser:xs-parser:2.+'
+	implementation 'io.github.xs-parser:xs-parser:2.1'
 }
 ```
 

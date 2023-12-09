@@ -3,6 +3,7 @@ package xs.parser.x;
 import java.util.*;
 import java.util.function.*;
 import java.util.stream.*;
+import javax.xml.*;
 import javax.xml.namespace.*;
 import net.sf.saxon.dom.*;
 import net.sf.saxon.expr.*;
@@ -34,7 +35,7 @@ final class SaxonNodeSet extends NodeSet {
 
 		@Override
 		public Iterator<String> getResourceURIs(final XPathContext context) throws XPathException {
-			return xdmValue.stream().filter(XdmItem::isNode).map(i -> ((NodeInfo) i.getUnderlyingValue()).getSystemId()).iterator();
+			return xdmValue.stream().filter(SaxonNodeSet::isNode).map(i -> ((NodeInfo) i.getUnderlyingValue()).getSystemId()).iterator();
 		}
 
 		@Override
@@ -43,11 +44,16 @@ final class SaxonNodeSet extends NodeSet {
 
 				@Override
 				public String getResourceURI() {
-					return x.isNode() ? ((NodeInfo) x.getUnderlyingValue()).getSystemId() : null;
+					return isNode(x) ? ((NodeInfo) x.getUnderlyingValue()).getSystemId() : null;
+				}
+
+				@SuppressWarnings("unused") // Backwards compatibility with Saxon 9-10
+				public Item getItem(final XPathContext context) throws XPathException {
+					return getItem();
 				}
 
 				@Override
-				public Item getItem(final XPathContext context) throws XPathException {
+				public Item getItem() throws XPathException {
 					return x.getUnderlyingValue();
 				}
 
@@ -64,7 +70,7 @@ final class SaxonNodeSet extends NodeSet {
 			return true;
 		}
 
-		@Override
+		@SuppressWarnings("unused") // Backwards compatibility with Saxon 9-10
 		public boolean stripWhitespace(final SpaceStrippingRule rules) {
 			return false;
 		}
@@ -114,28 +120,43 @@ final class SaxonNodeSet extends NodeSet {
 	}
 
 	SaxonNodeSet(final NamespaceContext namespaceContext, final Node node) {
-		this(namespaceContext, new LinkedHashMap<>(), "", node.getOwnerDocument().getDocumentURI(), wrap(node), new DefaultCollection(wrap(node), NodeHelper.ownerDocument(node).getDocumentURI()));
+		this(namespaceContext, new LinkedHashMap<>(), "", node.getOwnerDocument().getDocumentURI(), clearDocumentUri(node), new DefaultCollection(wrap(node), NodeHelper.ownerDocument(node).getDocumentURI()));
 	}
 
 	SaxonNodeSet(final NamespaceContext namespaceContext, final Schema schema) {
-		this(namespaceContext, new LinkedHashMap<>(), "", NodeHelper.ownerDocument(schema).getDocumentURI(), wrap(NodeHelper.ownerDocument(schema)), new DefaultCollection(wrap(schema), NodeHelper.ownerDocument(schema).getDocumentURI()));
+		this(namespaceContext, new LinkedHashMap<>(), "", NodeHelper.ownerDocument(schema).getDocumentURI(), clearDocumentUri(NodeHelper.ownerDocument(schema)), new DefaultCollection(wrap(schema), NodeHelper.ownerDocument(schema).getDocumentURI()));
+	}
+
+	private static boolean isNode(final XdmItem xdmItem) {
+		return xdmItem.getUnderlyingValue() instanceof NodeInfo;
 	}
 
 	private static String getUri(final XdmValue xdmValue, final String fallbackUri) {
-		Objects.requireNonNull(fallbackUri);
-		if (fallbackUri.isEmpty()) {
-			throw new IllegalArgumentException(fallbackUri);
-		}
 		if (xdmValue instanceof XdmNode) {
 			return ((XdmNode) xdmValue).getUnderlyingNode().getSystemId();
 		}
-		final String uri = xdmValue.stream().filter(XdmItem::isNode).map(x -> ((NodeInfo) x.getUnderlyingValue()).getSystemId()).findFirst().orElse(null);
-		return uri == null || uri.isEmpty() ? fallbackUri : uri;
+		final String uri = xdmValue.stream().filter(SaxonNodeSet::isNode).map(x -> ((NodeInfo) x.getUnderlyingValue()).getSystemId()).findFirst().orElse(null);
+		if (uri == null || uri.isEmpty()) {
+			if (fallbackUri == null || fallbackUri.isEmpty()) {
+				throw new IllegalArgumentException("URI cannot be null or empty");
+			}
+			return fallbackUri;
+		}
+		return uri;
 	}
 
 	private static XdmNode wrap(final Node node) {
 		final XdmNode xdmNode = documentBuilder.wrap(node);
-		xdmNode.getUnderlyingValue().getRoot().setSystemId(NodeHelper.ownerDocument(node).getDocumentURI());
+		final NodeInfo root = xdmNode.getUnderlyingValue().getRoot();
+		final Document document = NodeHelper.ownerDocument(node);
+		String documentUri = document.getDocumentURI();
+		if (documentUri == null) {
+			documentUri = "";
+			document.setDocumentURI(documentUri);
+		}
+		(root instanceof DOMNodeWrapper
+				? ((DOMNodeWrapper) root).getTreeInfo()
+				: root).setSystemId(documentUri);
 		return xdmNode;
 	}
 
@@ -147,6 +168,15 @@ final class SaxonNodeSet extends NodeSet {
 		}
 	}
 
+	private static XdmNode clearDocumentUri(final Node node) {
+		final Document document = NodeHelper.ownerDocument(node);
+		final String documentUri = document.getDocumentURI();
+		document.setDocumentURI(null);
+		final XdmNode xdmNode = wrap(node);
+		document.setDocumentURI(documentUri);
+		return xdmNode;
+	}
+
 	private XdmAtomicValue getAtomicValue() {
 		if (underlyingValue instanceof XdmAtomicValue) {
 			return (XdmAtomicValue) underlyingValue;
@@ -156,16 +186,16 @@ final class SaxonNodeSet extends NodeSet {
 	}
 
 	private void registerNamespaces(final BiConsumer<String, String> declareNamespace) {
-		if (namespaceContext instanceof Iterable) {
-			final Iterable<?> namespaces = (Iterable<?>) namespaceContext;
-			for (final Object nsPair : namespaces) {
-				if (nsPair instanceof Map.Entry) {
-					final Map.Entry<?, ?> e = (Map.Entry<?, ?>) nsPair;
-					declareNamespace.accept(e.getKey().toString(), e.getValue().toString());
-				} else {
-					throw new IllegalStateException("Unsupported " + (nsPair != null ? nsPair.getClass() : "null"));
+		if (namespaceContext instanceof Namespaces) {
+			final Namespaces namespaces = (Namespaces) namespaceContext;
+			namespaces.getPrefixes().forEachRemaining(prefix -> {
+				final String namespaceUri = namespaces.getNamespaceURI(prefix);
+				if (!XMLConstants.XMLNS_ATTRIBUTE.equals(prefix)
+						&& !XMLConstants.XMLNS_ATTRIBUTE_NS_URI.equals(namespaceUri)
+						&& (!XMLConstants.XML_NS_PREFIX.equals(prefix) || XMLConstants.XML_NS_URI.equals(namespaceUri))) {
+					declareNamespace.accept(prefix, namespaceUri);
 				}
-			}
+			});
 		}
 	}
 
@@ -193,7 +223,7 @@ final class SaxonNodeSet extends NodeSet {
 								final XPathSelector xpathSelector = xpathExpr.load();
 								try {
 									xpathSelector.setContextItem(x);
-									return xpathSelector.evaluate().stream().map(a -> a); // coerce to Stream
+									return xpathSelector.evaluate().stream();
 								} catch (final SaxonApiException e) {
 									throw new SaxonApiUncheckedException(e);
 								}
@@ -235,7 +265,7 @@ final class SaxonNodeSet extends NodeSet {
 								final XQueryEvaluator xquery = xqueryExec.load();
 								try {
 									xquery.setContextItem(x);
-									return xquery.evaluate().stream().map(a -> a); // coerce to Stream
+									return xquery.evaluate().stream();
 								} catch (final SaxonApiException e) {
 									throw new SaxonApiUncheckedException(e);
 								}
@@ -243,7 +273,7 @@ final class SaxonNodeSet extends NodeSet {
 				}
 				final DefaultCollection newDefaultCollection = new DefaultCollection(result, getUri(result, uri));
 				return new SaxonNodeSet(namespaceContext, queryResultCache, expr, newDefaultCollection.getCollectionURI(), result, newDefaultCollection);
-			} catch (final net.sf.saxon.s9api.SaxonApiException e) {
+			} catch (final SaxonApiException e) {
 				throw new SaxonApiUncheckedException(e);
 			}
 		});
@@ -318,7 +348,7 @@ final class SaxonNodeSet extends NodeSet {
 			throw IS_ATOMIC_EXCEPTION.get();
 		}
 		return ((XdmValue) underlyingValue).stream()
-				.filter(XdmItem::isNode)
+				.filter(SaxonNodeSet::isNode)
 				.map(x -> NodeOverNodeInfo.wrap((NodeInfo) x.getUnderlyingValue()));
 	}
 

@@ -1,5 +1,8 @@
 package xs.parser.internal.util;
 
+import java.text.*;
+import java.util.*;
+
 public final class Reporting {
 
 	private static final int SILENT = 0;
@@ -21,11 +24,11 @@ public final class Reporting {
 
 	private Reporting() { }
 
-	public static void report(final String message, final Exception e) {
+	public static void report(final String message, final Throwable t) {
 		if (REPORTING_LEVEL >= DEFAULT) {
-			System.err.println(message);
+			System.err.println("[xs-parser " + new SimpleDateFormat("hh:mm:ss").format(new Date()) + "] " + message);
 			if (REPORTING_LEVEL >= STACKTRACE) {
-				e.printStackTrace(System.err);
+				t.printStackTrace(System.err);
 			}
 		}
 	}

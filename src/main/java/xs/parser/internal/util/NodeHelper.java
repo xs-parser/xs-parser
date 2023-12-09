@@ -19,7 +19,7 @@ import xs.parser.Element;
 import xs.parser.Notation;
 
 /**
- * Utility class for {@link org.w3c.dom.Node}
+ * Utility class for {@link Node}
  */
 public final class NodeHelper {
 

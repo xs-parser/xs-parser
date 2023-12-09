@@ -25,60 +25,6 @@ import xs.parser.internal.util.*;
  */
 public abstract class NodeSet implements Iterable<NodeSet> {
 
-	private static final class Namespaces implements Iterable<Map.Entry<String, String>>, NamespaceContext {
-
-		private final Map<String, String> prefixToNamespaceUri = new HashMap<>();
-		private final Map<String, String> namespaceUriToPrefix = new HashMap<>();
-
-		private Namespaces() {
-			put(XMLConstants.DEFAULT_NS_PREFIX, XMLConstants.NULL_NS_URI);
-			put(XMLConstants.XML_NS_PREFIX, XMLConstants.XML_NS_URI);
-			put(XMLConstants.XMLNS_ATTRIBUTE, XMLConstants.XMLNS_ATTRIBUTE_NS_URI);
-			put("xs", XMLConstants.W3C_XML_SCHEMA_NS_URI);
-			put("fn", "http://www.w3.org/2005/xpath-functions");
-			put("math", "http://www.w3.org/2005/xpath-functions/math");
-			put("map", "http://www.w3.org/2005/xpath-functions/map");
-			put("array", "http://www.w3.org/2005/xpath-functions/array");
-		}
-
-		private void put(final String prefix, final String namespaceUri) {
-			prefixToNamespaceUri.put(prefix, namespaceUri);
-			namespaceUriToPrefix.put(namespaceUri, prefix);
-		}
-
-		@Override
-		public String getNamespaceURI(final String prefix) {
-			if (prefix == null) {
-				throw new IllegalArgumentException(); // per Javadoc
-			}
-			return prefixToNamespaceUri.get(prefix);
-		}
-
-		@Override
-		public String getPrefix(final String namespaceURI) {
-			if (namespaceURI == null) {
-				throw new IllegalArgumentException(); // per Javadoc
-			}
-			return namespaceUriToPrefix.get(namespaceURI);
-		}
-
-		@Override
-		public Iterator<String> getPrefixes(final String namespaceURI) {
-			final String prefix = getPrefix(namespaceURI);
-			return prefix == null
-					? Collections.emptyIterator()
-					: Collections.singleton(prefix).iterator();
-		}
-
-		@Override
-		public Iterator<Map.Entry<String, String>> iterator() {
-			return prefixToNamespaceUri.entrySet().stream()
-					.filter(e -> !XMLConstants.XMLNS_ATTRIBUTE.equals(e.getKey()))
-					.iterator();
-		}
-
-	}
-
 	protected abstract class BaseSpliterator<T extends Spliterator<NodeSet>> implements Spliterator<NodeSet> {
 
 		protected int position;
@@ -145,8 +91,19 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 
 	}
 
-	protected static final Supplier<IllegalStateException> IS_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + false + " to invoke this method");
-	protected static final Supplier<IllegalStateException> IS_NOT_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + true + " to invoke this method");
+	/**
+	 * The interface required for custom namespace mappings for Saxon.
+	 */
+	public interface Namespaces extends NamespaceContext {
+
+		/**
+		 * Returns all prefixes bound to namespace URIs.
+		 * @return all prefixes bound to namespace URIs
+		 */
+		public Iterator<String> getPrefixes();
+
+	}
+
 	/**
 	 * The default namespace context for evaluation of XPath and XQuery expressions.
 	 * <p>
@@ -184,7 +141,69 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	 *   </tbody>
 	 * </table>
 	 */
-	public static final NamespaceContext DEFAULT_NAMESPACE_CONTEXT = new Namespaces();
+	public static final class DefaultNamespaces implements Namespaces {
+
+		private final Map<String, String> prefixToNamespaceUri = new HashMap<>();
+		private final Map<String, String> namespaceUriToPrefix = new HashMap<>();
+
+		/**
+		 * Creates a new namespace context with the entries described above.
+		 */
+		public DefaultNamespaces() {
+			put(XMLConstants.DEFAULT_NS_PREFIX, XMLConstants.NULL_NS_URI);
+			put(XMLConstants.XML_NS_PREFIX, XMLConstants.XML_NS_URI);
+			put(XMLConstants.XMLNS_ATTRIBUTE, XMLConstants.XMLNS_ATTRIBUTE_NS_URI);
+			put("xs", XMLConstants.W3C_XML_SCHEMA_NS_URI);
+			put("fn", "http://www.w3.org/2005/xpath-functions");
+			put("math", "http://www.w3.org/2005/xpath-functions/math");
+			put("map", "http://www.w3.org/2005/xpath-functions/map");
+			put("array", "http://www.w3.org/2005/xpath-functions/array");
+		}
+
+		/**
+		 * Puts a new entry of the given namespace prefix and URI.
+		 * @param prefix The namespace prefix
+		 * @param namespaceUri The namespace URI
+		 */
+		public void put(final String prefix, final String namespaceUri) {
+			prefixToNamespaceUri.put(prefix, namespaceUri);
+			namespaceUriToPrefix.put(namespaceUri, prefix);
+		}
+
+		@Override
+		public String getNamespaceURI(final String prefix) {
+			if (prefix == null) {
+				throw new IllegalArgumentException(); // per Javadoc
+			}
+			return prefixToNamespaceUri.get(prefix);
+		}
+
+		@Override
+		public String getPrefix(final String namespaceURI) {
+			if (namespaceURI == null) {
+				throw new IllegalArgumentException(); // per Javadoc
+			}
+			return namespaceUriToPrefix.get(namespaceURI);
+		}
+
+		@Override
+		public Iterator<String> getPrefixes(final String namespaceURI) {
+			final String prefix = getPrefix(namespaceURI);
+			return prefix == null
+					? Collections.emptyIterator()
+					: Collections.singleton(prefix).iterator();
+		}
+
+		@Override
+		public Iterator<String> getPrefixes() {
+			return prefixToNamespaceUri.keySet().iterator();
+		}
+
+	}
+
+	private static final Namespaces DEFAULT_NAMESPACES = new DefaultNamespaces();
+	protected static final Supplier<IllegalStateException> IS_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + false + " to invoke this method");
+	protected static final Supplier<IllegalStateException> IS_NOT_ATOMIC_EXCEPTION = () -> new IllegalStateException("isAtomic() must be " + true + " to invoke this method");
 
 	protected final Map<Query, NodeSet> queryResultCache;
 	protected final NamespaceContext namespaceContext;
@@ -221,12 +240,12 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	}
 
 	/**
-	 * Returns a new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and node.
+	 * Returns a new {@code NodeSet} with the {@link DefaultNamespaces} and node.
 	 * @param node The node
-	 * @return A new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and node
+	 * @return A new {@code NodeSet} with the {@link DefaultNamespaces} and node
 	 */
 	public static NodeSet of(final Node node) {
-		return of(DEFAULT_NAMESPACE_CONTEXT, node);
+		return of(DEFAULT_NAMESPACES, node);
 	}
 
 	/**
@@ -242,12 +261,12 @@ public abstract class NodeSet implements Iterable<NodeSet> {
 	}
 
 	/**
-	 * Returns a new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and schema.
+	 * Returns a new {@code NodeSet} with the {@link DefaultNamespaces} and schema.
 	 * @param schema The schema
-	 * @return A new {@code NodeSet} with the {@link #DEFAULT_NAMESPACE_CONTEXT} and schema
+	 * @return A new {@code NodeSet} with the {@link DefaultNamespaces} and schema
 	 */
 	public static NodeSet of(final Schema schema) {
-		return of(DEFAULT_NAMESPACE_CONTEXT, schema);
+		return of(DEFAULT_NAMESPACES, schema);
 	}
 
 	/**

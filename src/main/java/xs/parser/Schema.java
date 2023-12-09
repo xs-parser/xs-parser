@@ -321,7 +321,7 @@ public class Schema implements AnnotatedComponent {
 				.elements(0, 1, TagParser.ANNOTATION);
 		private static final String RESOURCE_PATH = "xs/parser/";
 		// Stylesheet for Chameleon Inclusion (F.1)
-		private static final Object f1Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "F-1.xsl")));
+		private static final Object f1Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(RESOURCE_PATH + "F-1.xsl")), "F.1");
 
 		private final Schema schema;
 		private final Node node;
@@ -395,14 +395,14 @@ public class Schema implements AnnotatedComponent {
 				} catch (final URISyntaxException e) {
 					throw new ParseException(node, e);
 				}
-				return SaxonProcessor.transform(f1Xslt, resolvedDocument, params, null);
+				return SaxonProcessor.transform(f1Xslt, resolvedDocument, params, null, "chameleon inclusion (F.1)");
 			}
 			return resolvedDocument;
 		}
 
-		Document transformDocument(final Document doc) {
+		Document transformDocument(final Document document) {
 			// Overridden by xs:override & xs:redefine
-			return doc;
+			return document;
 		}
 
 		AnnotationSet annotations() {
@@ -436,7 +436,7 @@ public class Schema implements AnnotatedComponent {
 				.optionalAttributes(AttrParser.ID)
 				.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP, TagParser.ELEMENT, TagParser.ATTRIBUTE, TagParser.NOTATION);
 		// Stylesheet for xs:override (F.2)
-		private static final Object f2Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(Include.RESOURCE_PATH + "F-2.xsl")));
+		private static final Object f2Xslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(Include.RESOURCE_PATH + "F-2.xsl")), "F.2");
 
 		private Overrides(final Schema schema, final Node node, final AnnotationSet annotations, final String schemaLocation) {
 			super(schema, node, annotations, schemaLocation);
@@ -449,11 +449,11 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		@Override
-		Document transformDocument(final Document doc) {
+		Document transformDocument(final Document document) {
 			final Map<String, Object> params = new HashMap<>();
 			params.put("overrideElement", node());
-			params.put("overriddenSchema", doc.getDocumentElement());
-			return SaxonProcessor.transform(f2Xslt, doc, params, "perform-override");
+			params.put("overriddenSchema", document.getDocumentElement());
+			return SaxonProcessor.transform(f2Xslt, document, params, "perform-override", "xs:override (F.2)");
 		}
 
 	}
@@ -475,7 +475,7 @@ public class Schema implements AnnotatedComponent {
 				.optionalAttributes(AttrParser.ID)
 				.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP);
 		// Stylesheet for xs:redefine
-		private static final Object redefineXslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(Include.RESOURCE_PATH + "xs-redefine.xsl")));
+		private static final Object redefineXslt = SaxonProcessor.compileTemplate(new StreamSource(Include.class.getClassLoader().getResourceAsStream(Include.RESOURCE_PATH + "xs-redefine.xsl")), "xs:redefine");
 
 		private Redefine(final Schema schema, final Node node, final AnnotationSet annotations, final String schemaLocation) {
 			super(schema, node, annotations, schemaLocation, false);
@@ -488,11 +488,11 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		@Override
-		Document transformDocument(final Document doc) {
+		Document transformDocument(final Document document) {
 			final Map<String, Object> params = new HashMap<>();
 			params.put("redefineElement", node());
-			params.put("redefinedSchema", doc.getDocumentElement());
-			return SaxonProcessor.transform(redefineXslt, doc, params, "perform-redefine");
+			params.put("redefinedSchema", document.getDocumentElement());
+			return SaxonProcessor.transform(redefineXslt, document, params, "perform-redefine", "xs:redefine");
 		}
 
 	}
@@ -1099,40 +1099,40 @@ public class Schema implements AnnotatedComponent {
 		final URI resourceUri = resolver.resolveUri(document.getDocumentURI(), namespace, schemaLocation);
 		final URI normalizedResourceUri = resourceUri != null ? resourceUri.normalize() : null;
 		final Map.Entry<String, URI> key = new SimpleImmutableEntry<>(namespace, normalizedResourceUri);
-		Document doc = null;
+		Document document = null;
 		final Consumer<Exception> reportException = e -> Reporting.report("Could not resolve schema with " + (namespace != null ? "namespace " + NodeHelper.toStringNamespace(namespace) : "") + (schemaLocation != null ? (namespace != null ? " and " : "") + "schemaLocation " + schemaLocation : ""), e);
 		if (cache) {
 			synchronized (schemaDocumentCache) {
-				doc = schemaDocumentCache.get(key);
-				if (doc == null) {
+				document = schemaDocumentCache.get(key);
+				if (document == null) {
 					try {
-						doc = resolver.resolve(normalizedResourceUri);
+						document = resolver.resolve(normalizedResourceUri);
 					} catch (final Exception e) {
 						reportException.accept(e);
 						throw e;
 					}
-					if (doc != null) {
-						schemaDocumentCache.put(key, doc);
+					if (document != null) {
+						schemaDocumentCache.put(key, document);
 					}
 				}
 			}
 		} else {
 			try {
-				doc = resolver.resolve(normalizedResourceUri);
+				document = resolver.resolve(normalizedResourceUri);
 			} catch (final Exception e) {
 				reportException.accept(e);
 				throw e;
 			}
 		}
-		if (doc == null) {
+		if (document == null) {
 			return Schema.EMPTY;
 		}
 		synchronized (schemaCache) {
-			final Schema schema = schemaCache.get(doc);
+			final Schema schema = schemaCache.get(document);
 			if (schema != null) {
 				return schema;
 			}
-			return new Schema(parent, documentResolver(), namespaceContext(), doc, schemaLocation != null ? schemaLocation : doc.getDocumentURI(), schemaDocumentCache, schemaCache);
+			return new Schema(parent, documentResolver(), namespaceContext(), document, schemaLocation != null ? schemaLocation : document.getDocumentURI(), schemaDocumentCache, schemaCache);
 		}
 	}
 

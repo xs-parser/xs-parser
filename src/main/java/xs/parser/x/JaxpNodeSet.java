@@ -60,12 +60,12 @@ final class JaxpNodeSet extends NodeSet {
 							if (defaultCollection != null) {
 								return new NodeList() {
 
-									final Document doc = NodeHelper.newDocument();
+									final Document document = NodeHelper.newDocument();
 
 									@Override
 									public Node item(final int index) {
-										final String docUri = NodeHelper.ownerDocument(defaultCollection.item(index)).getDocumentURI();
-										return doc.createTextNode(docUri);
+										final String documentUri = NodeHelper.ownerDocument(defaultCollection.item(index)).getDocumentURI();
+										return document.createTextNode(documentUri);
 									}
 
 									@Override
