@@ -174,11 +174,10 @@ public class Attribute implements AnnotatedComponent {
 			throw new IllegalArgumentException(value);
 		}
 
-		/** @return The name of this attribute use */
-		public String getName() {
-			return name;
-		}
-
+		/**
+		 * Returns the name of this attribute use, i.e. {@code "required"}, {@code "optional"}, or {@code "prohibited"} as appropriate.
+		 * @return The name of this attribute use
+		 */
 		@Override
 		public String toString() {
 			return name;

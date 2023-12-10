@@ -386,11 +386,10 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 				throw new IllegalArgumentException(value);
 			}
 
-			/** @return The name of this constraining facet white space */
-			public String getName() {
-				return name;
-			}
-
+			/**
+			 * Returns the name of this constraining facet white space, i.e. {@code "preserve"}, {@code "replace"}, or {@code "collapse"} as appropriate.
+			 * @return The name of this constraining facet white space
+			 */
 			@Override
 			public String toString() {
 				return name;
@@ -877,11 +876,10 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 				throw new IllegalArgumentException(value);
 			}
 
-			/** @return The name of this constraining facet explicit timezone */
-			public String getName() {
-				return name;
-			}
-
+			/**
+			 * Returns the name of this constraining facet explicit timezone, i.e. {@code "required"}, {@code "prohibited"}, or {@code "optional"} as appropriate.
+			 * @return The name of this constraining facet explicit timezone
+			 */
 			@Override
 			public String toString() {
 				return name;

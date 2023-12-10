@@ -531,11 +531,10 @@ public class ComplexType implements TypeDefinition {
 				return mode;
 			}
 
-			/** @return The name of this complex type open content mode */
-			public String getName() {
-				return name;
-			}
-
+			/**
+			 * Returns the name of this complex type open content mode, i.e. {@code "none"}, {@code "interleave"}, or {@code "suffix"} as appropriate.
+			 * @return The name of this complex type open content mode
+			 */
 			@Override
 			public String toString() {
 				return name;

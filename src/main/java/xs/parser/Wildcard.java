@@ -379,11 +379,10 @@ public interface Wildcard extends Term {
 			throw new IllegalArgumentException(value);
 		}
 
-		/** @return The name of this wildcard process contents */
-		public String getName() {
-			return name;
-		}
-
+		/**
+		 * Returns the name of this wildcard process contents, i.e. {@code "lax"}, {@code "skip"}, or {@code "strict"} as appropriate.
+		 * @return The name of this wildcard process contents
+		 */
 		@Override
 		public String toString() {
 			return name;

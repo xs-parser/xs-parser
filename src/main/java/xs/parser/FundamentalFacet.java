@@ -53,11 +53,10 @@ public abstract class FundamentalFacet implements SchemaComponent {
 				this.name = name;
 			}
 
-			/** @return The name of this fundamental facet ordered */
-			public String getName() {
-				return name;
-			}
-
+			/**
+			 * Returns the name of the fundamental facet ordered, i.e. {@code "false"}, {@code "partial"}, or {@code "total"} as appropriate.
+			 * @return The name of this fundamental facet ordered
+			 */
 			@Override
 			public String toString() {
 				return name;
@@ -155,11 +154,10 @@ public abstract class FundamentalFacet implements SchemaComponent {
 				this.name = name;
 			}
 
-			/** @return The name of this fundamental facet cardinality */
-			public String getName() {
-				return name;
-			}
-
+			/**
+			 * Returns the name of this fundamental facet cardinality, i.e. {@code "finite"} or {@code "countably infinite"} as appropriate.
+			 * @return The name of this fundamental facet cardinality
+			 */
 			@Override
 			public String toString() {
 				return name;

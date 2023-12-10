@@ -65,11 +65,10 @@ public interface TypeDefinition extends AnnotatedComponent {
 			throw new IllegalArgumentException(name);
 		}
 
-		/** @return The name of this type definition final */
-		public String getName() {
-			return name;
-		}
-
+		/**
+		 * Returns the name of this type definition final, i.e. {@code ""}, {@code "extension"}, {@code "restriction"}, {@code "list"}, {@code "union"}, or {@code "#all"} as appropriate.
+		 * @return The name of this type definition final
+		 */
 		@Override
 		public String toString() {
 			return name;

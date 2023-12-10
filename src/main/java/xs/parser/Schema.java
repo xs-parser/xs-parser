@@ -146,11 +146,10 @@ public class Schema implements AnnotatedComponent {
 			throw new IllegalArgumentException(name);
 		}
 
-		/** @return The name of this schema block */
-		public String getName() {
-			return name;
-		}
-
+		/**
+		 * Returns the name of this schema block, i.e. {@code ""}, {@code "extension"}, {@code "restriction"}, {@code "substitution"}, or {@code "#all"} as appropriate.
+		 * @return The name of this schema block
+		 */
 		@Override
 		public String toString() {
 			return name;
@@ -182,11 +181,10 @@ public class Schema implements AnnotatedComponent {
 			throw new IllegalArgumentException(value);
 		}
 
-		/** @return The name of this schema form */
-		public String getName() {
-			return name;
-		}
-
+		/**
+		 * Returns the name of this schema form, i.e. {@code "unqualified"} or {@code "qualified"} as appropriate.
+		 * @return The name of this schema form
+		 */
 		@Override
 		public String toString() {
 			return name;
