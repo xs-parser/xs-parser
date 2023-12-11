@@ -1,6 +1,6 @@
 # Description
 
-`xs-parser` is a Java software library that represents the object model described in the W3C XML Schema Definition Language (XSD) 1.1 Part 1 (https://www.w3.org/TR/xmlschema11-1/) and Part 2 (https://www.w3.org/TR/xmlschema11-2/).
+`xs-parser` is a Java software library that represents the object model described in the [W3C XML Schema Definition Language (XSD) 1.1 Part 1: Structures](https://www.w3.org/TR/xmlschema11-1/) and [Part 2: Datatypes](https://www.w3.org/TR/xmlschema11-2/).
 
 ![Build](https://github.com/xs-parser/xs-parser/workflows/Build/badge.svg)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=xs-parser_xs-parser&metric=coverage)](https://sonarcloud.io/dashboard?id=xs-parser_xs-parser)
@@ -23,8 +23,10 @@ Unlike other software libraries that attempt to model XML schema documents, `xs-
 
 `xs-parser` requires Java 8 or later and has no third-party dependencies.
 
-If an implementation of Saxon, such as `net.sf.Saxon-HE`, version 9+ is detected at runtime on the classpath, then it is used as the XPath, XQuery, and XSLT engine.
+If Saxon, i.e. `net.sf.saxon:Saxon-HE`, version 9+ is detected on the classpath at runtime, then it is used as the XPath, XQuery, and XSLT engine.
 When not detected, XSLT and XQuery evaluation are disabled and the XPath engine defaults to the JAXP XPath 1.0 implementation provided by the Java Platform.
+
+[Chameleon inclusion](https://www.w3.org/TR/xmlschema11-1/#chameleon-xslt), [`xs:override`](https://www.w3.org/TR/xmlschema11-1/#override-xslt), and [`xs:redefine`](https://www.w3.org/TR/xmlschema11-1/#modify-schema) are implemented with XSLT templates, and are therefore non-functional when Saxon is not present on the classpath.
 
 # Usage
 
@@ -58,7 +60,7 @@ public class Runner {
 		final Schema schema = new Schema(new File("/path/to/schema.xsd"));
 		schema.typeDefinitions().forEach(t ->
 			System.out.println((t instanceof ComplexType ? "Complex" : "Simple")
-				+ "Type definition: " + t.name()));
+					+ "Type definition: " + t.name()));
 		schema.attributeDeclarations().forEach(a ->
 			System.out.println("Attribute declaration: " + a.name()));
 	}

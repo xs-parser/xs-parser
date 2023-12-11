@@ -12,16 +12,16 @@ public class IncludeTests {
 	public void testIncludeFileMultipleTimes() throws Exception {
 		final DocumentResolver resolver = Utilities.stringResolver(Utilities.PROLOG_UTF8
 				+ "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">"
-				+ "<xs:simpleType name=\"A\">"
-				+ "<xs:restriction base=\"xs:string\"/>"
-				+ "</xs:simpleType>"
+				+ "  <xs:simpleType name=\"A\">"
+				+ "    <xs:restriction base=\"xs:string\"/>"
+				+ "  </xs:simpleType>"
 				+ "</xs:schema>");
 		final Schema schema = new Schema(resolver,
 				Utilities.stringToDocument(
 						Utilities.PROLOG_UTF8
 						+ "<xs:schema xmlns:test=\"https://my.test\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" elementFormDefault=\"qualified\" attributeFormDefault=\"unqualified\" targetNamespace=\"https://my.test\">"
-						+ "<xs:include schemaLocation=\"./Test.xsd\"/>"
-						+ "<xs:include schemaLocation=\"Test.xsd\"/>"
+						+ "  <xs:include schemaLocation=\"./Test.xsd\"/>"
+						+ "  <xs:include schemaLocation=\"Test.xsd\"/>"
 						+ "</xs:schema>"
 				));
 		Assert.assertEquals(1, schema.typeDefinitions().size());
@@ -36,16 +36,16 @@ public class IncludeTests {
 	public void testIncludeSameFileWithDifferentNamesFails() throws Exception {
 		final DocumentResolver resolver = Utilities.stringResolver(Utilities.PROLOG_UTF8
 				+ "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\">"
-				+ "<xs:simpleType name=\"A\">"
-				+ "<xs:restriction base=\"xs:string\"/>"
-				+ "</xs:simpleType>"
+				+ "  <xs:simpleType name=\"A\">"
+				+ "    <xs:restriction base=\"xs:string\"/>"
+				+ "  </xs:simpleType>"
 				+ "</xs:schema>");
 		final Schema schema = new Schema(resolver,
 				Utilities.stringToDocument(
 						Utilities.PROLOG_UTF8
 						+ "<xs:schema xmlns:test=\"https://my.test\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" elementFormDefault=\"qualified\" attributeFormDefault=\"unqualified\">"
-						+ "<xs:include schemaLocation=\"./Test.xsd\"/>"
-						+ "<xs:include schemaLocation=\"Test2.xsd\"/>"
+						+ "  <xs:include schemaLocation=\"./Test.xsd\"/>"
+						+ "  <xs:include schemaLocation=\"Test2.xsd\"/>"
 						+ "</xs:schema>"
 				));
 		Assert.assertThrows(ParseException.class, schema.typeDefinitions()::getFirst); // Force lazy evaluation
