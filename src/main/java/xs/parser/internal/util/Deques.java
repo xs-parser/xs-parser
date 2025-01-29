@@ -227,17 +227,16 @@ public final class Deques {
 				return true;
 			} else if (other instanceof Deque) {
 				final Deque<?> d2 = (Deque<?>) other;
-				if (d2.size() != d.size()) {
-					return false;
-				}
-				final Iterator<?> iter = d.iterator();
-				final Iterator<?> iter2 = d2.iterator();
-				while (iter.hasNext()) {
-					if (!iter2.hasNext() || !Objects.equals(iter.next(), iter2.next())) {
-						return false;
+				if (d2.size() == d.size()) {
+					final Iterator<?> iter = d.iterator();
+					final Iterator<?> iter2 = d2.iterator();
+					while (iter.hasNext()) {
+						if (!iter2.hasNext() || !Objects.equals(iter.next(), iter2.next())) {
+							return false;
+						}
 					}
+					return !iter2.hasNext();
 				}
-				return !iter2.hasNext();
 			}
 			return false;
 		}

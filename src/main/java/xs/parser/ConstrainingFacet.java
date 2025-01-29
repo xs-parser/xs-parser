@@ -963,7 +963,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 		final Constructible fractionDigits0Fixed = s -> new FractionDigits(s, createSynthetic(Names.FRACTION_DIGITS, BigInteger.ZERO), Deques.emptyDeque(), true, BigInteger.ZERO);
 		final String integerPatternValue = "[\\-+]?[0-9]+";
 		final Constructible integerPattern = s -> new Pattern(s, createSynthetic(Names.PATTERN, integerPatternValue), Deques.emptyDeque(), Collections.singleton(integerPatternValue));
-		df.put(SimpleType.INTEGER_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, TotalDigits.class, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinInclusive.class, MaxExclusive.class, Assertions.class)); // 3.4.13
+		df.put(SimpleType.INTEGER_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, TotalDigits.class, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.13
 		final Constructible maxInclusive0 = s -> new MaxInclusive(s, createSynthetic(Names.MAX_INCLUSIVE, BigInteger.ZERO), Deques.emptyDeque(), null, () -> BigInteger.ZERO);
 		df.put(SimpleType.NONPOSITIVEINTEGER_NAME, asDeque(fractionDigits0Fixed, collapseFixed, integerPattern, maxInclusive0, TotalDigits.class, Enumeration.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.14
 		final BigInteger neg1 = BigInteger.ONE.negate();
@@ -1013,6 +1013,11 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 		df.put(SimpleType.DAYTIMEDURATION_NAME, asDeque(collapseFixed, dayTimeDurationPattern, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.27
 		final Constructible dateTimeStampETZFixed = s -> new ExplicitTimezone(s, createSynthetic(Names.EXPLICIT_TIMEZONE, ExplicitTimezone.Value.REQUIRED), Deques.emptyDeque(), true, ExplicitTimezone.Value.REQUIRED);
 		df.put(SimpleType.DATETIMESTAMP_NAME, asDeque(collapseFixed, dateTimeStampETZFixed, Pattern.class, Enumeration.class, MaxInclusive.class, MaxExclusive.class, MinInclusive.class, MinExclusive.class, Assertions.class)); // 3.4.28
+		df.forEach((k, v) -> {
+			if (v.stream().distinct().count() != v.size()) {
+				throw new AssertionError(v.toString());
+			}
+		});
 		defaultFacets = Collections.unmodifiableMap(df);
 	}
 
