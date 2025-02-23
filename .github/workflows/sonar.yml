@@ -9,7 +9,7 @@ on:
   - cron: '34 18 * * 3'
 
 jobs:
-  build:
+  sonar:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,7 +24,7 @@ jobs:
         distribution: temurin
 
     - name: Build with Gradle
-      run: ./gradlew test sonar -Dsonar.projectKey=xs-parser_xs-parser -Dsonar.organization=xs-parser -Dsonar.host.url=https://sonarcloud.io
+      run: ./gradlew build && ./gradlew sonar -Dsonar.projectKey=xs-parser_xs-parser -Dsonar.organization=xs-parser -Dsonar.host.url=https://sonarcloud.io -Dsonar.gradle.skipCompile=true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -4,7 +4,7 @@ plugins {
 	id 'java-library'
 	id 'maven-publish'
 	id 'signing'
-	id 'org.sonarqube' version '4.4.1.3373' apply false
+	id 'org.sonarqube' version '6.0.1.5171' apply false
 }
 
 if (System.getenv('SONAR_TOKEN') != null) {
@@ -40,26 +40,31 @@ tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
 }
 
-def getVersion = { ->
-	try {
-		def stdout = new ByteArrayOutputStream()
-		def result = exec {
-			commandLine 'git', 'describe', '--tags', '--match', 'v[0-9]*'
-			standardOutput = stdout
-			ignoreExitValue true
+abstract class GitDescribeTagsValueSource implements ValueSource<String, org.gradle.api.provider.ValueSourceParameters.None> {
+	@Inject
+	abstract ExecOperations getExecOperations()
+
+	String obtain() {
+		ByteArrayOutputStream stdout = new ByteArrayOutputStream()
+		try {
+			def result = execOperations.exec {
+				it.commandLine 'git', 'describe', '--tags', '--match', 'v[0-9]*'
+				it.standardOutput = stdout
+			}
+			if (result.getExitValue() == 0) {
+				return stdout.toString().trim().substring(1)
+			}
+		} catch (e) {
+			println e
 		}
-		if (result.getExitValue() == 0) {
-			return stdout.toString().trim().substring(1)
-		}
-	} catch (e) {
-		logger.error('git', e)
+		return 'unspecified'
 	}
-	return 'unspecified'
 }
 
 // Run with -Psnapshot to enable SNAPSHOT builds
 def isSnapshot = project.hasProperty('snapshot')
-version = getVersion() + (isSnapshot ? '-SNAPSHOT' : '')
+def gitDescribeTagsProvider = providers.of(GitDescribeTagsValueSource.class) {}
+version = gitDescribeTagsProvider.get() + (isSnapshot ? '-SNAPSHOT' : '')
 
 test {
 	finalizedBy jacocoTestReport
@@ -67,7 +72,7 @@ test {
 	maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
 	systemProperty 'XS_PARSER_VERBOSE', true
 	testLogging {
-		exceptionFormat 'full'
+		exceptionFormat = 'full'
 	}
 }
 
