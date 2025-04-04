@@ -454,7 +454,7 @@ public class Element implements Term {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onElement(context.get(), node, this);
+			visitor.onElement(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 			annotations.forEach(a -> a.visit(visitor));
 			ComplexType.visitTypeDefinition(typeDefinition(), visitor);
 			if (typeTable != null) {

@@ -132,7 +132,7 @@ public class AttributeGroup implements AnnotatedComponent {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onAttributeGroup(context.get(), node, this);
+			visitor.onAttributeGroup(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 			annotations.forEach(a -> a.visit(visitor));
 			attributeUses.forEach(a -> a.visit(visitor));
 			if (attributeWildcard != null) {

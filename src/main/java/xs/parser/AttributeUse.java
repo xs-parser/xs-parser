@@ -97,7 +97,7 @@ public class AttributeUse implements AnnotatedComponent {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onAttributeUse(context.get(), node, this);
+			visitor.onAttributeUse(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 			annotations().forEach(a -> a.visit(visitor));
 			attributeDeclaration().visit(visitor);
 		}

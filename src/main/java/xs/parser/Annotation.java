@@ -232,7 +232,7 @@ public class Annotation implements SchemaComponent {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onAnnotation(context.get(), node, this);
+			visitor.onAnnotation(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 		}
 	}
 

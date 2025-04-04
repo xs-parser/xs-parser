@@ -313,7 +313,7 @@ public abstract class FundamentalFacet implements SchemaComponent {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context, node, this)) {
-			visitor.onFundamentalFacet(context, node, this);
+			visitor.onFundamentalFacet(context, (org.w3c.dom.Element) node.cloneNode(true), this);
 		}
 	}
 

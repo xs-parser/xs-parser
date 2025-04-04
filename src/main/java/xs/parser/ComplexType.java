@@ -1109,7 +1109,7 @@ public class ComplexType implements TypeDefinition {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onComplexType(context.get(), node, this);
+			visitor.onComplexType(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 			annotations.forEach(a -> a.visit(visitor));
 			visitTypeDefinition(baseTypeDefinition(), visitor);
 			attributeUses.forEach(a -> a.visit(visitor));

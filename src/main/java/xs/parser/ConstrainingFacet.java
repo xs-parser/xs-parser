@@ -1242,7 +1242,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onConstrainingFacet(context.get(), node, this);
+			visitor.onConstrainingFacet(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 			annotations.forEach(a -> a.visit(visitor));
 		}
 	}

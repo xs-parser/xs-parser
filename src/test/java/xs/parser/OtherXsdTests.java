@@ -10,7 +10,7 @@ import org.junit.*;
 import org.junit.runner.*;
 import org.junit.runners.*;
 import org.junit.runners.Parameterized.*;
-import org.w3c.dom.*;
+import org.w3c.dom.Element;
 import xs.parser.Assertion.*;
 import xs.parser.Schema.*;
 import xs.parser.Wildcard.*;
@@ -92,8 +92,8 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onAlternative(final AnnotatedComponent context, final Node node,final Alternative alternative) {
-				Assert.assertNotNull(node);
+			public void onAlternative(final AnnotatedComponent context, final Element element, final Alternative alternative) {
+				Assert.assertNotNull(element);
 				final XPathExpression test = alternative.test();
 				if (test != null) {
 					checkXPathExpression(test);
@@ -101,16 +101,16 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onAnnotation(final AnnotatedComponent context, final Node node,final Annotation annotation) {
-				Assert.assertNotNull(node);
+			public void onAnnotation(final AnnotatedComponent context, final Element element, final Annotation annotation) {
+				Assert.assertNotNull(element);
 				annotation.applicationInformation().forEach(Assert::assertNotNull);
 				annotation.userInformation().forEach(Assert::assertNotNull);
 				annotation.attributes().forEach(Assert::assertNotNull);
 			}
 
 			@Override
-			public void onAssertion(final AnnotatedComponent context, final Node node,final Assertion assertion) {
-				Assert.assertNotNull(node);
+			public void onAssertion(final AnnotatedComponent context, final Element element, final Assertion assertion) {
+				Assert.assertNotNull(element);
 				final XPathExpression test = assertion.test();
 				if (test != null) {
 					checkXPathExpression(test);
@@ -118,8 +118,8 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onAttribute(final AnnotatedComponent context, final Node node,final Attribute attribute) {
-				Assert.assertNotNull(node);
+			public void onAttribute(final AnnotatedComponent context, final Element element, final Attribute attribute) {
+				Assert.assertNotNull(element);
 				attribute.name();
 				checkTargetNamespace(attribute.targetNamespace());
 				attribute.inheritable();
@@ -135,15 +135,15 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onAttributeGroup(final AnnotatedComponent context, final Node node,final AttributeGroup attributeGroup) {
-				Assert.assertNotNull(node);
+			public void onAttributeGroup(final AnnotatedComponent context, final Element element, final AttributeGroup attributeGroup) {
+				Assert.assertNotNull(element);
 				attributeGroup.name();
 				checkTargetNamespace(attributeGroup.targetNamespace());
 			}
 
 			@Override
-			public void onAttributeUse(final AnnotatedComponent context, final Node node,final AttributeUse attributeUse) {
-				Assert.assertNotNull(node);
+			public void onAttributeUse(final AnnotatedComponent context, final Element element, final AttributeUse attributeUse) {
+				Assert.assertNotNull(element);
 				attributeUse.inheritable();
 				attributeUse.required();
 				if (attributeUse.valueConstraint() != null) {
@@ -152,8 +152,8 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onComplexType(final AnnotatedComponent context, final Node node,final ComplexType complexType) {
-				Assert.assertNotNull(node);
+			public void onComplexType(final AnnotatedComponent context, final Element element, final ComplexType complexType) {
+				Assert.assertNotNull(element);
 				complexType.name();
 				checkTargetNamespace(complexType.targetNamespace());
 				complexType.prohibitedSubstitutions().forEach(Assert::assertNotNull);
@@ -173,42 +173,42 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onConstrainingFacet(final SimpleType context, final Node node,final ConstrainingFacet constrainingFacet) {
-				Assert.assertNotNull(node);
+			public void onConstrainingFacet(final SimpleType context, final Element element, final ConstrainingFacet constrainingFacet) {
+				Assert.assertNotNull(element);
 				constrainingFacet.fixed();
 				Assert.assertNotNull(constrainingFacet.value());
 			}
 
 			@Override
-			public void onElement(final AnnotatedComponent context, final Node node,final Element element) {
-				Assert.assertNotNull(node);
-				element.name();
-				checkTargetNamespace(element.targetNamespace());
-				element.typeTable();
-				Assert.assertNotNull(element.scope());
-				if (Element.Scope.Variety.LOCAL.equals(element.scope().variety())) {
-					Assert.assertNotNull(element.scope().parent());
+			public void onElement(final AnnotatedComponent context, final Element element, final xs.parser.Element xsElement) {
+				Assert.assertNotNull(element);
+				xsElement.name();
+				checkTargetNamespace(xsElement.targetNamespace());
+				xsElement.typeTable();
+				Assert.assertNotNull(xsElement.scope());
+				if (xs.parser.Element.Scope.Variety.LOCAL.equals(xsElement.scope().variety())) {
+					Assert.assertNotNull(xsElement.scope().parent());
 				} else {
-					Assert.assertNull(element.scope().parent());
+					Assert.assertNull(xsElement.scope().parent());
 				}
-				element.nillable();
-				if (element.valueConstraint() != null) {
-					checkValueConstraint(element.valueConstraint());
+				xsElement.nillable();
+				if (xsElement.valueConstraint() != null) {
+					checkValueConstraint(xsElement.valueConstraint());
 				}
-				element.disallowedSubstitutions().forEach(Assert::assertNotNull);
-				element.substitutionGroupExclusions().forEach(Assert::assertNotNull);
-				element.isAbstract();
+				xsElement.disallowedSubstitutions().forEach(Assert::assertNotNull);
+				xsElement.substitutionGroupExclusions().forEach(Assert::assertNotNull);
+				xsElement.isAbstract();
 			}
 
 			@Override
-			public void onFundamentalFacet(final SimpleType context, final Node node,final FundamentalFacet fundamentalFacet) {
-				Assert.assertNotNull(node);
+			public void onFundamentalFacet(final SimpleType context, final Element element, final FundamentalFacet fundamentalFacet) {
+				Assert.assertNotNull(element);
 				Assert.assertNotNull(fundamentalFacet.value());
 			}
 
 			@Override
-			public void onIdentityConstraint(final AnnotatedComponent context, final Node node,final IdentityConstraint identityConstraint) {
-				Assert.assertNotNull(node);
+			public void onIdentityConstraint(final AnnotatedComponent context, final Element element, final IdentityConstraint identityConstraint) {
+				Assert.assertNotNull(element);
 				identityConstraint.name();
 				checkTargetNamespace(identityConstraint.targetNamespace());
 				Assert.assertNotNull(identityConstraint.category());
@@ -217,16 +217,16 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onModelGroup(final AnnotatedComponent context, final Node node,final ModelGroup modelGroup) {
-				Assert.assertNotNull(node);
+			public void onModelGroup(final AnnotatedComponent context, final Element element, final ModelGroup modelGroup) {
+				Assert.assertNotNull(element);
 				modelGroup.name();
 				checkTargetNamespace(modelGroup.targetNamespace());
 				Assert.assertNotNull(modelGroup.compositor());
 			}
 
 			@Override
-			public void onNotation(final AnnotatedComponent context, final Node node,final Notation notation) {
-				Assert.assertNotNull(node);
+			public void onNotation(final AnnotatedComponent context, final Element element, final Notation notation) {
+				Assert.assertNotNull(element);
 				notation.name();
 				checkTargetNamespace(notation.targetNamespace());
 				notation.publicIdentiifer();
@@ -234,15 +234,15 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onParticle(final AnnotatedComponent context, final Node node,final Particle particle) {
-				Assert.assertNotNull(node);
+			public void onParticle(final AnnotatedComponent context, final Element element, final Particle particle) {
+				Assert.assertNotNull(element);
 				Assert.assertNotNull(particle.maxOccurs());
 				Assert.assertNotNull(particle.minOccurs());
 			}
 
 			@Override
-			public void onSimpleType(final AnnotatedComponent context, final Node node,final SimpleType simpleType) {
-				Assert.assertNotNull(node);
+			public void onSimpleType(final AnnotatedComponent context, final Element element, final SimpleType simpleType) {
+				Assert.assertNotNull(element);
 				simpleType.name();
 				checkTargetNamespace(simpleType.targetNamespace());
 				simpleType.finals().forEach(Assert::assertNotNull);
@@ -255,8 +255,8 @@ public class OtherXsdTests {
 			}
 
 			@Override
-			public void onWildcard(final AnnotatedComponent context, final Node node,final Wildcard wildcard) {
-				Assert.assertNotNull(node);
+			public void onWildcard(final AnnotatedComponent context, final Element element, final Wildcard wildcard) {
+				Assert.assertNotNull(element);
 				final NamespaceConstraint namespaceConstraint = wildcard.namespaceConstraint();
 				Assert.assertNotNull(namespaceConstraint);
 				Assert.assertNotNull(namespaceConstraint.variety());

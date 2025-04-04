@@ -97,7 +97,7 @@ public class Alternative implements AnnotatedComponent {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onAlternative(context.get(), node, this);
+			visitor.onAlternative(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 			annotations.forEach(a -> a.visit(visitor));
 			ComplexType.visitTypeDefinition(typeDefinition(), visitor);
 		}

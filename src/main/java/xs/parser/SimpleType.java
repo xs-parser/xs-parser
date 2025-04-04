@@ -921,7 +921,7 @@ public class SimpleType implements TypeDefinition {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onSimpleType(context.get(), node, this);
+			visitor.onSimpleType(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 			annotations.forEach(a -> a.visit(visitor));
 			ComplexType.visitTypeDefinition(baseTypeDefinition(), visitor);
 			facets().forEach(f -> f.visit(visitor));

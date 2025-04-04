@@ -265,7 +265,7 @@ public final class NodeHelper {
 
 	public static String getNodeValueAsAnyUri(final Node node, final String value) {
 		try {
-			new URI(value); // TODO: parse as IRI, RFC3987
+			new URI(value); // Validate IRI, RFC 3987
 			return value;
 		} catch (final URISyntaxException e) {
 			throw newFacetException(node, value, SimpleType.xsAnyURI().name());

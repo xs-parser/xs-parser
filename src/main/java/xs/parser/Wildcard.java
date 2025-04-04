@@ -134,8 +134,9 @@ public interface Wildcard extends Term {
 		@Override
 		void visit(final Visitor visitor) {
 			if (visitor.visit(context.get(), node, this)) {
-				visitor.onParticle(context.get(), node, this);
-				visitor.onWildcard(context.get(), node, this);
+				org.w3c.dom.Element elem = (org.w3c.dom.Element) node.cloneNode(true);
+				visitor.onParticle(context.get(), elem, this);
+				visitor.onWildcard(context.get(), elem, this);
 				annotations().forEach(a -> a.visit(visitor));
 			}
 		}
@@ -331,7 +332,7 @@ public interface Wildcard extends Term {
 
 		void visit(final Visitor visitor) {
 			if (visitor.visit(context.get(), node, this)) {
-				visitor.onWildcard(context.get(), node, this);
+				visitor.onWildcard(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 				annotations.forEach(a -> a.visit(visitor));
 			}
 		}

@@ -393,7 +393,7 @@ public class Attribute implements AnnotatedComponent {
 
 	void visit(final Visitor visitor) {
 		if (visitor.visit(context.get(), node, this)) {
-			visitor.onAttribute(context.get(), node, this);
+			visitor.onAttribute(context.get(), (org.w3c.dom.Element) node.cloneNode(true), this);
 			annotations.forEach(a -> a.visit(visitor));
 			typeDefinition().visit(visitor);
 		}
