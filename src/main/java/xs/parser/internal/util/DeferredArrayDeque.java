@@ -4,10 +4,10 @@ import java.util.*;
 
 public class DeferredArrayDeque<E> implements Deque<E> {
 
-	private Deferred<? extends Deque<E>> def;
+	private Deque<Deferred<? extends E>> deq;
 
 	public DeferredArrayDeque() {
-		this.def = new DeferredValue<>(new ArrayDeque<>());
+		this.deq = new ArrayDeque<>();
 	}
 
 	public DeferredArrayDeque(final Collection<? extends E> c) {
@@ -16,7 +16,8 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 	}
 
 	public DeferredArrayDeque(final Deferred<? extends Deque<E>> def) {
-		this.def = def.map(ArrayDeque::new);
+		this();
+		addAllDeferred(def);
 	}
 
 	@Override
@@ -27,22 +28,45 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 
 	@Override
 	public int size() {
-		return def.get().size();
+		return deq.size();
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return def.get().isEmpty();
+		return deq.isEmpty();
 	}
 
 	@Override
 	public boolean contains(final Object o) {
-		return def.get().contains(o);
+		for (final Deferred<? extends E> def : deq) {
+			if (Objects.equals(def.get(), o)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
 	public Iterator<E> iterator() {
-		return def.get().iterator();
+		final Iterator<Deferred<? extends E>> iter = deq.iterator();
+		return new Iterator<>() {
+
+			@Override
+			public boolean hasNext() {
+				return iter.hasNext();
+			}
+
+			@Override
+			public E next() {
+				return iter.next().get();
+			}
+
+			@Override
+			public void remove() {
+				iter.remove();
+			}
+
+		};
 	}
 
 	@Override
@@ -63,7 +87,12 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 
 	@Override
 	public boolean containsAll(final Collection<?> c) {
-		return def.get().containsAll(c);
+		for (final Deferred<? extends E> def : this) {
+			if (!c.contains(def.get())) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public void addAll(final Deferred<? extends Collection<? extends E>> d) {
@@ -75,49 +104,55 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 
 	@Override
 	public boolean addAll(final Collection<? extends E> c) {
-		def = def.map(x -> {
-			x.addAll(c);
-			return x;
-		});
-		return true;
+		for (final E e : c) {
+			deq.add(e);
+		}
+		return !c.isEmpty();
 	}
 
 	@Override
 	public boolean removeAll(final Collection<?> c) {
-		return def.get().removeAll(c);
+		final Iterator<E> iter = iterator();
+		boolean changed = false;
+		while (iter.hasNext()) {
+			if (c.contains(iter.next())) {
+				iter.remove();
+				changed = true;
+			}
+		}
+		return changed;
 	}
 
 	@Override
 	public boolean retainAll(final Collection<?> c) {
-		return def.get().retainAll(c);
+		final Iterator<E> iter = iterator();
+		boolean changed = false;
+		while (iter.hasNext()) {
+			if (!c.contains(iter.next())) {
+				iter.remove();
+				changed = true;
+			}
+		}
+		return changed;
 	}
 
 	@Override
 	public void clear() {
-		def = new DeferredValue<>(new ArrayDeque<>());
+		deq.clear();
 	}
 
 	@Override
 	public void addFirst(final E e) {
-		def = def.map(x -> {
-			x.addFirst(e);
-			return x;
-		});
+		deq.addFirst(new DeferredValue<>(e));
 	}
 
-	public void addLast(final Deferred<E> d) {
-		def = def.map(x -> {
-			x.addLast(d.get());
-			return x;
-		});
+	public void addLast(final Deferred<E> def) {
+		deq.addLast(def);
 	}
 
 	@Override
 	public void addLast(final E e) {
-		def = def.map(x -> {
-			x.addLast(e);
-			return x;
-		});
+		deq.addLast(new DeferredValue<>(e));
 	}
 
 	@Override
@@ -152,42 +187,68 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 
 	@Override
 	public E pollFirst() {
-		return def.get().pollFirst();
+		final Deferred<? extends E> first = deq.pollFirst();
+		return first != null ? first.get() : null;
 	}
 
 	@Override
 	public E pollLast() {
-		return def.get().pollLast();
+		final Deferred<? extends E> last = deq.pollLast();
+		return last != null ? last.get() : null;
 	}
 
 	@Override
 	public E getFirst() {
-		return def.get().getFirst();
+		final E first = peekFirst();
+		if (first == null) {
+			throw new NoSuchElementException();
+		}
+		return first;
 	}
 
 	@Override
 	public E getLast() {
-		return def.get().getLast();
+		final E last = peekLast();
+		if (last == null) {
+			throw new NoSuchElementException();
+		}
+		return last;
 	}
 
 	@Override
 	public E peekFirst() {
-		return def.get().peekFirst();
+		final Deferred<? extends E> first = deq.peekFirst();
+		return first != null ? first.get() : null;
 	}
 
 	@Override
 	public E peekLast() {
-		return def.get().peekLast();
+		final Deferred<? extends E> last = deq.peekLast();
+		return last != null ? last.get() : null;
 	}
 
 	@Override
 	public boolean removeFirstOccurrence(final Object o) {
-		return def.get().removeFirstOccurrence(o);
+		final Iterator<E> iter = iterator();
+		while (iter.hasNext()) {
+			if (Objects.equals(iter.next(), o)) {
+				iter.remove();
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
 	public boolean removeLastOccurrence(final Object o) {
-		return def.get().removeLastOccurrence(o);
+		final Iterator<E> iter = descendingIterator();
+		while (iter.hasNext()) {
+			if (Objects.equals(iter.next(), o)) {
+				iter.remove();
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
