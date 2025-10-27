@@ -15,7 +15,7 @@ public interface Deferred<T> {
 	}
 
 	public default <U> Deque<U> mapToDeque(final Function<T, ? extends Deque<U>> mapper) {
-		return new DeferredArrayDeque<>(map(mapper));
+		return new DeferredDeque<>(map(mapper));
 	}
 
 	public static <T> Deferred<T> of(final Supplier<T> supplier) {

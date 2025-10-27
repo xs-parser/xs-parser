@@ -2,10 +2,12 @@ package xs.parser.internal.util;
 
 import java.util.*;
 import java.util.AbstractMap.*;
+import java.util.concurrent.*;
 import java.util.stream.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
+import org.w3c.dom.Node;
 import xs.parser.*;
 import xs.parser.internal.*;
 
@@ -48,7 +50,7 @@ public final class SequenceParser {
 				return null;
 			});
 			this.node = node;
-			anyContent = allowsAnyContent ? new ArrayDeque<>() : Deques.emptyDeque();
+			anyContent = allowsAnyContent ? new ConcurrentLinkedDeque<>() : Deques.emptyDeque();
 		}
 
 		public Attr attr(final AttrParser<?> a) {
@@ -101,7 +103,7 @@ public final class SequenceParser {
 		}
 
 		@SafeVarargs public final <T> Deque<T> parseAll(final TagParser<? extends T> first, final TagParser<? extends T>... more) {
-			final Deque<T> x = new DeferredArrayDeque<>(parseAll(first));
+			final Deque<T> x = new DeferredDeque<>(parseAll(first));
 			for (final TagParser<? extends T> t : more) {
 				x.addAll(parseAll(t));
 			}
@@ -119,8 +121,8 @@ public final class SequenceParser {
 			for (final Result r : results) {
 				checkIfCanParse(r, t);
 			}
-			return new DeferredArrayDeque<>(() -> {
-				final ArrayDeque<T> x = new ArrayDeque<>();
+			return new DeferredDeque<>(() -> {
+				final Deque<T> x = new ConcurrentLinkedDeque<>();
 				for (final Result r : results) {
 					final T v = t.parse(r);
 					r.value.set(v);
@@ -272,7 +274,7 @@ public final class SequenceParser {
 						amount = 0;
 					}
 					final Result r = tagParser.getSequenceParser().parse(schema, result, n);
-					result.parserResults.computeIfAbsent(tagParser, e -> new ArrayDeque<>()).add(r);
+					result.parserResults.computeIfAbsent(tagParser, e -> new ConcurrentLinkedDeque<>()).add(r);
 					++amount;
 				}
 			}

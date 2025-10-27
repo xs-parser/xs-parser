@@ -4,6 +4,7 @@ import java.io.*;
 import java.math.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.regex.*;
 import java.util.stream.*;
@@ -336,7 +337,7 @@ public final class NodeHelper {
 		final String[] values = collapseWhitespace(attr.getValue()).split(LIST_SEP);
 		final Deque<QName> names = Stream.of(values)
 				.map(name -> NodeHelper.getNodeValueAsQName(attr, name))
-				.collect(Collectors.toCollection(ArrayDeque::new));
+				.collect(Collectors.toCollection(ConcurrentLinkedDeque::new));
 		return Deques.unmodifiableDeque(names);
 	}
 

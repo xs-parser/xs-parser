@@ -379,13 +379,13 @@ public class Element implements Term {
 			}
 		});
 		final Deque<QName> substitutionGroup = result.value(AttrParser.SUBSTITUTION_GROUP);
-		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>(() -> {
+		final DeferredDeque<Element> substitutionGroupAffiliations = new DeferredDeque<>(() -> {
 			if (substitutionGroup != null && !(context.get() instanceof Schema)) {
 				throw new ParseException(result.node(), "@substitutionGroup is only valid for global elements");
 			} else if (substitutionGroup == null) {
 				return Deques.emptyDeque();
 			}
-			final DeferredArrayDeque<Element> x = new DeferredArrayDeque<>();
+			final DeferredDeque<Element> x = new DeferredDeque<>();
 			for (final QName s : substitutionGroup) {
 				x.addLast(result.schema().find(s, Element.class));
 			}

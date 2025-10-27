@@ -4,9 +4,11 @@ import static xs.parser.internal.util.Deques.*;
 
 import java.math.*;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.*;
 import javax.xml.*;
 import org.w3c.dom.*;
+import org.w3c.dom.Node;
 import xs.parser.internal.*;
 import xs.parser.internal.TagParser.*;
 import xs.parser.internal.util.*;
@@ -1122,11 +1124,11 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	}
 
 	static Deque<Object> find(final Deferred<SimpleType> simpleType, final String simpleTypeName) {
-		return simpleType.mapToDeque(s -> defaultFacets.get(simpleTypeName).stream().map(o -> o instanceof Constructible ? ((Constructible) o).apply(simpleType) : o).collect(Collectors.toCollection(ArrayDeque::new)));
+		return simpleType.mapToDeque(s -> defaultFacets.get(simpleTypeName).stream().map(o -> o instanceof Constructible ? ((Constructible) o).apply(simpleType) : o).collect(Collectors.toCollection(ConcurrentLinkedDeque::new)));
 	}
 
 	static Deque<Object> combineLikeFacets(final SimpleType baseType, final Deque<Object> baseFacets, final Deque<? extends ConstrainingFacet> declaredFacets) {
-		final Deque<Object> newFacets = new DeferredArrayDeque<>();
+		final Deque<Object> newFacets = new DeferredDeque<>();
 		boolean patternFound = false;
 		boolean enumerationFound = false;
 		boolean assertionFound = false;
@@ -1134,7 +1136,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 			if (facet instanceof Pattern) {
 				if (!patternFound) {
 					patternFound = true;
-					final Deque<Annotation> annotations = new ArrayDeque<>();
+					final Deque<Annotation> annotations = new ConcurrentLinkedDeque<>();
 					final StringBuilder value = new StringBuilder();
 					for (final ConstrainingFacet c : declaredFacets) {
 						if (c instanceof Pattern) {
@@ -1152,7 +1154,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 					final Optional<Pattern> basePattern = baseType.facets().stream().filter(Pattern.class::isInstance).map(Pattern.class::cast).findAny();
 					final Pattern first;
 					if (basePattern.isPresent()) {
-						final Deque<Annotation> firstAnnotations = new ArrayDeque<>(basePattern.get().annotations().size() + annotations.size());
+						final Deque<Annotation> firstAnnotations = new ConcurrentLinkedDeque<>();
 						first = new Pattern(facet.context, facet.node, firstAnnotations, new LinkedHashSet<>(basePattern.get().value()));
 						firstAnnotations.addAll(basePattern.get().annotations());
 						firstAnnotations.addAll(annotations);
@@ -1165,7 +1167,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 			} else if (facet instanceof Enumeration) {
 				if (!enumerationFound) {
 					enumerationFound = true;
-					final Deque<Annotation> annotations = new ArrayDeque<>();
+					final Deque<Annotation> annotations = new ConcurrentLinkedDeque<>();
 					final Set<String> value = new LinkedHashSet<>();
 					for (final ConstrainingFacet c : declaredFacets) {
 						if (c instanceof Enumeration) {
@@ -1180,7 +1182,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 			} else if (facet instanceof Assertions) {
 				if (!assertionFound) {
 					assertionFound = true;
-					final Deque<Assertion> value = new ArrayDeque<>();
+					final Deque<Assertion> value = new ConcurrentLinkedDeque<>();
 					for (final Deque<? extends ConstrainingFacet> x : Deques.asDeque(baseType.facets(), declaredFacets)) {
 						for (final ConstrainingFacet c : x) {
 							if (c instanceof Assertions) {

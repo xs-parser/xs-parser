@@ -1,6 +1,7 @@
 package xs.parser;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
@@ -247,7 +248,7 @@ public class SimpleType implements TypeDefinition {
 			final Deque<QName> memberTypes = result.value(AttrParser.MEMBER_TYPES);
 			final Deque<SimpleType> memberTypeDefinitions;
 			if (memberTypes != null) {
-				memberTypeDefinitions = new DeferredArrayDeque<>(() -> memberTypes.stream().map(memberType -> result.schema().find(memberType, SimpleType.class).get()).collect(Collectors.toCollection(ArrayDeque::new)));
+				memberTypeDefinitions = new DeferredDeque<>(() -> memberTypes.stream().map(memberType -> result.schema().find(memberType, SimpleType.class).get()).collect(Collectors.toCollection(ConcurrentLinkedDeque::new)));
 			} else {
 				memberTypeDefinitions = result.parseAll(TagParser.SIMPLE_TYPE);
 			}
@@ -414,8 +415,8 @@ public class SimpleType implements TypeDefinition {
 		this.finals = Objects.requireNonNull(finals);
 		this.variety = Objects.requireNonNull(variety);
 		this.facets = Objects.requireNonNull(facets);
-		this.facetValues = new DeferredArrayDeque<>(() -> facets.stream().filter(ConstrainingFacet.class::isInstance).map(ConstrainingFacet.class::cast).collect(Collectors.toCollection(ArrayDeque::new)));
-		this.fundamentalFacets = new DeferredArrayDeque<>(() -> {
+		this.facetValues = new DeferredDeque<>(() -> facets.stream().filter(ConstrainingFacet.class::isInstance).map(ConstrainingFacet.class::cast).collect(Collectors.toCollection(ConcurrentLinkedDeque::new)));
+		this.fundamentalFacets = new DeferredDeque<>(() -> {
 			final Deque<FundamentalFacet> f = FundamentalFacet.find(this);
 			if (f != null) {
 				return f;

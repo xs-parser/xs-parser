@@ -1,10 +1,12 @@
 package xs.parser;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.stream.*;
 import javax.xml.*;
 import org.w3c.dom.*;
+import org.w3c.dom.Node;
 import xs.parser.internal.*;
 import xs.parser.internal.util.*;
 import xs.parser.internal.util.SequenceParser.*;
@@ -68,10 +70,10 @@ public class Annotation implements SchemaComponent {
 
 		public static final AnnotationSet EMPTY = new AnnotationSet();
 
-		private final DeferredArrayDeque<Annotation> annotations;
+		private final DeferredDeque<Annotation> annotations;
 
 		private AnnotationSet() {
-			this.annotations = new DeferredArrayDeque<>();
+			this.annotations = new DeferredDeque<>();
 		}
 
 		private AnnotationSet(final Result result) {
@@ -79,7 +81,7 @@ public class Annotation implements SchemaComponent {
 		}
 
 		private AnnotationSet(final Deque<Annotation> annotations) {
-			this.annotations = new DeferredArrayDeque<>(annotations);
+			this.annotations = new DeferredDeque<>(annotations);
 		}
 
 		AnnotationSet add(final AnnotationSet a) {
@@ -98,7 +100,7 @@ public class Annotation implements SchemaComponent {
 
 		<T> AnnotationSet addAll(final Deque<T> annotated, final Function<T, AnnotationSet> fn) {
 			this.annotations.addAll(Deferred.of(() -> {
-				final Deque<Annotation> x = new ArrayDeque<>();
+				final Deque<Annotation> x = new ConcurrentLinkedDeque<>();
 				for (final T a : annotated) {
 					x.addAll(fn.apply(a).annotations);
 				}
@@ -108,8 +110,8 @@ public class Annotation implements SchemaComponent {
 		}
 
 		Deque<Annotation> resolve(final Node component) {
-			return new DeferredArrayDeque<>(() -> {
-				final ArrayDeque<Annotation> mapped = new ArrayDeque<>();
+			return new DeferredDeque<>(() -> {
+				final Deque<Annotation> mapped = new ConcurrentLinkedDeque<>();
 				for (final Annotation a : annotations) {
 					mapped.add(new Annotation(a.context, a.node, a.applicationInformation, a.userInformation, Deferred.of(() -> {
 						Node n = a.node;
@@ -211,9 +213,9 @@ public class Annotation implements SchemaComponent {
 		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Appinfo> appinfo = result.parseAll(TagParser.ANNOTATION.appinfo());
-		final Deque<Node> applicationInformation = new DeferredArrayDeque<>(() -> appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new)));
+		final Deque<Node> applicationInformation = new DeferredDeque<>(() -> appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ConcurrentLinkedDeque::new)));
 		final Deque<Documentation> documentation = result.parseAll(TagParser.ANNOTATION.documentation());
-		final Deque<Node> userInformation = new DeferredArrayDeque<>(() -> documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new)));
+		final Deque<Node> userInformation = new DeferredDeque<>(() -> documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ConcurrentLinkedDeque::new)));
 		return new Annotation(context, node, applicationInformation, userInformation, Collections::emptySet);
 	}
 

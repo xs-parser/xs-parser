@@ -1,22 +1,23 @@
 package xs.parser.internal.util;
 
 import java.util.*;
+import java.util.concurrent.*;
 
-public class DeferredArrayDeque<E> implements Deque<E> {
+public class DeferredDeque<E> implements Deque<E> {
 
 	private Deferred<? extends Deque<E>> def;
 
-	public DeferredArrayDeque() {
-		this.def = new DeferredValue<>(new ArrayDeque<>());
+	public DeferredDeque() {
+		this.def = new DeferredValue<>(new ConcurrentLinkedDeque<>());
 	}
 
-	public DeferredArrayDeque(final Collection<? extends E> c) {
+	public DeferredDeque(final Collection<? extends E> c) {
 		this();
 		addAll(c);
 	}
 
-	public DeferredArrayDeque(final Deferred<? extends Deque<E>> def) {
-		this.def = def.map(ArrayDeque::new);
+	public DeferredDeque(final Deferred<? extends Deque<E>> def) {
+		this.def = def.map(ConcurrentLinkedDeque::new);
 	}
 
 	@Override
@@ -94,7 +95,7 @@ public class DeferredArrayDeque<E> implements Deque<E> {
 
 	@Override
 	public void clear() {
-		def = new DeferredValue<>(new ArrayDeque<>());
+		def = new DeferredValue<>(new ConcurrentLinkedDeque<>());
 	}
 
 	@Override

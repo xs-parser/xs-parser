@@ -1,11 +1,13 @@
 package xs.parser.x;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.stream.*;
 import javax.xml.namespace.*;
 import javax.xml.xpath.*;
 import org.w3c.dom.*;
+import org.w3c.dom.Node;
 import xs.parser.*;
 import xs.parser.internal.util.*;
 
@@ -150,7 +152,7 @@ final class JaxpNodeSet extends NodeSet {
 						collection = (NodeList) xpathExpr.evaluate(underlyingValue, XPathConstants.NODESET);
 					} else if (underlyingValue instanceof NodeList) {
 						final NodeList nodeList = (NodeList) underlyingValue;
-						final Deque<NodeList> nodeLists = new ArrayDeque<>(nodeList.getLength());
+						final Deque<NodeList> nodeLists = new ConcurrentLinkedDeque<>();
 						for (int i = 0; i < nodeList.getLength(); ++i) {
 							nodeLists.add((NodeList) xpathExpr.evaluate(nodeList.item(i), XPathConstants.NODESET));
 						}

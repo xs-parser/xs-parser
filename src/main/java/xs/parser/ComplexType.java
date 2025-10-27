@@ -1,6 +1,7 @@
 package xs.parser;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.*;
 import java.util.stream.*;
 import javax.xml.*;
@@ -1016,11 +1017,11 @@ public class ComplexType implements TypeDefinition {
 								if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && ef == null) { // 4.2.3.1
 									effectiveParticle = baseParticle;
 								} else if (baseParticle != null && baseParticle.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) baseParticle.term()).compositor()) && ef != null && ef.term() instanceof ModelGroup && Compositor.ALL.equals(((ModelGroup) ef.term()).compositor())) { // 4.2.3.2
-									final Deque<Particle> particles = new ArrayDeque<>(((ModelGroup) baseParticle.term()).particles());
+									final Deque<Particle> particles = new ConcurrentLinkedDeque<>(((ModelGroup) baseParticle.term()).particles());
 									particles.addAll(((ModelGroup) ef.term()).particles());
 									effectiveParticle = new Particle(self, node, Deques.emptyDeque(), 1, baseParticle.minOccurs(), ModelGroup.synthetic(self, node, Deques.emptyDeque(), Compositor.ALL, particles));
 								} else { // 4.2.3.3
-									final Deque<Particle> particles = new ArrayDeque<>();
+									final Deque<Particle> particles = new ConcurrentLinkedDeque<>();
 									if (baseParticle != null) {
 										particles.add(baseParticle);
 									}
@@ -1073,7 +1074,7 @@ public class ComplexType implements TypeDefinition {
 				d.attributeUses.addAll(result.schema().defaultAttributes().mapToDeque(AttributeGroup::attributeUses));
 			}
 			return d.attributeUses;
-		}), def.map(Def::attributeWildcard), isAbstract, def.map(d -> d.derivationMethod), def.map(Def::explicitContentType), block, def.mapToDeque(d -> d.asserts.stream().map(Assert::assertion).collect(Collectors.toCollection(ArrayDeque::new)))));
+		}), def.map(Def::attributeWildcard), isAbstract, def.map(d -> d.derivationMethod), def.map(Def::explicitContentType), block, def.mapToDeque(d -> d.asserts.stream().map(Assert::assertion).collect(Collectors.toCollection(ConcurrentLinkedDeque::new)))));
 	}
 
 	static void register() {

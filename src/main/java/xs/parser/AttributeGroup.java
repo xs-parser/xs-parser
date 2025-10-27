@@ -1,6 +1,7 @@
 package xs.parser;
 
 import java.util.*;
+import java.util.concurrent.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
 import xs.parser.Wildcard.*;
@@ -117,11 +118,11 @@ public class AttributeGroup implements AnnotatedComponent {
 	}
 
 	static Deque<AttributeUse> findAttributeUses(final Deque<AttributeUse> attributeUses, final Deque<AttributeGroup> attributeGroups) {
-		return new DeferredArrayDeque<>(() -> {
+		return new DeferredDeque<>(() -> {
 			if (attributeGroups.isEmpty()) {
 				return attributeUses;
 			}
-			final ArrayDeque<AttributeUse> x = new ArrayDeque<>();
+			final Deque<AttributeUse> x = new ConcurrentLinkedDeque<>();
 			x.addAll(attributeUses);
 			for (final AttributeGroup a : attributeGroups) {
 				x.addAll(a.attributeUses());

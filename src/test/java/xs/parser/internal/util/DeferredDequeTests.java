@@ -7,7 +7,7 @@ public class DeferredDequeTests {
 
 	@Test
 	public void testAddFirst() {
-		final Deque<String> def = new DeferredArrayDeque<>();
+		final Deque<String> def = new DeferredDeque<>();
 		def.addFirst("123");
 		def.addFirst("234");
 		Assert.assertEquals(2, def.size());

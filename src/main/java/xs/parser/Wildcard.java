@@ -1,6 +1,7 @@
 package xs.parser;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.*;
 import javax.xml.namespace.*;
 import org.w3c.dom.*;
@@ -250,7 +251,7 @@ public interface Wildcard extends Term {
 				return Deques.singletonDeque(value);
 			default:
 				final String[] values = value.split(NodeHelper.LIST_SEP);
-				final Deque<String> ls = new ArrayDeque<>();
+				final Deque<String> ls = new ConcurrentLinkedDeque<>();
 				for (final String v : values) {
 					switch (v) {
 					case NAMESPACE_LOCAL:
@@ -269,7 +270,7 @@ public interface Wildcard extends Term {
 		private static Deque<String> getAttrValueAsNotNamespace(final Attr attr) {
 			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			final String[] values = value.split(NodeHelper.LIST_SEP);
-			final Deque<String> notNamespace = new ArrayDeque<>(values.length);
+			final Deque<String> notNamespace = new ConcurrentLinkedDeque<>();
 			for (final String v : values) {
 				switch (v) {
 				case NAMESPACE_LOCAL:
@@ -287,7 +288,7 @@ public interface Wildcard extends Term {
 		private static Deque<String> getAttrValueAsNotQName(final Attr attr) {
 			final String value = NodeHelper.collapseWhitespace(attr.getValue());
 			final String[] values = value.split(NodeHelper.LIST_SEP);
-			final Deque<String> notQName = new ArrayDeque<>(values.length);
+			final Deque<String> notQName = new ConcurrentLinkedDeque<>();
 			for (final String v : values) {
 				switch (v) {
 				case QNAME_DEFINED:

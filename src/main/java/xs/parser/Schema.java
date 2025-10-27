@@ -5,6 +5,7 @@ import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.AbstractMap.*;
+import java.util.concurrent.*;
 import java.util.function.*;
 import javax.xml.*;
 import javax.xml.namespace.*;
@@ -122,7 +123,7 @@ public class Schema implements AnnotatedComponent {
 				return Deques.singletonDeque(Block.ALL);
 			}
 			final String[] values = value.split(NodeHelper.LIST_SEP);
-			final Deque<Block> ls = new ArrayDeque<>();
+			final Deque<Block> ls = new ConcurrentLinkedDeque<>();
 			for (final String v : values) {
 				final Block b = Block.getByName(v);
 				if (Block.ALL.equals(b)) {
@@ -510,8 +511,8 @@ public class Schema implements AnnotatedComponent {
 			final Set<Schema> schemas = new LinkedHashSet<>();
 			schemas.add(Schema.this);
 			this.constituents = findAll(schemas, mapper);
-			this.all = new DeferredArrayDeque<>(() -> {
-				final Deque<T> x = new ArrayDeque<>(constituents);
+			this.all = new DeferredDeque<>(() -> {
+				final Deque<T> x = new ConcurrentLinkedDeque<>(constituents);
 				x.addAll(declared);
 				if (after != null) {
 					after.accept(x);
@@ -527,11 +528,11 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		private <U extends SchemaComponent> Deque<U> findAll(final Set<Schema> schemas, final Function<Schema, Def<U>> mapper) {
-			return new DeferredArrayDeque<>(constituentSchemas.map(c -> {
+			return new DeferredDeque<>(constituentSchemas.map(c -> {
 				if (c.isEmpty()) {
 					return Deques.emptyDeque();
 				}
-				final Deque<U> x = new ArrayDeque<>();
+				final Deque<U> x = new ConcurrentLinkedDeque<>();
 				for (final Schema s : c) {
 					if (schemas.add(s)) {
 						final Def<U> def = mapper.apply(s);
@@ -757,7 +758,7 @@ public class Schema implements AnnotatedComponent {
 			.elements(0, Integer.MAX_VALUE, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP, TagParser.ELEMENT, TagParser.ATTRIBUTE, TagParser.NOTATION, TagParser.ANNOTATION);
 	static final Schema XSD = new Schema(NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI)) {
 
-		final Deque<TypeDefinition> typeDefinitions = new DeferredArrayDeque<>(() -> Deques.asDeque(ComplexType.xsAnyType(), SimpleType.xsAnySimpleType(), SimpleType.xsAnyAtomicType(), SimpleType.xsString(), SimpleType.xsBoolean(), SimpleType.xsFloat(), SimpleType.xsDouble(), SimpleType.xsDecimal(), SimpleType.xsDuration(), SimpleType.xsDateTime(), SimpleType.xsTime(), SimpleType.xsDate(), SimpleType.xsGYearMonth(), SimpleType.xsGYear(), SimpleType.xsGMonthDay(), SimpleType.xsGDay(), SimpleType.xsGMonth(), SimpleType.xsHexBinary(), SimpleType.xsBase64Binary(), SimpleType.xsAnyURI(), SimpleType.xsQName(), SimpleType.xsNOTATION(), SimpleType.xsNormalizedString(), SimpleType.xsToken(), SimpleType.xsLanguage(), SimpleType.xsIDREFS(), SimpleType.xsENTITIES(), SimpleType.xsNMTOKEN(), SimpleType.xsNMTOKENS(), SimpleType.xsName(), SimpleType.xsNCName(), SimpleType.xsID(), SimpleType.xsIDREF(), SimpleType.xsENTITY(), SimpleType.xsInteger(), SimpleType.xsNonPositiveInteger(), SimpleType.xsNegativeInteger(), SimpleType.xsLong(), SimpleType.xsInt(), SimpleType.xsShort(), SimpleType.xsByte(), SimpleType.xsNonNegativeInteger(), SimpleType.xsUnsignedLong(), SimpleType.xsUnsignedInt(), SimpleType.xsUnsignedShort(), SimpleType.xsUnsignedByte(), SimpleType.xsPositiveInteger(), SimpleType.xsYearMonthDuration(), SimpleType.xsDayTimeDuration(), SimpleType.xsDateTimeStamp()));
+		final Deque<TypeDefinition> typeDefinitions = new DeferredDeque<>(() -> Deques.asDeque(ComplexType.xsAnyType(), SimpleType.xsAnySimpleType(), SimpleType.xsAnyAtomicType(), SimpleType.xsString(), SimpleType.xsBoolean(), SimpleType.xsFloat(), SimpleType.xsDouble(), SimpleType.xsDecimal(), SimpleType.xsDuration(), SimpleType.xsDateTime(), SimpleType.xsTime(), SimpleType.xsDate(), SimpleType.xsGYearMonth(), SimpleType.xsGYear(), SimpleType.xsGMonthDay(), SimpleType.xsGDay(), SimpleType.xsGMonth(), SimpleType.xsHexBinary(), SimpleType.xsBase64Binary(), SimpleType.xsAnyURI(), SimpleType.xsQName(), SimpleType.xsNOTATION(), SimpleType.xsNormalizedString(), SimpleType.xsToken(), SimpleType.xsLanguage(), SimpleType.xsIDREFS(), SimpleType.xsENTITIES(), SimpleType.xsNMTOKEN(), SimpleType.xsNMTOKENS(), SimpleType.xsName(), SimpleType.xsNCName(), SimpleType.xsID(), SimpleType.xsIDREF(), SimpleType.xsENTITY(), SimpleType.xsInteger(), SimpleType.xsNonPositiveInteger(), SimpleType.xsNegativeInteger(), SimpleType.xsLong(), SimpleType.xsInt(), SimpleType.xsShort(), SimpleType.xsByte(), SimpleType.xsNonNegativeInteger(), SimpleType.xsUnsignedLong(), SimpleType.xsUnsignedInt(), SimpleType.xsUnsignedShort(), SimpleType.xsUnsignedByte(), SimpleType.xsPositiveInteger(), SimpleType.xsYearMonthDuration(), SimpleType.xsDayTimeDuration(), SimpleType.xsDateTimeStamp()));
 
 		@Override
 		String location() {
@@ -772,7 +773,7 @@ public class Schema implements AnnotatedComponent {
 	};
 	static final Schema XSI = new Schema(NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI)) {
 
-		final Deque<Attribute> attributeDeclarations = new DeferredArrayDeque<>(() -> Deques.asDeque(Attribute.xsiNil(), Attribute.xsiType(), Attribute.xsiSchemaLocation(), Attribute.xsiNoNamespaceSchemaLocation()));
+		final Deque<Attribute> attributeDeclarations = new DeferredDeque<>(() -> Deques.asDeque(Attribute.xsiNil(), Attribute.xsiType(), Attribute.xsiSchemaLocation(), Attribute.xsiNoNamespaceSchemaLocation()));
 
 		@Override
 		public Deque<Attribute> attributeDeclarations() {
@@ -883,8 +884,8 @@ public class Schema implements AnnotatedComponent {
 		this.notationDeclarations = new Def<>(result.parseAll(TagParser.NOTATION),
 				s -> s.notationDeclarations,
 				n -> checkIfUnique(n, Notation::name, Notation::targetNamespace));
-		this.identityConstraintDefinitions = new DeferredArrayDeque<>(() -> {
-			final Deque<IdentityConstraint> x = new ArrayDeque<>();
+		this.identityConstraintDefinitions = new DeferredDeque<>(() -> {
+			final Deque<IdentityConstraint> x = new ConcurrentLinkedDeque<>();
 			this.elementDeclarations().forEach(e -> x.addAll(e.identityConstraintDefinitions()));
 			this.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
 				if (c.contentType() != null && c.contentType().particle() != null) {
@@ -892,7 +893,7 @@ public class Schema implements AnnotatedComponent {
 					if (p.term() instanceof Element) {
 						x.addAll(((Element) p.term()).identityConstraintDefinitions());
 					} else if (p.term() instanceof ModelGroup) {
-						final Deque<ModelGroup> d = new ArrayDeque<>(Collections.singleton((ModelGroup) p.term()));
+						final Deque<ModelGroup> d = new ConcurrentLinkedDeque<>(Collections.singleton((ModelGroup) p.term()));
 						while (!d.isEmpty()) {
 							final ModelGroup g = d.pop();
 							g.particles().forEach(p2 -> {
@@ -908,7 +909,7 @@ public class Schema implements AnnotatedComponent {
 			});
 			return x;
 		});
-		this.annotations = new Def<>(new DeferredArrayDeque<>(() -> {
+		this.annotations = new Def<>(new DeferredDeque<>(() -> {
 			final AnnotationSet annotationSet = Annotation.of(result);
 			annotationSet.addAll(this.imports, Import::annotations);
 			annotationSet.addAll(this.includes, Include::annotations);

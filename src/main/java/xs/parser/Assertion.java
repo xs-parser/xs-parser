@@ -1,6 +1,7 @@
 package xs.parser;
 
 import java.util.*;
+import java.util.concurrent.*;
 import javax.xml.*;
 import org.w3c.dom.*;
 import xs.parser.internal.*;
@@ -158,7 +159,7 @@ public class Assertion implements AnnotatedComponent {
 
 		XPathExpression(final Result result, final String xpathDefaultNamespace, final String expression) {
 			Node iter = result.node();
-			final Deque<Node> xmlnsAttrs = new ArrayDeque<>();
+			final Deque<Node> xmlnsAttrs = new ConcurrentLinkedDeque<>();
 			do {
 				if (iter.hasAttributes()) {
 					for (int i = 0; i < iter.getAttributes().getLength(); ++i) {
