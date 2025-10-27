@@ -747,7 +747,7 @@ public class Schema implements AnnotatedComponent {
 
 	private static final DocumentResolver DEFAULT_DOCUMENT_RESOLVER = new DefaultDocumentResolver();
 	private static final Map<Class<? extends SchemaComponent>, BiFunction<Schema, QName, Deferred<? extends SchemaComponent>>> FINDERS;
-	private static final Schema EMPTY = new Schema();
+	private static final Schema EMPTY = new Schema((Object) NodeHelper.newDocument());
 	private static final String XPATH_DEFAULT_NAMESPACE_SCHEMA_DEFAULT = "##local";
 	private static final SequenceParser parser = new SequenceParser()
 			.optionalAttributes(AttrParser.ATTRIBUTE_FORM_DEFAULT, AttrParser.BLOCK_DEFAULT, AttrParser.DEFAULT_ATTRIBUTES, AttrParser.XPATH_DEFAULT_NAMESPACE, AttrParser.ELEMENT_FORM_DEFAULT, AttrParser.FINAL_DEFAULT, AttrParser.ID, AttrParser.TARGET_NAMESPACE, AttrParser.VERSION, AttrParser.XML_LANG)
@@ -755,7 +755,7 @@ public class Schema implements AnnotatedComponent {
 			.elements(0, 1, TagParser.SCHEMA.defaultOpenContent())
 			.elements(0, Integer.MAX_VALUE, TagParser.ANNOTATION)
 			.elements(0, Integer.MAX_VALUE, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP, TagParser.ELEMENT, TagParser.ATTRIBUTE, TagParser.NOTATION, TagParser.ANNOTATION);
-	static final Schema XSD = new Schema(NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI)) {
+	static final Schema XSD = new Schema((Object) NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI)) {
 
 		final Deque<TypeDefinition> typeDefinitions = new DeferredArrayDeque<>(() -> Deques.asDeque(ComplexType.xsAnyType(), SimpleType.xsAnySimpleType(), SimpleType.xsAnyAtomicType(), SimpleType.xsString(), SimpleType.xsBoolean(), SimpleType.xsFloat(), SimpleType.xsDouble(), SimpleType.xsDecimal(), SimpleType.xsDuration(), SimpleType.xsDateTime(), SimpleType.xsTime(), SimpleType.xsDate(), SimpleType.xsGYearMonth(), SimpleType.xsGYear(), SimpleType.xsGMonthDay(), SimpleType.xsGDay(), SimpleType.xsGMonth(), SimpleType.xsHexBinary(), SimpleType.xsBase64Binary(), SimpleType.xsAnyURI(), SimpleType.xsQName(), SimpleType.xsNOTATION(), SimpleType.xsNormalizedString(), SimpleType.xsToken(), SimpleType.xsLanguage(), SimpleType.xsIDREFS(), SimpleType.xsENTITIES(), SimpleType.xsNMTOKEN(), SimpleType.xsNMTOKENS(), SimpleType.xsName(), SimpleType.xsNCName(), SimpleType.xsID(), SimpleType.xsIDREF(), SimpleType.xsENTITY(), SimpleType.xsInteger(), SimpleType.xsNonPositiveInteger(), SimpleType.xsNegativeInteger(), SimpleType.xsLong(), SimpleType.xsInt(), SimpleType.xsShort(), SimpleType.xsByte(), SimpleType.xsNonNegativeInteger(), SimpleType.xsUnsignedLong(), SimpleType.xsUnsignedInt(), SimpleType.xsUnsignedShort(), SimpleType.xsUnsignedByte(), SimpleType.xsPositiveInteger(), SimpleType.xsYearMonthDuration(), SimpleType.xsDayTimeDuration(), SimpleType.xsDateTimeStamp()));
 
@@ -770,7 +770,7 @@ public class Schema implements AnnotatedComponent {
 		}
 
 	};
-	static final Schema XSI = new Schema(NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI)) {
+	static final Schema XSI = new Schema((Object) NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI)) {
 
 		final Deque<Attribute> attributeDeclarations = new DeferredArrayDeque<>(() -> Deques.asDeque(Attribute.xsiNil(), Attribute.xsiType(), Attribute.xsiSchemaLocation(), Attribute.xsiNoNamespaceSchemaLocation()));
 
@@ -819,11 +819,11 @@ public class Schema implements AnnotatedComponent {
 		return Collections.unmodifiableSet(schemas);
 	});
 
-	private Schema() {
+	private Schema(final Object document) {
 		this.parent = this;
 		this.documentResolver = DEFAULT_DOCUMENT_RESOLVER;
 		this.namespaceContext = null;
-		this.document = NodeHelper.newDocument();
+		this.document = (Document) document;
 		this.schemaDocumentCache = Collections.emptyMap();
 		this.schemaCache = Collections.emptyMap();
 		this.result = null;
@@ -948,6 +948,7 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public Schema(final File file) throws IOException, SAXException {
 		this(loadDocFromFile(file));
+		visitAll();
 	}
 
 	/**
@@ -956,6 +957,7 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public Schema(final Document document) {
 		this(DEFAULT_DOCUMENT_RESOLVER, document);
+		visitAll();
 	}
 
 	/**
@@ -965,6 +967,7 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public Schema(final NamespaceContext namespaceContext, final Document document) {
 		this(DEFAULT_DOCUMENT_RESOLVER, namespaceContext, document);
+		visitAll();
 	}
 
 	/**
@@ -974,6 +977,7 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public Schema(final DocumentResolver documentResolver, final Document document) {
 		this(documentResolver, null, document);
+		visitAll();
 	}
 
 	/**
@@ -984,6 +988,7 @@ public class Schema implements AnnotatedComponent {
 	 */
 	public Schema(final DocumentResolver documentResolver, final NamespaceContext namespaceContext, final Document document) {
 		this(null, documentResolver, namespaceContext, document, document.getDocumentURI(), new HashMap<>(), new HashMap<>());
+		visitAll();
 	}
 
 	private static <T> Deferred<T> deferred(final Optional<T> opt) {
@@ -1038,6 +1043,13 @@ public class Schema implements AnnotatedComponent {
 			overrides.forEach(o -> o.includedSchema().findAllConstituentSchemas(set));
 			redefines.forEach(r -> r.includedSchema().findAllConstituentSchemas(set));
 		}
+	}
+
+	/**
+	 * Visit all components of this schema to prevent a deque-concurrency related issue
+	 */
+	private void visitAll() {
+		visit(new DefaultVisitor());
 	}
 
 	static {

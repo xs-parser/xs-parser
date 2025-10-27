@@ -40,15 +40,13 @@ public class IncludeTests {
 				+ "    <xs:restriction base=\"xs:string\"/>"
 				+ "  </xs:simpleType>"
 				+ "</xs:schema>");
-		final Schema schema = new Schema(resolver,
-				Utilities.stringToDocument(
-						Utilities.PROLOG_UTF8
-						+ "<xs:schema xmlns:test=\"https://my.test\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" elementFormDefault=\"qualified\" attributeFormDefault=\"unqualified\">"
-						+ "  <xs:include schemaLocation=\"./Test.xsd\"/>"
-						+ "  <xs:include schemaLocation=\"Test2.xsd\"/>"
-						+ "</xs:schema>"
-				));
-		Assert.assertThrows(ParseException.class, schema.typeDefinitions()::getFirst); // Force lazy evaluation
+		Assert.assertThrows(ParseException.class, () -> new Schema(resolver, Utilities.stringToDocument(
+				Utilities.PROLOG_UTF8
+				+ "<xs:schema xmlns:test=\"https://my.test\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" elementFormDefault=\"qualified\" attributeFormDefault=\"unqualified\">"
+				+ "  <xs:include schemaLocation=\"./Test.xsd\"/>"
+				+ "  <xs:include schemaLocation=\"Test2.xsd\"/>"
+				+ "</xs:schema>"
+		)));
 	}
 
 	@Test
@@ -86,8 +84,7 @@ public class IncludeTests {
 				+ "    </xs:sequence>"
 				+ "  </xs:complexType>"
 				+ "</xs:schema>";
-		final ComplexType bType = (ComplexType) new Schema(Utilities.stringToDocument(bSchemaText)).typeDefinitions().getFirst();
-		Assert.assertThrows(ParseException.class, () -> Visitors.visit(bType, new DefaultVisitor())); // Should fail to resolve a:AType
+		Assert.assertThrows(ParseException.class, () -> new Schema(Utilities.stringToDocument(bSchemaText))); // Should fail to resolve a:AType
 		final DocumentResolver resolver = Utilities.stringResolver(bSchemaText);
 		final String aSchemaText = Utilities.PROLOG_UTF8
 				+ "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" targetNamespace=\"a\" xmlns:a=\"a\">"

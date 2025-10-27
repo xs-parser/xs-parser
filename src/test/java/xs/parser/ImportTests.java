@@ -13,14 +13,13 @@ public class ImportTests {
 				+ "<xs:element name='test3' targetNamespace='https://test.3'/>"
 				+ "<xs:element name='test4' targetNamespace='https://test.4'/>"
 				+ "</xs:schema>");
-		final Schema schema = new Schema(resolver, Utilities.stringToDocument(
+		Assert.assertThrows(ParseException.class, () -> new Schema(resolver, Utilities.stringToDocument(
 				Utilities.PROLOG_UTF8
 				+ "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema' targetNamespace='https://test.1'>"
 				+ "<xs:import namespace='https://test.3' schemaLocation='Test.xsd'/>"
 				+ "<xs:import namespace='https://test.4' schemaLocation='Test.xsd'/>"
 				+ "</xs:schema>"
-		));
-		Assert.assertThrows(ParseException.class, schema.elementDeclarations()::getFirst);
+		)));
 	}
 
 	@Test
@@ -31,7 +30,7 @@ public class ImportTests {
 						+ "<xs:restriction base='t:A'/>"
 						+ "</xs:simpleType>"
 						+ "</xs:schema>");
-		final Schema schema = new Schema(resolver, Utilities.stringToDocument(
+		Assert.assertThrows(ParseException.class, () -> new Schema(resolver, Utilities.stringToDocument(
 				Utilities.PROLOG_UTF8
 				+ "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema' targetNamespace='https://test.1'>"
 				+ "<xs:import namespace='https://test.1' schemaLocation='Test.xsd'/>"
@@ -39,8 +38,7 @@ public class ImportTests {
 				+ "<xs:restriction base='xs:int'/>"
 				+ "</xs:simpleType>"
 				+ "</xs:schema>"
-		));
-		Assert.assertThrows(ParseException.class, schema.typeDefinitions()::getFirst); // Force lazy evaluation
+		)));
 	}
 
 	@Test
