@@ -21,9 +21,9 @@ jobs:
         distribution: temurin
 
     - name: Publish with Gradle
-      run: ./gradlew publish
+      run: ./gradlew publishAndReleaseToMavenCentral -DmavenCentralPublishing=true -DsignAllPublications=true
       env:
-        PGP_SIGNING_KEY: ${{ secrets.PGP_SIGNING_KEY }}
-        PGP_SIGNING_PASSWORD: ${{ secrets.PGP_SIGNING_PASSWORD }}
-        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        ORG_GRADLE_PROJECT_mavenCentralUsername=${{ secrets.SONATYPE_USERNAME }}
+        ORG_GRADLE_PROJECT_mavenCentralPassword=${{ secrets.SONATYPE_PASSWORD }}
+        ORG_GRADLE_PROJECT_signingInMemoryKey=${{ secrets.PGP_SIGNING_KEY }}
+        ORG_GRADLE_PROJECT_signingInMemoryKeyPassword=${{ secrets.PGP_SIGNING_PASSWORD }}

@@ -2,8 +2,8 @@ plugins {
 	id 'checkstyle'
 	id 'jacoco'
 	id 'java-library'
-	id 'maven-publish'
 	id 'signing'
+	id 'com.vanniktech.maven.publish' version '0.34.0'
 	id 'org.sonarqube' version '7.0.1.6134' apply false
 }
 
@@ -116,63 +116,40 @@ def getDescription = { ->
 	return desc.substring(0, desc.indexOf('![')).trim().replaceAll('\n+', ' ').replace('`', '')
 }
 
-publishing {
-	repositories {
-		maven {
-			url = { isSnapshot ? snapshotRepositoryUrl : releaseRepositoryUrl }
-			credentials {
-				username = System.getenv('SONATYPE_USERNAME')
-				password = System.getenv('SONATYPE_PASSWORD')
+mavenPublishing {
+	coordinates(group, artifact, version)
+	pom {
+		def repoUrl = System.getenv('GITHUB_SERVER_URL') + '/' + System.getenv('GITHUB_REPOSITORY')
+		def baseRepoUrl = repoUrl.substring('https://'.length())
+		name.set(rootProject.name)
+		description.set(getDescription())
+		url.set(repoUrl)
+		organization {
+			name.set(group)
+			url.set(repoUrl.substring(0, repoUrl.lastIndexOf('/')))
+		}
+		issueManagement {
+			system.set('GitHub')
+			url.set("${repoUrl}/issues")
+		}
+		licenses {
+			license {
+				name.set(file('LICENSE.md').text.split('\n', 2)[0].trim())
+				url.set("${repoUrl}/blob/main/LICENSE.md")
 			}
 		}
-	}
-	publications {
-		sonatype(MavenPublication) {
-			artifactId = artifact
-			from components.java
-			pom {
-				def repoUrl = System.getenv('GITHUB_SERVER_URL') + '/' + System.getenv('GITHUB_REPOSITORY')
-				def baseRepoUrl = repoUrl.substring('https://'.length())
-				name = rootProject.name
-				description = getDescription()
-				url = repoUrl
-				organization {
-					name = group
-					url = repoUrl.substring(0, repoUrl.lastIndexOf('/'))
-				}
-				issueManagement {
-					system = 'GitHub'
-					url = "${repoUrl}/issues"
-				}
-				licenses {
-					license {
-						name = file('LICENSE.md').text.split('\n', 2)[0].trim()
-						url = "${repoUrl}/blob/main/LICENSE.md"
-					}
-				}
-				scm {
-					connection = "scm:git:git://${baseRepoUrl}.git"
-					developerConnection = "scm:git:ssh://${baseRepoUrl}.git"
-					url = repoUrl
-				}
-				withXml {
-					def devs = asNode().appendNode('developers')
-					def authors = (file('CONTRIBUTORS.md').text =~ /- Copyright [0-9]{4}(-([0-9]{4}|present))? (.*?) <(.*?)>/).findAll()
-					authors.each {
-						def dev = devs.appendNode('developer')
-						dev.appendNode('name', it[3])
-						dev.appendNode('email', it[4])
-					}
+		developers {
+			(file('CONTRIBUTORS.md').text =~ /- Copyright [0-9]{4}(-([0-9]{4}|present))? (.*?) <(.*?)>/).findAll().each { c ->
+				developer {
+					name.set(c[3])
+					email.set(c[4])
 				}
 			}
 		}
+		scm {
+			connection.set("scm:git:git://${baseRepoUrl}.git")
+			developerConnection.set("scm:git:ssh://${baseRepoUrl}.git")
+			url.set(repoUrl)
+		}
 	}
-}
-
-signing {
-	required = { gradle.taskGraph.hasTask('uploadArchives') }
-	def signingKey = System.getenv('PGP_SIGNING_KEY')
-	def signingPassword = System.getenv('PGP_SIGNING_PASSWORD')
-	useInMemoryPgpKeys(signingKey, signingPassword)
-	sign publishing.publications
 }
