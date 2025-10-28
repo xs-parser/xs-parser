@@ -19,21 +19,22 @@ public interface Deferred<T> {
 	}
 
 	public static <T> Deferred<T> of(final Supplier<T> supplier) {
-		final class State {
-
-			final Supplier<T> supplier;
-			final T value;
-
-			State(final Supplier<T> supplier, final T value) {
-				this.supplier = supplier;
-				this.value = value;
-			}
-
-		}
-
 		Objects.requireNonNull(supplier);
-		final AtomicReference<State> state = new AtomicReference<>(new State(supplier, null));
-		return () -> state.updateAndGet(s -> s.supplier == null ? s : new State(null, s.supplier.get())).value;
+		final AtomicBoolean empty = new AtomicBoolean(true);
+		final AtomicReference<T> value = new AtomicReference<>();
+		return () -> {
+			if (empty.get()) {
+				synchronized (value) {
+					if (empty.get()) {
+						final T val = supplier.get();
+						value.set(val);
+						empty.set(false);
+						return val;
+					}
+				}
+			}
+			return value.get();
+		};
 	}
 
 }
