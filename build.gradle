@@ -119,7 +119,7 @@ def getDescription = { ->
 publishing {
 	repositories {
 		maven {
-			url = { isSnapshot ? snapshotRepositoryUrl : releaseRepositoryUrl }
+			url = { isSnapshot ? System.getenv('SONATYPE_SNAPSHOT_REPO_URL') : System.getenv('SONATYPE_RELEASE_REPO_URL') }
 			credentials {
 				username = System.getenv('SONATYPE_USERNAME')
 				password = System.getenv('SONATYPE_PASSWORD')
