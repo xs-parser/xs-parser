@@ -18,10 +18,16 @@ jobs:
         distribution: temurin
 
     - name: Build with Gradle
-      run: ./gradlew build
+      run: ./gradlew build cyclonedxBom
+
+    - name: Combine artifacts
+      run: |
+        mkdir release
+        cp build/libs/* release/
+        cp build/reports/cyclonedx/* release/
 
     - name: Upload Artifacts
       uses: fnkr/github-action-ghr@96b1448dc6162f370067e1de51e856e733a76b4f
       env:
-        GHR_PATH: build/libs
+        GHR_PATH: release
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

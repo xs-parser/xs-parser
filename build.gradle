@@ -4,6 +4,7 @@ plugins {
 	id 'java-library'
 	id 'signing'
 	id 'com.vanniktech.maven.publish' version '0.34.0'
+	id 'org.cyclonedx.bom' version '3.0.1'
 	id 'org.sonarqube' version '7.0.1.6134' apply false
 }
 
@@ -41,6 +42,7 @@ tasks.withType(JavaCompile) {
 }
 
 abstract class GitDescribeTagsValueSource implements ValueSource<String, org.gradle.api.provider.ValueSourceParameters.None> {
+
 	@Inject
 	abstract ExecOperations getExecOperations()
 
@@ -59,6 +61,7 @@ abstract class GitDescribeTagsValueSource implements ValueSource<String, org.gra
 		}
 		return 'unspecified'
 	}
+
 }
 
 // Run with -Psnapshot to enable SNAPSHOT builds
