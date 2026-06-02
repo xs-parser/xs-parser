@@ -4,9 +4,8 @@
 
 ## Signed-off-by
 
-- Copyright 2022-present Thomas A. Bateson <thomas.bateson@us.af.mil>
-- Copyright 2022-present Thomas Bateson <thomas.bateson@eagles.oc.edu>
-- Copyright 2023-present Nick Little <nicklaus.little@us.af.mil>
+- Copyright 2022 U.S. Federal Government (in countries where recognized) <afsc.sw.opensourcesoftware@us.af.mil>
+- Copyright 2022-2026 Thomas Bateson <tbateson@users.noreply.github.com>
 - _Add the copyright date, your name, and email address here. (PLEASE KEEP THIS LINE)_
 
 ## Note for U.S. Federal Employees
