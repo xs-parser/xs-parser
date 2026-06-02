@@ -73,10 +73,10 @@ public class AttributeGroup implements AnnotatedComponent {
 	private final Deque<Annotation> annotations;
 	private final String name;
 	private final String targetNamespace;
-	private final Deque<AttributeUse> attributeUses;
+	private final Deferred<Set<AttributeUse>> attributeUses;
 	private final Deferred<Wildcard> attributeWildcard;
 
-	private AttributeGroup(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<AttributeUse> attributeUses, final Deferred<Wildcard> attributeWildcard) {
+	private AttributeGroup(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deferred<Set<AttributeUse>> attributeUses, final Deferred<Wildcard> attributeWildcard) {
 		this.context = Objects.requireNonNull(context);
 		this.node = Objects.requireNonNull(node);
 		this.annotations = Objects.requireNonNull(annotations);
@@ -94,7 +94,7 @@ public class AttributeGroup implements AnnotatedComponent {
 		final QName refAttr = result.value(AttrParser.REF);
 		if (refAttr != null) {
 			final Deferred<AttributeGroup> ref = result.schema().find(refAttr, AttributeGroup.class);
-			return new AttributeGroup(context, node, annotations, null, targetNamespace, ref.mapToDeque(AttributeGroup::attributeUses), ref.map(AttributeGroup::attributeWildcard)) {
+			return new AttributeGroup(context, node, annotations, null, targetNamespace, ref.map(AttributeGroup::attributeUses), ref.map(AttributeGroup::attributeWildcard)) {
 
 				@Override
 				public String name() {
@@ -106,7 +106,7 @@ public class AttributeGroup implements AnnotatedComponent {
 		final String name = result.value(AttrParser.NAME);
 		final Deque<AttributeUse> attributes = result.parseAll(TagParser.ATTRIBUTE.use());
 		final Deque<AttributeGroup> attributeGroups = result.parseAll(TagParser.ATTRIBUTE_GROUP);
-		final Deque<AttributeUse> attributeUses = findAttributeUses(attributes, attributeGroups);
+		final Deferred<Set<AttributeUse>> attributeUses = findAttributeUses(attributes, attributeGroups);
 		final Deferred<Wildcard> attributeWildcard = result.parse(TagParser.ANY_ATTRIBUTE);
 		return new AttributeGroup(context, node, annotations, name, targetNamespace, attributeUses, attributeWildcard);
 	}
@@ -116,13 +116,9 @@ public class AttributeGroup implements AnnotatedComponent {
 		VisitorHelper.register(AttributeGroup.class, AttributeGroup::visit);
 	}
 
-	static Deque<AttributeUse> findAttributeUses(final Deque<AttributeUse> attributeUses, final Deque<AttributeGroup> attributeGroups) {
-		return new DeferredArrayDeque<>(() -> {
-			if (attributeGroups.isEmpty()) {
-				return attributeUses;
-			}
-			final ArrayDeque<AttributeUse> x = new ArrayDeque<>();
-			x.addAll(attributeUses);
+	static Deferred<Set<AttributeUse>> findAttributeUses(final Deque<AttributeUse> attributeUses, final Deque<AttributeGroup> attributeGroups) {
+		return Deferred.of(() -> {
+			final Set<AttributeUse> x = new LinkedHashSet<>(attributeUses);
 			for (final AttributeGroup a : attributeGroups) {
 				x.addAll(a.attributeUses());
 			}
@@ -134,7 +130,7 @@ public class AttributeGroup implements AnnotatedComponent {
 		if (visitor.visit(context.get(), node, this)) {
 			visitor.onAttributeGroup(context.get(), node, this);
 			annotations.forEach(a -> a.visit(visitor));
-			attributeUses.forEach(a -> a.visit(visitor));
+			attributeUses().forEach(a -> a.visit(visitor));
 			if (attributeWildcard != null) {
 				((AnyAttribute) attributeWildcard()).visit(visitor);
 			}
@@ -152,8 +148,8 @@ public class AttributeGroup implements AnnotatedComponent {
 	}
 
 	/** @return The union of the set of attribute uses corresponding to the &lt;attribute&gt; [children], if any, with the {attribute uses} of the attribute groups ·resolved· to by the ·actual value·s of the ref [attribute] of the &lt;attributeGroup&gt; [children], if any. <i>Note: As described below, circular references from &lt;attributeGroup&gt; to &lt;attributeGroup&gt; are not errors.</i> */
-	public Deque<AttributeUse> attributeUses() {
-		return Deques.unmodifiableDeque(attributeUses);
+	public Set<AttributeUse> attributeUses() {
+		return Collections.unmodifiableSet(attributeUses.get());
 	}
 
 	/** @return The Wildcard determined by applying the attribute-wildcard mapping described in Common Rules for Attribute Wildcards (§3.6.2.2) to the &lt;attributeGroup&gt; element information item. */
