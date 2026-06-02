@@ -99,7 +99,7 @@ public class XPathTests {
 			Assert.assertEquals(elements.size(), col.xpath("fn:collection()").split().count());
 			Assert.assertEquals(elements.size(), col.xpath("fn:collection()").size());
 		});
-		Assert.assertEquals(elements.size() + schemas.size(), nodeSet.xpath("fn:collection()/xs:schema|fn:collection()/xs:schema/xs:element").size());
+		Assert.assertEquals(elements.size() + schemas.size(), nodeSet.xpath("fn:collection()//*[self::xs:schema or (self::xs:element and parent::xs:schema)]").size());
 	}
 
 	@Test
