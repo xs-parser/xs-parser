@@ -4,8 +4,8 @@ plugins {
 	id 'java-library'
 	id 'signing'
 	id 'com.vanniktech.maven.publish' version '0.34.0'
-	id 'org.cyclonedx.bom' version '3.2.4'
-	id 'org.sonarqube' version '7.3.0.8198' apply false
+	id 'org.cyclonedx.bom' version '3.5.1'
+	id 'org.sonarqube' version '7.5.0.8588' apply false
 }
 
 if (System.getenv('SONAR_TOKEN') != null) {
@@ -17,9 +17,9 @@ repositories {
 }
 
 dependencies {
-	compileOnly 'net.sf.saxon:Saxon-HE:12.+'
+	compileOnly 'net.sf.saxon:Saxon-HE:13.+'
 	testImplementation 'junit:junit:4.+'
-	testRuntimeOnly 'net.sf.saxon:Saxon-HE:12.+'
+	testRuntimeOnly 'net.sf.saxon:Saxon-HE:13.+'
 }
 
 java {
