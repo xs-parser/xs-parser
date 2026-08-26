@@ -17,9 +17,9 @@ repositories {
 }
 
 dependencies {
-	compileOnly 'net.sf.saxon:Saxon-HE:12.+'
+	compileOnly 'net.sf.saxon:Saxon-HE:13.+'
 	testImplementation 'junit:junit:4.+'
-	testRuntimeOnly 'net.sf.saxon:Saxon-HE:12.+'
+	testRuntimeOnly 'net.sf.saxon:Saxon-HE:13.+'
 }
 
 java {
