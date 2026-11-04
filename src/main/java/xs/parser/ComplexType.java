@@ -828,14 +828,14 @@ public class ComplexType implements TypeDefinition {
 	private final Deque<Annotation> annotations;
 	private final String name;
 	private final String targetNamespace;
-	private final Deque<Final> finals;
+	private final Set<Final> finals;
 	private final Deferred<? extends TypeDefinition> baseTypeDefinition;
 	private final Deferred<Set<AttributeUse>> attributeUses;
 	private final Deferred<Wildcard> attributeWildcard;
 	private final boolean isAbstract;
 	private final Deferred<DerivationMethod> derivationMethod;
 	private final Deferred<ContentType> contentType;
-	private final Deque<Block> prohibitedSubstitutions;
+	private final Set<Block> prohibitedSubstitutions;
 	private final Deque<Assertion> assertions;
 
 	private ComplexType(final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final Deferred<? extends TypeDefinition> baseTypeDefinition, final Deferred<Set<AttributeUse>> attributeUses, final Deferred<Wildcard> attributeWildcard, final boolean isAbstract, final Deferred<DerivationMethod> derivationMethod, final Deferred<ContentType> contentType, final Deque<Block> prohibitedSubstitutions, final Deque<Assertion> assertions) {
@@ -844,14 +844,14 @@ public class ComplexType implements TypeDefinition {
 		this.annotations = Objects.requireNonNull(annotations);
 		this.name = name;
 		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
-		this.finals = Objects.requireNonNull(finals);
+		this.finals = new LinkedHashSet<>(finals);
 		this.baseTypeDefinition = Objects.requireNonNull(baseTypeDefinition);
 		this.attributeUses = Objects.requireNonNull(attributeUses);
 		this.attributeWildcard = Objects.requireNonNull(attributeWildcard);
 		this.isAbstract = isAbstract;
 		this.derivationMethod = Objects.requireNonNull(derivationMethod);
 		this.contentType = Objects.requireNonNull(contentType);
-		this.prohibitedSubstitutions = Objects.requireNonNull(prohibitedSubstitutions);
+		this.prohibitedSubstitutions = new LinkedHashSet<>(prohibitedSubstitutions);
 		this.assertions = Objects.requireNonNull(assertions);
 	}
 
@@ -1216,8 +1216,8 @@ public class ComplexType implements TypeDefinition {
 	 *
 	 * <i>Note: Although the blockDefault [attribute] of &lt;schema&gt; may include values other than restriction or extension, those values are ignored in the determination of {prohibited substitutions} for complex type definitions (they are used elsewhere).</i>
 	 */
-	public Deque<Block> prohibitedSubstitutions() {
-		return Deques.unmodifiableDeque(prohibitedSubstitutions);
+	public Set<Block> prohibitedSubstitutions() {
+		return Collections.unmodifiableSet(prohibitedSubstitutions);
 	}
 
 	/**
@@ -1252,8 +1252,8 @@ public class ComplexType implements TypeDefinition {
 	}
 
 	@Override
-	public Deque<Final> finals() {
-		return Deques.unmodifiableDeque(finals);
+	public Set<Final> finals() {
+		return Collections.unmodifiableSet(finals);
 	}
 
 	/** @return If the name [attribute] is present, then ·absent·, otherwise (among the ancestor element information items there will be a nearest &lt;element&gt;), the Element Declaration corresponding to the nearest &lt;element&gt; information item among the the ancestor element information items. */

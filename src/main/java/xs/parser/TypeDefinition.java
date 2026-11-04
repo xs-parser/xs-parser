@@ -86,7 +86,7 @@ public interface TypeDefinition extends AnnotatedComponent {
 	public TypeDefinition baseTypeDefinition();
 
 	/** @return A subset of {extension, restriction}. */
-	public Deque<Final> finals();
+	public Set<Final> finals();
 
 	/**
 	 * Required if {name} is ·absent·, otherwise must be ·absent·.

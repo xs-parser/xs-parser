@@ -293,8 +293,8 @@ public class Element implements Term {
 	private final Deferred<Scope> scope;
 	private final boolean nillable;
 	private final Deferred<ValueConstraint> valueConstraint;
-	private final Deque<IdentityConstraint> identityConstraintDefinitions;
-	private final Deque<Element> substitutionGroupAffiliations;
+	private final Deferred<Set<IdentityConstraint>> identityConstraintDefinitions;
+	private final Deferred<Set<Element>> substitutionGroupAffiliations;
 	private final Set<Block> disallowedSubstitutions;
 	private final Set<Final> substitutionGroupExclusions;
 	private final boolean isAbstract;
@@ -310,8 +310,10 @@ public class Element implements Term {
 		this.scope = Objects.requireNonNull(scope);
 		this.nillable = nillable;
 		this.valueConstraint = valueConstraint;
-		this.identityConstraintDefinitions = Objects.requireNonNull(identityConstraintDefinitions);
-		this.substitutionGroupAffiliations = Objects.requireNonNull(substitutionGroupAffiliations);
+		Objects.requireNonNull(identityConstraintDefinitions);
+		this.identityConstraintDefinitions = Deferred.of(() -> new LinkedHashSet<>(identityConstraintDefinitions));
+		Objects.requireNonNull(substitutionGroupAffiliations);
+		this.substitutionGroupAffiliations = Deferred.of(() -> new LinkedHashSet<>(substitutionGroupAffiliations));
 		this.disallowedSubstitutions = Objects.requireNonNull(disallowedSubstitutions);
 		this.substitutionGroupExclusions = Objects.requireNonNull(substitutionGroupExclusions);
 		this.isAbstract = isAbstract;
@@ -461,8 +463,8 @@ public class Element implements Term {
 				typeTable.alternatives.forEach(a -> a.visit(visitor));
 				typeTable.defaultTypeDefinition.visit(visitor);
 			}
-			identityConstraintDefinitions.forEach(i -> i.visit(visitor));
-			substitutionGroupAffiliations.forEach(e -> e.visit(visitor));
+			identityConstraintDefinitions.get().forEach(i -> i.visit(visitor));
+			substitutionGroupAffiliations.get().forEach(e -> e.visit(visitor));
 		}
 	}
 
@@ -538,13 +540,13 @@ public class Element implements Term {
 	}
 
 	/** @return A set consisting of the identity-constraint-definitions corresponding to all the &lt;key&gt;, &lt;unique&gt; and &lt;keyref&gt; element information items in the [children], if any, otherwise the empty set. */
-	public Deque<IdentityConstraint> identityConstraintDefinitions() {
-		return Deques.unmodifiableDeque(identityConstraintDefinitions);
+	public Set<IdentityConstraint> identityConstraintDefinitions() {
+		return Collections.unmodifiableSet(identityConstraintDefinitions.get());
 	}
 
 	/** @return A set of the element declarations ·resolved· to by the items in the ·actual value· of the substitutionGroup [attribute], if present, otherwise the empty set. */
-	public Deque<Element> substitutionGroupAffiliations() {
-		return Deques.unmodifiableDeque(substitutionGroupAffiliations);
+	public Set<Element> substitutionGroupAffiliations() {
+		return Collections.unmodifiableSet(substitutionGroupAffiliations.get());
 	}
 
 	/**

@@ -394,11 +394,11 @@ public class SimpleType implements TypeDefinition {
 	private final String name;
 	private final String targetNamespace;
 	private final Deferred<? extends TypeDefinition> baseTypeDefinition;
-	private final Deque<Final> finals;
+	private final Set<Final> finals;
 	private final Deferred<Variety> variety;
 	private final Deque<Object> facets;
-	private final Deque<ConstrainingFacet> facetValues;
-	private final Deque<FundamentalFacet> fundamentalFacets;
+	private final Deferred<Set<ConstrainingFacet>> facetValues;
+	private final Deferred<Set<FundamentalFacet>> fundamentalFacets;
 	private final Deferred<SimpleType> primitiveTypeDefinition;
 	private final Deferred<SimpleType> itemTypeDefinition;
 	private final Deque<SimpleType> memberTypeDefinitions;
@@ -411,18 +411,18 @@ public class SimpleType implements TypeDefinition {
 		this.name = name;
 		this.targetNamespace = NodeHelper.requireNonEmpty(node, targetNamespace);
 		this.baseTypeDefinition = Objects.requireNonNull(baseTypeDefinition);
-		this.finals = Objects.requireNonNull(finals);
+		this.finals = new LinkedHashSet<>(finals);
 		this.variety = Objects.requireNonNull(variety);
 		this.facets = Objects.requireNonNull(facets);
-		this.facetValues = new DeferredArrayDeque<>(() -> facets.stream().filter(ConstrainingFacet.class::isInstance).map(ConstrainingFacet.class::cast).collect(Collectors.toCollection(ArrayDeque::new)));
-		this.fundamentalFacets = new DeferredArrayDeque<>(() -> {
+		this.facetValues = Deferred.of(() -> facets.stream().filter(ConstrainingFacet.class::isInstance).map(ConstrainingFacet.class::cast).collect(Collectors.toCollection(LinkedHashSet::new)));
+		this.fundamentalFacets = Deferred.of(() -> {
 			final Deque<FundamentalFacet> f = FundamentalFacet.find(this);
 			if (f != null) {
-				return f;
+				return new LinkedHashSet<>(f);
 			}
 			final TypeDefinition baseType = baseTypeDefinition.get();
 			if (baseType instanceof ComplexType) {
-				return Deques.emptyDeque();
+				return Collections.emptySet();
 			}
 			return ((SimpleType) baseType).fundamentalFacets();
 		});
@@ -556,7 +556,7 @@ public class SimpleType implements TypeDefinition {
 		throw new IllegalArgumentException("No primitive or built-in simpleType for name " + localName);
 	}
 
-	static SimpleType wrap(final Schema schema, final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final SimpleType baseSimpleType, final Deque<ConstrainingFacet> declaredFacets) {
+	static SimpleType wrap(final Schema schema, final Deferred<? extends AnnotatedComponent> context, final Node node, final Deque<Annotation> annotations, final String name, final String targetNamespace, final Deque<Final> finals, final SimpleType baseSimpleType, final Collection<ConstrainingFacet> declaredFacets) {
 		final Deque<Object> facets = ConstrainingFacet.combineLikeFacets(baseSimpleType, baseSimpleType.facets, declaredFacets);
 		return new SimpleType(schema, context, node, annotations, name, targetNamespace, finals, () -> baseSimpleType, baseSimpleType.variety, facets, null, null, null) {
 
@@ -950,13 +950,13 @@ public class SimpleType implements TypeDefinition {
 	 *   <li>otherwise the empty set</li>
 	 * </ol>
 	 */
-	public Deque<ConstrainingFacet> facets() {
-		return Deques.unmodifiableDeque(facetValues);
+	public Set<ConstrainingFacet> facets() {
+		return Collections.unmodifiableSet(facetValues.get());
 	}
 
 	/** @return Based on {variety}, {facets}, {base type definition} and {member type definitions}, a set of Fundamental Facet components, one each as specified in The ordered Schema Component, The bounded Schema Component, The cardinality Schema Component and The numeric Schema Component . */
-	public Deque<FundamentalFacet> fundamentalFacets() {
-		return Deques.unmodifiableDeque(fundamentalFacets);
+	public Set<FundamentalFacet> fundamentalFacets() {
+		return Collections.unmodifiableSet(fundamentalFacets.get());
 	}
 
 	/** @return From among the ·ancestors· of this Simple Type Definition, that Simple Type Definition which corresponds to a primitive datatype. */
@@ -1025,8 +1025,8 @@ public class SimpleType implements TypeDefinition {
 	 * </ol>
 	 */
 	@Override
-	public Deque<Final> finals() {
-		return Deques.unmodifiableDeque(finals);
+	public Set<Final> finals() {
+		return Collections.unmodifiableSet(finals);
 	}
 
 	/**
