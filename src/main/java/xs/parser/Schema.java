@@ -1234,7 +1234,7 @@ public class Schema implements AnnotatedComponent {
 	/** @return The ·annotation mapping· of the set of elements containing the &lt;schema&gt; and all the &lt;include&gt;, &lt;redefine&gt;, &lt;override&gt;, &lt;import&gt;, and &lt;defaultOpenContent&gt; [children], if any, as defined in XML Representation of Annotation Schema Components (§3.15.2). */
 	@Override
 	public Deque<Annotation> annotations() {
-		return Deques.unmodifiableDeque(annotations.all.getDeque());
+		return Deques.unmodifiableDeque(annotations.all.asDeque());
 	}
 
 }

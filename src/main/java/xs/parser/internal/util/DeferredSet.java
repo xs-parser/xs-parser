@@ -2,7 +2,7 @@ package xs.parser.internal.util;
 
 import java.util.*;
 
-public class DeferredSet<T> extends LinkedHashSet<T> {
+public class DeferredSet<T> extends AbstractSet<T> {
 
 	private final Deque<T> deque;
 
@@ -14,57 +14,29 @@ public class DeferredSet<T> extends LinkedHashSet<T> {
 		this.deque = Objects.requireNonNull(deque);
 	}
 
-	private void addAllElements() {
-		if (!deque.isEmpty()) {
-			synchronized (this) {
-				addAll(deque);
-				deque.clear();
-			}
-		}
-	}
-
-	private T poll() {
-		synchronized (this) {
-			final T element = deque.pollFirst();
-			if (element != null) {
-				add(element);
-			}
-			return element;
-		}
-	}
-
 	@Override
 	public int size() {
-		addAllElements();
-		return super.size();
+		assert deque.stream().unordered().distinct().count() == deque.size();
+		return deque.size();
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return super.isEmpty() && deque.isEmpty();
+		return deque.isEmpty();
 	}
 
 	@Override
 	public boolean contains(final Object o) {
-		if (super.contains(o)) {
-			return true;
-		}
-		T element;
-		while ((element = poll()) != null) {
-			if (element.equals(o)) {
-				return true;
-			}
-		}
-		return false;
+		return deque.contains(o);
 	}
 
 	@Override
 	public Iterator<T> iterator() {
-		addAllElements();
-		return super.iterator();
+		assert deque.stream().unordered().distinct().count() == deque.size();
+		return deque.iterator();
 	}
 
-	public Deque<T> getDeque() {
+	public Deque<T> asDeque() {
 		return deque;
 	}
 
