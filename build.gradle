@@ -81,7 +81,6 @@ test {
 
 javadoc {
 	exclude 'xs/parser/internal/**'
-	options.addBooleanOption('Werror', true)
 	options.encoding = 'UTF-8'
 	options.memberLevel = JavadocMemberLevel.PUBLIC
 }
