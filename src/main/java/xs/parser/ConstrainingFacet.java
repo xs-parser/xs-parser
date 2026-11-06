@@ -1126,7 +1126,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	}
 
 	static Deque<Object> combineLikeFacets(final SimpleType baseType, final Deque<Object> baseFacets, final Collection<? extends ConstrainingFacet> declaredFacets) {
-		final Deque<Object> newFacets = new DeferredArrayDeque<>();
+		final Deque<Object> newFacets = new DeferredDeque<>();
 		boolean patternFound = false;
 		boolean enumerationFound = false;
 		boolean assertionFound = false;

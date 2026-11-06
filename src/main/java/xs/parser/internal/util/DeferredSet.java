@@ -16,7 +16,7 @@ public class DeferredSet<T> extends AbstractSet<T> {
 
 	@Override
 	public int size() {
-		assert deque.stream().unordered().distinct().count() == deque.size();
+		assert deque.stream().distinct().count() == deque.size();
 		return deque.size();
 	}
 
@@ -32,7 +32,7 @@ public class DeferredSet<T> extends AbstractSet<T> {
 
 	@Override
 	public Iterator<T> iterator() {
-		assert deque.stream().unordered().distinct().count() == deque.size();
+		assert deque.stream().distinct().count() == deque.size();
 		return deque.iterator();
 	}
 

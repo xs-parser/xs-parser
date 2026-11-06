@@ -510,7 +510,7 @@ public class Schema implements AnnotatedComponent {
 			final Set<Schema> schemas = new LinkedHashSet<>();
 			schemas.add(Schema.this);
 			this.constituents = findAll(schemas, mapper);
-			this.all = new DeferredSet<>(new DeferredArrayDeque<>(() -> {
+			this.all = new DeferredSet<>(new DeferredDeque<>(() -> {
 				final Deque<T> x = new ArrayDeque<>(constituents);
 				x.addAll(declared);
 				if (after != null) {
@@ -527,7 +527,7 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		private <U extends SchemaComponent> Deque<U> findAll(final Set<Schema> schemas, final Function<Schema, Def<U>> mapper) {
-			return new DeferredArrayDeque<>(constituentSchemas.map(c -> {
+			return new DeferredDeque<>(constituentSchemas.map(c -> {
 				if (c.isEmpty()) {
 					return Deques.emptyDeque();
 				}
@@ -883,7 +883,7 @@ public class Schema implements AnnotatedComponent {
 		this.notationDeclarations = new Def<>(result.parseAll(TagParser.NOTATION),
 				s -> s.notationDeclarations,
 				n -> checkIfUnique(n, Notation::name, Notation::targetNamespace));
-		this.identityConstraintDefinitions = new DeferredSet<>(new DeferredArrayDeque<>(() -> {
+		this.identityConstraintDefinitions = new DeferredSet<>(new DeferredDeque<>(() -> {
 			final Deque<IdentityConstraint> x = new ArrayDeque<>();
 			this.elementDeclarations().forEach(e -> x.addAll(e.identityConstraintDefinitions()));
 			this.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
@@ -908,7 +908,7 @@ public class Schema implements AnnotatedComponent {
 			});
 			return x;
 		}));
-		this.annotations = new Def<>(new DeferredArrayDeque<>(() -> {
+		this.annotations = new Def<>(new DeferredDeque<>(() -> {
 			final AnnotationSet annotationSet = Annotation.of(result);
 			annotationSet.addAll(this.imports, Import::annotations);
 			annotationSet.addAll(this.includes, Include::annotations);

@@ -247,7 +247,7 @@ public class SimpleType implements TypeDefinition {
 			final Deque<QName> memberTypes = result.value(AttrParser.MEMBER_TYPES);
 			final Deque<SimpleType> memberTypeDefinitions;
 			if (memberTypes != null) {
-				memberTypeDefinitions = new DeferredArrayDeque<>(() -> memberTypes.stream().map(memberType -> result.schema().find(memberType, SimpleType.class).get()).collect(Collectors.toCollection(ArrayDeque::new)));
+				memberTypeDefinitions = new DeferredDeque<>(() -> memberTypes.stream().map(memberType -> result.schema().find(memberType, SimpleType.class).get()).collect(Collectors.toCollection(ArrayDeque::new)));
 			} else {
 				memberTypeDefinitions = result.parseAll(TagParser.SIMPLE_TYPE);
 			}

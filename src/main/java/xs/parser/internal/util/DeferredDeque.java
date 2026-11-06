@@ -2,20 +2,20 @@ package xs.parser.internal.util;
 
 import java.util.*;
 
-public class DeferredArrayDeque<E> implements Deque<E> {
+public class DeferredDeque<E> implements Deque<E> {
 
 	private Deferred<? extends Deque<E>> def;
 
-	public DeferredArrayDeque() {
+	public DeferredDeque() {
 		this.def = new DeferredValue<>(new ArrayDeque<>());
 	}
 
-	public DeferredArrayDeque(final Collection<? extends E> c) {
+	public DeferredDeque(final Collection<? extends E> c) {
 		this();
 		addAll(c);
 	}
 
-	public DeferredArrayDeque(final Deferred<? extends Deque<E>> def) {
+	public DeferredDeque(final Deferred<? extends Deque<E>> def) {
 		this.def = def.map(ArrayDeque::new);
 	}
 

@@ -68,10 +68,10 @@ public class Annotation implements SchemaComponent {
 
 		public static final AnnotationSet EMPTY = new AnnotationSet();
 
-		private final DeferredArrayDeque<Annotation> annotations;
+		private final DeferredDeque<Annotation> annotations;
 
 		private AnnotationSet() {
-			this.annotations = new DeferredArrayDeque<>();
+			this.annotations = new DeferredDeque<>();
 		}
 
 		private AnnotationSet(final Result result) {
@@ -79,7 +79,7 @@ public class Annotation implements SchemaComponent {
 		}
 
 		private AnnotationSet(final Deque<Annotation> annotations) {
-			this.annotations = new DeferredArrayDeque<>(annotations);
+			this.annotations = new DeferredDeque<>(annotations);
 		}
 
 		AnnotationSet add(final AnnotationSet a) {
@@ -108,7 +108,7 @@ public class Annotation implements SchemaComponent {
 		}
 
 		Deque<Annotation> resolve(final Node component) {
-			return new DeferredArrayDeque<>(() -> {
+			return new DeferredDeque<>(() -> {
 				final ArrayDeque<Annotation> mapped = new ArrayDeque<>();
 				for (final Annotation a : annotations) {
 					mapped.add(new Annotation(a.context, a.node, a.applicationInformation, a.userInformation, Deferred.of(() -> {
@@ -211,9 +211,9 @@ public class Annotation implements SchemaComponent {
 		final Deferred<? extends AnnotatedComponent> context = result.context();
 		final Node node = result.node();
 		final Deque<Appinfo> appinfo = result.parseAll(TagParser.ANNOTATION.appinfo());
-		final Deque<Node> applicationInformation = new DeferredArrayDeque<>(() -> appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new)));
+		final Deque<Node> applicationInformation = new DeferredDeque<>(() -> appinfo.stream().map(a -> a.node).collect(Collectors.toCollection(ArrayDeque::new)));
 		final Deque<Documentation> documentation = result.parseAll(TagParser.ANNOTATION.documentation());
-		final Deque<Node> userInformation = new DeferredArrayDeque<>(() -> documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new)));
+		final Deque<Node> userInformation = new DeferredDeque<>(() -> documentation.stream().map(d -> d.node).collect(Collectors.toCollection(ArrayDeque::new)));
 		return new Annotation(context, node, applicationInformation, userInformation, Collections::emptySet);
 	}
 
