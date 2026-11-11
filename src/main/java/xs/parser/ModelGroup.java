@@ -146,7 +146,7 @@ public class ModelGroup implements Term {
 		final ModelGroup term;
 		if (refName != null) {
 			final Deferred<ModelGroup> ref = result.schema().find(refName, ModelGroup.class);
-			term = new ModelGroup(context, node, annotations, refName.getLocalPart(), result.schema().targetNamespace(), ref.map(ModelGroup::modelGroup), ref.map(ModelGroup::compositor), ref.mapToDeque(ModelGroup::particles));
+			term = new ModelGroup(context, node, annotations, refName.getLocalPart(), result.schema().targetNamespace(), ref.map(ModelGroup::modelGroup), ref.map(ModelGroup::compositor), ref.expand(ModelGroup::particles));
 		} else {
 			term = parseDecl(result);
 		}
@@ -162,7 +162,7 @@ public class ModelGroup implements Term {
 		final String targetNamespace = result.schema().targetNamespace();
 		final Deferred<ModelGroup> modelGroup = particle.map(p -> (ModelGroup) p.term());
 		final Deferred<Compositor> compositor = modelGroup.map(ModelGroup::compositor);
-		final Deque<Particle> particles = modelGroup.mapToDeque(ModelGroup::particles);
+		final Deque<Particle> particles = modelGroup.expand(ModelGroup::particles);
 		return new ModelGroup(context, node, annotations, name, targetNamespace, modelGroup, compositor, particles);
 	}
 

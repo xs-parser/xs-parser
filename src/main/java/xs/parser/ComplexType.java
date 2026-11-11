@@ -1067,8 +1067,8 @@ public class ComplexType implements TypeDefinition {
 				return new Def(baseTypeDefinition, asserts, attributeUses, attributeWildcard, derivationMethod, contentType);
 			});
 		}
-		annotations.addAll(def.mapToDeque(d -> d.asserts), Assert::annotations);
-		return self.set(new ComplexType(context, node, def.mapToDeque(d -> annotations.resolve(node)), name, targetNamespace, finals, def.map(d -> d.baseTypeDefinition), def.map(d -> {
+		annotations.addAll(def.expand(d -> d.asserts), Assert::annotations);
+		return self.set(new ComplexType(context, node, def.expand(d -> annotations.resolve(node)), name, targetNamespace, finals, def.map(d -> d.baseTypeDefinition), def.map(d -> {
 			final Set<AttributeUse> a = new LinkedHashSet<>(d.attributeUses.get());
 			if (defaultAttributesApply && result.schema().defaultAttributes() != null) {
 				a.addAll(result.schema().defaultAttributes().get().attributeUses());
@@ -1077,7 +1077,7 @@ public class ComplexType implements TypeDefinition {
 				a.addAll(((ComplexType) d.baseTypeDefinition).attributeUses());
 			}
 			return a;
-		}), def.map(Def::attributeWildcard), isAbstract, def.map(d -> d.derivationMethod), def.map(Def::explicitContentType), block, def.mapToDeque(d -> d.asserts.stream().map(Assert::assertion).collect(Collectors.toCollection(ArrayDeque::new)))));
+		}), def.map(Def::attributeWildcard), isAbstract, def.map(d -> d.derivationMethod), def.map(Def::explicitContentType), block, def.expand(d -> d.asserts.stream().map(Assert::assertion).collect(Collectors.toCollection(ArrayDeque::new)))));
 	}
 
 	static void register() {

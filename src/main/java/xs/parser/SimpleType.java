@@ -450,7 +450,7 @@ public class SimpleType implements TypeDefinition {
 			}
 			return null;
 		});
-		this.memberTypeDefinitions = variety.mapToDeque(v -> {
+		this.memberTypeDefinitions = variety.expand(v -> {
 			if (Variety.UNION.equals(v)) {
 				return restriction != null
 						? restriction.get().baseTypeDefinition().get().memberTypeDefinitions()
@@ -478,7 +478,7 @@ public class SimpleType implements TypeDefinition {
 				: restriction.map(r -> r.baseTypeDefinition().get().variety());
 		final Deferred<SimpleType> baseType = variety.map(v -> Variety.LIST.equals(v) || Variety.UNION.equals(v) ? xsAnySimpleType() : restriction.get().baseTypeDefinition().get());
 		final DeferredValue<SimpleType> self = new DeferredValue<>();
-		final Deque<Object> facets = variety.mapToDeque(v -> {
+		final Deque<Object> facets = variety.expand(v -> {
 			switch (v) {
 			case UNION:
 				return Deques.asDeque(Pattern.class, ConstrainingFacet.Enumeration.class, Assertions.class);

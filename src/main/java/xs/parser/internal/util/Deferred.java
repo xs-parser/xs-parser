@@ -2,6 +2,7 @@ package xs.parser.internal.util;
 
 import java.util.*;
 import java.util.concurrent.atomic.*;
+import java.util.concurrent.locks.*;
 import java.util.function.*;
 
 @FunctionalInterface
@@ -14,26 +15,29 @@ public interface Deferred<T> {
 		return Deferred.of(() -> mapper.apply(get()));
 	}
 
-	public default <U> Deque<U> mapToDeque(final Function<T, ? extends Deque<U>> mapper) {
+	public default <U> Deque<U> expand(final Function<T, ? extends Deque<U>> mapper) {
 		return new DeferredDeque<>(map(mapper));
 	}
 
 	public static <T> Deferred<T> of(final Supplier<T> supplier) {
 		Objects.requireNonNull(supplier);
-		final AtomicBoolean empty = new AtomicBoolean(true);
+		final ReentrantLock lock = new ReentrantLock();
 		final AtomicReference<T> value = new AtomicReference<>();
 		return () -> {
-			if (empty.get()) {
-				synchronized (value) {
-					if (empty.get()) {
-						final T val = supplier.get();
+			T val = value.get();
+			if (val == null) {
+				lock.lock();
+				try {
+					val = value.get();
+					if (val == null) {
+						val = supplier.get();
 						value.set(val);
-						empty.set(false);
-						return val;
 					}
+				} finally {
+					lock.unlock();
 				}
 			}
-			return value.get();
+			return val;
 		};
 	}
 

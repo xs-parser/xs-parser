@@ -1122,7 +1122,7 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 	}
 
 	static Deque<Object> find(final Deferred<SimpleType> simpleType, final String simpleTypeName) {
-		return simpleType.mapToDeque(s -> defaultFacets.get(simpleTypeName).stream().map(o -> o instanceof Constructible ? ((Constructible) o).apply(simpleType) : o).collect(Collectors.toCollection(ArrayDeque::new)));
+		return simpleType.expand(s -> defaultFacets.get(simpleTypeName).stream().map(o -> o instanceof Constructible ? ((Constructible) o).apply(simpleType) : o).collect(Collectors.toCollection(ArrayDeque::new)));
 	}
 
 	static Deque<Object> combineLikeFacets(final SimpleType baseType, final Deque<Object> baseFacets, final Collection<? extends ConstrainingFacet> declaredFacets) {
