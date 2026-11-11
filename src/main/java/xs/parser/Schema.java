@@ -499,35 +499,35 @@ public class Schema implements AnnotatedComponent {
 
 		private final Deque<T> declared;
 		private final Deque<T> constituents;
-		private final Deque<T> all;
+		private final DeferredSet<T> all;
 
 		Def(final Deque<T> declared, final Function<Schema, Def<T>> mapper) {
 			this(declared, mapper, null);
 		}
 
-		Def(final Deque<T> declared, final Function<Schema, Def<T>> mapper, final Consumer<Deque<T>> after) {
+		Def(final Deque<T> declared, final Function<Schema, Def<T>> mapper, final Consumer<Collection<T>> after) {
 			this.declared = declared;
 			final Set<Schema> schemas = new LinkedHashSet<>();
 			schemas.add(Schema.this);
 			this.constituents = findAll(schemas, mapper);
-			this.all = new DeferredArrayDeque<>(() -> {
+			this.all = new DeferredSet<>(new DeferredDeque<>(() -> {
 				final Deque<T> x = new ArrayDeque<>(constituents);
 				x.addAll(declared);
 				if (after != null) {
 					after.accept(x);
 				}
 				return x;
-			});
+			}));
 		}
 
 		Def() {
 			this.declared = Deques.emptyDeque();
 			this.constituents = Deques.emptyDeque();
-			this.all = Deques.emptyDeque();
+			this.all = new DeferredSet<>();
 		}
 
 		private <U extends SchemaComponent> Deque<U> findAll(final Set<Schema> schemas, final Function<Schema, Def<U>> mapper) {
-			return new DeferredArrayDeque<>(constituentSchemas.map(c -> {
+			return new DeferredDeque<>(constituentSchemas.map(c -> {
 				if (c.isEmpty()) {
 					return Deques.emptyDeque();
 				}
@@ -757,7 +757,7 @@ public class Schema implements AnnotatedComponent {
 			.elements(0, Integer.MAX_VALUE, TagParser.SIMPLE_TYPE, TagParser.COMPLEX_TYPE, TagParser.GROUP, TagParser.ATTRIBUTE_GROUP, TagParser.ELEMENT, TagParser.ATTRIBUTE, TagParser.NOTATION, TagParser.ANNOTATION);
 	static final Schema XSD = new Schema(NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_NS_URI)) {
 
-		final Deque<TypeDefinition> typeDefinitions = new DeferredArrayDeque<>(() -> Deques.asDeque(ComplexType.xsAnyType(), SimpleType.xsAnySimpleType(), SimpleType.xsAnyAtomicType(), SimpleType.xsString(), SimpleType.xsBoolean(), SimpleType.xsFloat(), SimpleType.xsDouble(), SimpleType.xsDecimal(), SimpleType.xsDuration(), SimpleType.xsDateTime(), SimpleType.xsTime(), SimpleType.xsDate(), SimpleType.xsGYearMonth(), SimpleType.xsGYear(), SimpleType.xsGMonthDay(), SimpleType.xsGDay(), SimpleType.xsGMonth(), SimpleType.xsHexBinary(), SimpleType.xsBase64Binary(), SimpleType.xsAnyURI(), SimpleType.xsQName(), SimpleType.xsNOTATION(), SimpleType.xsNormalizedString(), SimpleType.xsToken(), SimpleType.xsLanguage(), SimpleType.xsIDREFS(), SimpleType.xsENTITIES(), SimpleType.xsNMTOKEN(), SimpleType.xsNMTOKENS(), SimpleType.xsName(), SimpleType.xsNCName(), SimpleType.xsID(), SimpleType.xsIDREF(), SimpleType.xsENTITY(), SimpleType.xsInteger(), SimpleType.xsNonPositiveInteger(), SimpleType.xsNegativeInteger(), SimpleType.xsLong(), SimpleType.xsInt(), SimpleType.xsShort(), SimpleType.xsByte(), SimpleType.xsNonNegativeInteger(), SimpleType.xsUnsignedLong(), SimpleType.xsUnsignedInt(), SimpleType.xsUnsignedShort(), SimpleType.xsUnsignedByte(), SimpleType.xsPositiveInteger(), SimpleType.xsYearMonthDuration(), SimpleType.xsDayTimeDuration(), SimpleType.xsDateTimeStamp()));
+		final Deferred<Set<TypeDefinition>> builtInTypeDefinitions = Deferred.of(() -> Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(ComplexType.xsAnyType(), SimpleType.xsAnySimpleType(), SimpleType.xsAnyAtomicType(), SimpleType.xsString(), SimpleType.xsBoolean(), SimpleType.xsFloat(), SimpleType.xsDouble(), SimpleType.xsDecimal(), SimpleType.xsDuration(), SimpleType.xsDateTime(), SimpleType.xsTime(), SimpleType.xsDate(), SimpleType.xsGYearMonth(), SimpleType.xsGYear(), SimpleType.xsGMonthDay(), SimpleType.xsGDay(), SimpleType.xsGMonth(), SimpleType.xsHexBinary(), SimpleType.xsBase64Binary(), SimpleType.xsAnyURI(), SimpleType.xsQName(), SimpleType.xsNOTATION(), SimpleType.xsNormalizedString(), SimpleType.xsToken(), SimpleType.xsLanguage(), SimpleType.xsIDREFS(), SimpleType.xsENTITIES(), SimpleType.xsNMTOKEN(), SimpleType.xsNMTOKENS(), SimpleType.xsName(), SimpleType.xsNCName(), SimpleType.xsID(), SimpleType.xsIDREF(), SimpleType.xsENTITY(), SimpleType.xsInteger(), SimpleType.xsNonPositiveInteger(), SimpleType.xsNegativeInteger(), SimpleType.xsLong(), SimpleType.xsInt(), SimpleType.xsShort(), SimpleType.xsByte(), SimpleType.xsNonNegativeInteger(), SimpleType.xsUnsignedLong(), SimpleType.xsUnsignedInt(), SimpleType.xsUnsignedShort(), SimpleType.xsUnsignedByte(), SimpleType.xsPositiveInteger(), SimpleType.xsYearMonthDuration(), SimpleType.xsDayTimeDuration(), SimpleType.xsDateTimeStamp()))));
 
 		@Override
 		String location() {
@@ -765,18 +765,18 @@ public class Schema implements AnnotatedComponent {
 		}
 
 		@Override
-		public Deque<TypeDefinition> typeDefinitions() {
-			return typeDefinitions;
+		public Set<TypeDefinition> typeDefinitions() {
+			return builtInTypeDefinitions.get();
 		}
 
 	};
 	static final Schema XSI = new Schema(NodeHelper.newSchemaDocument(XMLConstants.W3C_XML_SCHEMA_INSTANCE_NS_URI)) {
 
-		final Deque<Attribute> attributeDeclarations = new DeferredArrayDeque<>(() -> Deques.asDeque(Attribute.xsiNil(), Attribute.xsiType(), Attribute.xsiSchemaLocation(), Attribute.xsiNoNamespaceSchemaLocation()));
+		final Deferred<Set<Attribute>> xsiAttributeDeclarations = Deferred.of(() -> Collections.unmodifiableSet(new LinkedHashSet<>(Arrays.asList(Attribute.xsiNil(), Attribute.xsiType(), Attribute.xsiSchemaLocation(), Attribute.xsiNoNamespaceSchemaLocation()))));
 
 		@Override
-		public Deque<Attribute> attributeDeclarations() {
-			return attributeDeclarations;
+		public Set<Attribute> attributeDeclarations() {
+			return xsiAttributeDeclarations.get();
 		}
 
 	};
@@ -799,7 +799,7 @@ public class Schema implements AnnotatedComponent {
 	private final Def<AttributeGroup> attributeGroupDefinitions;
 	private final Def<Element> elementDeclarations;
 	private final Def<Notation> notationDeclarations;
-	private final Deque<IdentityConstraint> identityConstraintDefinitions;
+	private final Set<IdentityConstraint> identityConstraintDefinitions;
 	private final Def<Annotation> annotations;
 	private final Form attributeFormDefault;
 	private final Block blockDefault;
@@ -838,7 +838,7 @@ public class Schema implements AnnotatedComponent {
 		this.attributeGroupDefinitions = new Def<>();
 		this.elementDeclarations = new Def<>();
 		this.notationDeclarations = new Def<>();
-		this.identityConstraintDefinitions = Deques.emptyDeque();
+		this.identityConstraintDefinitions = Collections.emptySet();
 		this.annotations = new Def<>();
 		this.attributeFormDefault = AttrParser.ATTRIBUTE_FORM_DEFAULT.getDefaultValue();
 		this.blockDefault = AttrParser.BLOCK_DEFAULT.getDefaultValue();
@@ -883,7 +883,7 @@ public class Schema implements AnnotatedComponent {
 		this.notationDeclarations = new Def<>(result.parseAll(TagParser.NOTATION),
 				s -> s.notationDeclarations,
 				n -> checkIfUnique(n, Notation::name, Notation::targetNamespace));
-		this.identityConstraintDefinitions = new DeferredArrayDeque<>(() -> {
+		this.identityConstraintDefinitions = new DeferredSet<>(new DeferredDeque<>(() -> {
 			final Deque<IdentityConstraint> x = new ArrayDeque<>();
 			this.elementDeclarations().forEach(e -> x.addAll(e.identityConstraintDefinitions()));
 			this.typeDefinitions().stream().filter(ComplexType.class::isInstance).map(ComplexType.class::cast).forEach(c -> {
@@ -907,8 +907,8 @@ public class Schema implements AnnotatedComponent {
 				}
 			});
 			return x;
-		});
-		this.annotations = new Def<>(new DeferredArrayDeque<>(() -> {
+		}));
+		this.annotations = new Def<>(new DeferredDeque<>(() -> {
 			final AnnotationSet annotationSet = Annotation.of(result);
 			annotationSet.addAll(this.imports, Import::annotations);
 			annotationSet.addAll(this.includes, Include::annotations);
@@ -990,7 +990,7 @@ public class Schema implements AnnotatedComponent {
 		return opt.map(t -> (Deferred<T>) () -> t).orElse(null);
 	}
 
-	private static <T extends SchemaComponent> void checkIfUnique(final Deque<T> ls, final Function<T, String> name, final Function<T, String> targetNamespace) {
+	private static <T extends SchemaComponent> void checkIfUnique(final Collection<T> ls, final Function<T, String> name, final Function<T, String> targetNamespace) {
 		final Map<QName, T> names = new HashMap<>(ls.size());
 		for (final T t : ls) {
 			final String targetNs = targetNamespace.apply(t);
@@ -1197,44 +1197,44 @@ public class Schema implements AnnotatedComponent {
 	}
 
 	/** @return The simple and complex type definitions corresponding to all the &lt;simpleType&gt; and &lt;complexType&gt; element information items in the [children], if any, plus any definitions brought in via &lt;include&gt; (see Assembling a schema for a single target namespace from multiple schema definition documents (&lt;include&gt;) (§4.2.3)), &lt;override&gt; (see Overriding component definitions (&lt;override&gt;) (§4.2.5)), &lt;redefine&gt; (see Including modified component definitions (&lt;redefine&gt;) (§4.2.4)), and &lt;import&gt; (see References to schema components across namespaces (&lt;import&gt;) (§4.2.6)). */
-	public Deque<TypeDefinition> typeDefinitions() {
-		return Deques.unmodifiableDeque(typeDefinitions.all);
+	public Set<TypeDefinition> typeDefinitions() {
+		return Collections.unmodifiableSet(typeDefinitions.all);
 	}
 
 	/** @return The (top-level) attribute declarations corresponding to all the &lt;attribute&gt; element information items in the [children], if any, plus any declarations brought in via &lt;include&gt;, &lt;override&gt;, &lt;redefine&gt;, and &lt;import&gt;. */
-	public Deque<Attribute> attributeDeclarations() {
-		return Deques.unmodifiableDeque(attributeDeclarations.all);
+	public Set<Attribute> attributeDeclarations() {
+		return Collections.unmodifiableSet(attributeDeclarations.all);
 	}
 
 	/** @return The (top-level) element declarations corresponding to all the &lt;element&gt; element information items in the [children], if any, plus any declarations brought in via &lt;include&gt;, &lt;override&gt;, &lt;redefine&gt;, and &lt;import&gt;. */
-	public Deque<Element> elementDeclarations() {
-		return Deques.unmodifiableDeque(elementDeclarations.all);
+	public Set<Element> elementDeclarations() {
+		return Collections.unmodifiableSet(elementDeclarations.all);
 	}
 
 	/** @return The attribute group definitions corresponding to all the &lt;attributeGroup&gt; element information items in the [children], if any, plus any definitions brought in via &lt;include&gt;, &lt;override&gt;, &lt;redefine&gt;, and &lt;import&gt;. */
-	public Deque<AttributeGroup> attributeGroupDefinitions() {
-		return Deques.unmodifiableDeque(attributeGroupDefinitions.all);
+	public Set<AttributeGroup> attributeGroupDefinitions() {
+		return Collections.unmodifiableSet(attributeGroupDefinitions.all);
 	}
 
 	/** @return The model group definitions corresponding to all the &lt;group&gt; element information items in the [children], if any, plus any definitions brought in via &lt;include&gt;, &lt;redefine&gt; and &lt;import&gt;. */
-	public Deque<ModelGroup> modelGroupDefinitions() {
-		return Deques.unmodifiableDeque(modelGroupDefinitions.all);
+	public Set<ModelGroup> modelGroupDefinitions() {
+		return Collections.unmodifiableSet(modelGroupDefinitions.all);
 	}
 
 	/** @return The notation declarations corresponding to all the &lt;notation&gt; element information items in the [children], if any, plus any declarations brought in via &lt;include&gt;, &lt;override&gt;, &lt;redefine&gt;, and &lt;import&gt;. */
-	public Deque<Notation> notationDeclarations() {
-		return Deques.unmodifiableDeque(notationDeclarations.all);
+	public Set<Notation> notationDeclarations() {
+		return Collections.unmodifiableSet(notationDeclarations.all);
 	}
 
 	/** @return The identity-constraint definitions corresponding to all the &lt;key&gt;, &lt;keyref&gt;, and &lt;unique&gt; element information items anywhere within the [children], if any, plus any definitions brought in via &lt;include&gt;, &lt;override&gt;, &lt;redefine&gt;, and &lt;import&gt;. */
-	public Deque<IdentityConstraint> identityConstraintDefinitions() {
-		return Deques.unmodifiableDeque(identityConstraintDefinitions);
+	public Set<IdentityConstraint> identityConstraintDefinitions() {
+		return Collections.unmodifiableSet(identityConstraintDefinitions);
 	}
 
 	/** @return The ·annotation mapping· of the set of elements containing the &lt;schema&gt; and all the &lt;include&gt;, &lt;redefine&gt;, &lt;override&gt;, &lt;import&gt;, and &lt;defaultOpenContent&gt; [children], if any, as defined in XML Representation of Annotation Schema Components (§3.15.2). */
 	@Override
 	public Deque<Annotation> annotations() {
-		return Deques.unmodifiableDeque(annotations.all);
+		return Deques.unmodifiableDeque(annotations.all.asDeque());
 	}
 
 }

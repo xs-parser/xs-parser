@@ -70,6 +70,7 @@ def gitDescribeTagsProvider = providers.of(GitDescribeTagsValueSource.class) {}
 version = gitDescribeTagsProvider.get() + (isSnapshot ? '-SNAPSHOT' : '')
 
 test {
+	enableAssertions = true
 	finalizedBy jacocoTestReport
 	maxHeapSize = '2048m'
 	maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1

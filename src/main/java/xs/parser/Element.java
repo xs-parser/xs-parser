@@ -293,8 +293,8 @@ public class Element implements Term {
 	private final Deferred<Scope> scope;
 	private final boolean nillable;
 	private final Deferred<ValueConstraint> valueConstraint;
-	private final Deque<IdentityConstraint> identityConstraintDefinitions;
-	private final Deque<Element> substitutionGroupAffiliations;
+	private final Set<IdentityConstraint> identityConstraintDefinitions;
+	private final Set<Element> substitutionGroupAffiliations;
 	private final Set<Block> disallowedSubstitutions;
 	private final Set<Final> substitutionGroupExclusions;
 	private final boolean isAbstract;
@@ -310,8 +310,8 @@ public class Element implements Term {
 		this.scope = Objects.requireNonNull(scope);
 		this.nillable = nillable;
 		this.valueConstraint = valueConstraint;
-		this.identityConstraintDefinitions = Objects.requireNonNull(identityConstraintDefinitions);
-		this.substitutionGroupAffiliations = Objects.requireNonNull(substitutionGroupAffiliations);
+		this.identityConstraintDefinitions = new DeferredSet<>(identityConstraintDefinitions);
+		this.substitutionGroupAffiliations = new DeferredSet<>(substitutionGroupAffiliations);
 		this.disallowedSubstitutions = Objects.requireNonNull(disallowedSubstitutions);
 		this.substitutionGroupExclusions = Objects.requireNonNull(substitutionGroupExclusions);
 		this.isAbstract = isAbstract;
@@ -379,13 +379,13 @@ public class Element implements Term {
 			}
 		});
 		final Deque<QName> substitutionGroup = result.value(AttrParser.SUBSTITUTION_GROUP);
-		final DeferredArrayDeque<Element> substitutionGroupAffiliations = new DeferredArrayDeque<>(() -> {
+		final DeferredDeque<Element> substitutionGroupAffiliations = new DeferredDeque<>(() -> {
 			if (substitutionGroup != null && !(context.get() instanceof Schema)) {
 				throw new ParseException(result.node(), "@substitutionGroup is only valid for global elements");
 			} else if (substitutionGroup == null) {
 				return Deques.emptyDeque();
 			}
-			final DeferredArrayDeque<Element> x = new DeferredArrayDeque<>();
+			final DeferredDeque<Element> x = new DeferredDeque<>();
 			for (final QName s : substitutionGroup) {
 				x.addLast(result.schema().find(s, Element.class));
 			}
@@ -538,13 +538,13 @@ public class Element implements Term {
 	}
 
 	/** @return A set consisting of the identity-constraint-definitions corresponding to all the &lt;key&gt;, &lt;unique&gt; and &lt;keyref&gt; element information items in the [children], if any, otherwise the empty set. */
-	public Deque<IdentityConstraint> identityConstraintDefinitions() {
-		return Deques.unmodifiableDeque(identityConstraintDefinitions);
+	public Set<IdentityConstraint> identityConstraintDefinitions() {
+		return Collections.unmodifiableSet(identityConstraintDefinitions);
 	}
 
 	/** @return A set of the element declarations ·resolved· to by the items in the ·actual value· of the substitutionGroup [attribute], if present, otherwise the empty set. */
-	public Deque<Element> substitutionGroupAffiliations() {
-		return Deques.unmodifiableDeque(substitutionGroupAffiliations);
+	public Set<Element> substitutionGroupAffiliations() {
+		return Collections.unmodifiableSet(substitutionGroupAffiliations);
 	}
 
 	/**

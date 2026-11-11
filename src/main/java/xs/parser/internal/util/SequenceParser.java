@@ -101,7 +101,7 @@ public final class SequenceParser {
 		}
 
 		@SafeVarargs public final <T> Deque<T> parseAll(final TagParser<? extends T> first, final TagParser<? extends T>... more) {
-			final Deque<T> x = new DeferredArrayDeque<>(parseAll(first));
+			final Deque<T> x = new DeferredDeque<>(parseAll(first));
 			for (final TagParser<? extends T> t : more) {
 				x.addAll(parseAll(t));
 			}
@@ -119,7 +119,7 @@ public final class SequenceParser {
 			for (final Result r : results) {
 				checkIfCanParse(r, t);
 			}
-			return new DeferredArrayDeque<>(() -> {
+			return new DeferredDeque<>(() -> {
 				final ArrayDeque<T> x = new ArrayDeque<>();
 				for (final Result r : results) {
 					final T v = t.parse(r);

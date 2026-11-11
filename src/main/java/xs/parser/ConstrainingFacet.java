@@ -1125,8 +1125,8 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 		return simpleType.mapToDeque(s -> defaultFacets.get(simpleTypeName).stream().map(o -> o instanceof Constructible ? ((Constructible) o).apply(simpleType) : o).collect(Collectors.toCollection(ArrayDeque::new)));
 	}
 
-	static Deque<Object> combineLikeFacets(final SimpleType baseType, final Deque<Object> baseFacets, final Deque<? extends ConstrainingFacet> declaredFacets) {
-		final Deque<Object> newFacets = new DeferredArrayDeque<>();
+	static Deque<Object> combineLikeFacets(final SimpleType baseType, final Deque<Object> baseFacets, final Collection<? extends ConstrainingFacet> declaredFacets) {
+		final Deque<Object> newFacets = new DeferredDeque<>();
 		boolean patternFound = false;
 		boolean enumerationFound = false;
 		boolean assertionFound = false;
@@ -1181,11 +1181,14 @@ public abstract class ConstrainingFacet implements AnnotatedComponent {
 				if (!assertionFound) {
 					assertionFound = true;
 					final Deque<Assertion> value = new ArrayDeque<>();
-					for (final Deque<? extends ConstrainingFacet> x : Deques.asDeque(baseType.facets(), declaredFacets)) {
-						for (final ConstrainingFacet c : x) {
-							if (c instanceof Assertions) {
-								value.addAll(((Assertions) c).value());
-							}
+					for (final ConstrainingFacet c : baseType.facets()) {
+						if (c instanceof Assertions) {
+							value.addAll(((Assertions) c).value());
+						}
+					}
+					for (final ConstrainingFacet c : declaredFacets) {
+						if (c instanceof Assertions) {
+							value.addAll(((Assertions) c).value());
 						}
 					}
 					newFacets.addLast(new Assertions(facet.context, facet.node, value));

@@ -25,7 +25,7 @@ public class IncludeTests {
 						+ "</xs:schema>"
 				));
 		Assert.assertEquals(1, schema.typeDefinitions().size());
-		final SimpleType a = (SimpleType) schema.typeDefinitions().getFirst();
+		final SimpleType a = (SimpleType) schema.typeDefinitions().iterator().next();
 		Assert.assertEquals("https://my.test", a.targetNamespace());
 		Assert.assertEquals("A", a.name());
 		Assert.assertEquals(XMLConstants.W3C_XML_SCHEMA_NS_URI, a.baseTypeDefinition().targetNamespace());
@@ -48,7 +48,7 @@ public class IncludeTests {
 						+ "  <xs:include schemaLocation=\"Test2.xsd\"/>"
 						+ "</xs:schema>"
 				));
-		Assert.assertThrows(ParseException.class, schema.typeDefinitions()::getFirst); // Force lazy evaluation
+		Assert.assertThrows(ParseException.class, schema.typeDefinitions()::iterator); // Force lazy evaluation
 	}
 
 	@Test
@@ -86,7 +86,7 @@ public class IncludeTests {
 				+ "    </xs:sequence>"
 				+ "  </xs:complexType>"
 				+ "</xs:schema>";
-		final ComplexType bType = (ComplexType) new Schema(Utilities.stringToDocument(bSchemaText)).typeDefinitions().getFirst();
+		final ComplexType bType = (ComplexType) new Schema(Utilities.stringToDocument(bSchemaText)).typeDefinitions().iterator().next();
 		Assert.assertThrows(ParseException.class, () -> Visitors.visit(bType, new DefaultVisitor())); // Should fail to resolve a:AType
 		final DocumentResolver resolver = Utilities.stringResolver(bSchemaText);
 		final String aSchemaText = Utilities.PROLOG_UTF8
@@ -101,7 +101,7 @@ public class IncludeTests {
 				+ "</xs:schema>";
 		final Schema schema = new Schema(resolver, Utilities.stringToDocument(aSchemaText));
 		Visitors.visit(schema, new DefaultVisitor());
-		final Element aElement = schema.elementDeclarations().getLast();
+		final Element aElement = schema.elementDeclarations().iterator().next();
 		Assert.assertEquals("AElement", aElement.name());
 		Assert.assertEquals("BType", aElement.typeDefinition().name());
 	}
