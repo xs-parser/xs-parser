@@ -42,7 +42,7 @@ repositories {
 }
 
 dependencies {
-	implementation 'io.github.xs-parser:xs-parser:3.2'
+	implementation 'io.github.xs-parser:xs-parser:4.0'
 }
 ```
 
@@ -89,14 +89,16 @@ where `/path/to/schema.xsd` contains the above schema.
 
 ```java
 final Schema schema = new Schema(new File("/path/to/schema.xsd"));
-final TypeDefinition a = schema.typeDefinitions().getFirst();
+final Iterator<TypeDefinition> globalTypes = schema.typeDefinitions().iterator();
+final TypeDefinition a = globalTypes.next();
 System.out.println(a.baseTypeDefinition() == ComplexType.xsAnyType()); // Prints: true
-final Element e1 = schema.elementDeclarations().getFirst();
+final Iterator<Element> globalElements = schema.elementDeclarations().iterator();
+final Element e1 = globalElements.next();
 System.out.println(e1.name());                                         // Prints: E1
 System.out.println(e1.typeDefinition() == a);                          // Prints: true
-final Element e2 = schema.elementDeclarations().getLast();
+final Element e2 = globalElements.next();
 System.out.println(e2.name());                                         // Prints: E2
-final TypeDefinition b = schema.typeDefinitions().getLast();
+final TypeDefinition b = globalTypes.next();
 System.out.println(e2.typeDefinition() == b);                          // Prints: true
 ```
 
